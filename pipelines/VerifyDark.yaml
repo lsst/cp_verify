@@ -1,0 +1,27 @@
+description: cp_verify DARK calibration verification
+tasks:
+  verifyDarkApply:
+    class: lsst.ip.isr.isrTask.IsrTask
+    config:
+      connections.ccdExposure: 'raw'
+      connections.outputExposure: 'verifyDarkProc'
+      # Disable downstream processing.
+      doDark: True
+      doFlat: False
+      doApplyGains: False
+      doFringe: False
+  verifyDarkChip:
+    class: lsst.cp.verify.CpVerifyDarkTask
+    config:
+      connections.inputExp: 'verifyDarkProc'
+      connections.outputStats: 'verifyDarkDetStats'
+  verifyDarkExp:
+    class: lsst.cp.verify.CpVerifyExpMergeTask
+    config:
+      connections.inputStats: 'verifyDarkDetStats'
+      connections.outputStats: 'verifyDarkExpStats'
+  verifyDark:
+    class: lsst.cp.verify.CpVerifyRunMergeTask
+    config:
+      connections.inputStats: 'verifyDarkExpStats'
+      connections.outputStats: 'verifyDarkStats'
