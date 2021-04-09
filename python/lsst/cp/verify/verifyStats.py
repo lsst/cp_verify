@@ -219,7 +219,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         SUCCESS: boolean
 
         """
-        outputStats = dict()
+        outputStats = {}
 
         if self.config.doVignette:
             VignetteExposure(inputExp, doUpdateMask=True, maskPlane='BAD',
@@ -237,11 +237,11 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         if len(self.config.catalogStatKeywords):
             outputStats['CATALOG'] = self.catalogStatistics(inputExp, statsControl)
         else:
-            outputStats['CATALOG'] = dict()
+            outputStats['CATALOG'] = {}
         if len(self.config.detectorStatKeywords):
             outputStats['DET'] = self.detectorStatistics(outputStats, statsControl)
         else:
-            outputStats['DET'] = dict()
+            outputStats['DET'] = {}
 
         outputStats['VERIFY'], outputStats['SUCCESS'] = self.verify(inputExp, outputStats)
 
@@ -268,13 +268,13 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         RuntimeError :
             Raised if no detector can be found.
         """
-        outputStats = dict()
+        outputStats = {}
         detector = exposure.getDetector()
         if detector is None:
             raise RuntimeError("No detector found in exposure!")
 
         for amp in detector.getAmplifiers():
-            outputStats[amp.getName()] = dict()
+            outputStats[amp.getName()] = {}
 
         return outputStats
 
@@ -337,7 +337,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
             dictionaries of the statistics measured and their values.
         """
 
-        ampStats = dict()
+        ampStats = {}
 
         # Convert the string names in the keywordDict to the afwMath values.
         # The statisticToRun is then the bitwise-or of that set.
@@ -351,7 +351,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         # Measure stats on all amplifiers.
         for ampIdx, amp in enumerate(exposure.getDetector()):
             ampName = amp.getName()
-            theseStats = dict()
+            theseStats = {}
             ampExp = exposure.Factory(exposure, amp.getBBox())
             stats = afwMath.makeStatistics(ampExp.getMaskedImage(), statisticToRun, statsControl)
 

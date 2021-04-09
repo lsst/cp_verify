@@ -122,13 +122,13 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
            TEST2: boolean
         SUCCESS: boolean
         """
-        outputStats = dict()
+        outputStats = {}
         success = True
 
         for detStats, dimensions in zip(inputStats, inputDims):
             detId = dimensions['detector']
             detName = camera[detId].getName()
-            calcStats = dict()
+            calcStats = {}
 
             if detStats['SUCCESS'] is True:
                 calcStats['SUCCESS'] = True
@@ -138,20 +138,20 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
                 success = False
                 # See if the detector failed
                 if 'DET' in detStats['VERIFY']:
-                    for testName in detStats['VERIFY']['DET']:
-                        if detStats['VERIFY']['DET'][testName] is False:
+                    for testName, testResult in detStats['VERIFY']['DET'].items():
+                        if testResult is False:
                             calcStats['FAILURES'].append(testName)
                 # See if the catalog failed
                 if 'CATALOG' in detStats['VERIFY']:
-                    for testName in detStats['VERIFY']['CATALOG']:
-                        if detStats['VERIFY']['CATALOG'][testName] is False:
+                    for testName, testResult in detStats['VERIFY']['CATALOG'].items():
+                        if testResult is False:
                             calcStats['FAILURES'].append(testName)
                 # See if an amplifier failed
-                for ampName in detStats['VERIFY']['AMP']:
-                    ampSuccess = detStats['VERIFY']['AMP'][ampName].pop('SUCCESS')
+                for ampName, ampStats in detStats['VERIFY']['AMP'].items():
+                    ampSuccess = ampStats.pop('SUCCESS')
                     if not ampSuccess:
-                        for testName in detStats['VERIFY']['AMP'][ampName]:
-                            if detStats['VERIFY']['AMP'][ampName][testName] is False:
+                        for testName, testResult in ampStats:
+                            if testResult is False:
                                 calcStats['FAILURES'].append(ampName + " " + testName)
 
             outputStats[detName] = calcStats
@@ -273,11 +273,11 @@ class CpVerifyRunMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
           MEAN_UNIMODAL: boolean
           SIGMA_UNIMODAL: boolean
         """
-        outputStats = dict()
+        outputStats = {}
         success = True
         for expStats, dimensions in zip(inputStats, inputDims):
             expId = dimensions['exposure']
-            calcStats = dict()
+            calcStats = {}
 
             expSuccess = expStats.pop('SUCCESS')
             if expSuccess:
@@ -285,8 +285,8 @@ class CpVerifyRunMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
             else:
                 calcStats['FAILURES'] = list()
                 success = False
-                for detName in expStats:
-                    detSuccess = expStats[detName].pop('SUCCESS')
+                for detName, detStats in expStats.items():
+                    detSuccess = detStats.pop('SUCCESS')
                     if not detSuccess:
                         for testName in expStats[detName]['FAILURES']:
                             calcStats['FAILURES'].append(detName + " " + testName)
@@ -327,5 +327,6 @@ class CpVerifyRunMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         NotImplementedError :
             This method must be implemented by the calibration-type
             subclass.
+
         """
         raise NotImplementedError("Subclasses must implement verification criteria.")

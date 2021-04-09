@@ -64,7 +64,7 @@ class MergeResultsTestCase(lsst.utils.tests.TestCase):
         expResults1 = expMergeTask.run(self.detectorResults1, self.camera, self.detectorDimensions1)
         expResults2 = expMergeTask.run(self.detectorResults2, self.camera, self.detectorDimensions2)
         self.assertTrue(expResults1.outputStats['SUCCESS'])
-        self.assertFalse(expResults2.outputStats['SUCCESS'])  # Expecte to have one failure
+        self.assertFalse(expResults2.outputStats['SUCCESS'])  # Expected to have one failure
 
         # Prep inputs to full calibration run merge.
         inputStats = [expResults1.outputStats, expResults2.outputStats]

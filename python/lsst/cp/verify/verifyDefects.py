@@ -92,8 +92,7 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             normArray /= outputStats[ampName]['STDEV']
 
             probability = scipy.stats.norm.pdf(normArray)
-            trials = np.prod(probability.shape)
-            outliers = np.where(probability < 1.0 / trials, 1.0, 0.0)
+            outliers = np.where(probability < 1.0 / probability.size, 1.0, 0.0)
             outputStats[ampName]['STAT_OUTLIERS'] = np.sum(outliers)
 
         return outputStats
@@ -115,29 +114,21 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             A boolean indicating if all tests have passed.
         """
         ampStats = statisticsDictionary['AMP']
-        verifyStats = dict()
+        verifyStats = {}
         success = True
         for ampName, stats in ampStats.items():
-            verify = dict()
+            verify = {}
 
-            # These are not defined yet.
-            if stats['UNMASKED_OUTLIERS'] > stats['OUTLIERS']:
-                verify['OUTLIERS'] = True
-            else:
-                verify['OUTLIERS'] = False
+            # These are not defined in DMTN-101 yet.
+            verify['OUTLIERS'] = bool(stats['UNMASKED_OUTLIERS'] > stats['OUTLIERS'])
+            verify['MIN'] = bool(stats['MIN'] >= stats['UNMASKED_MIN'])
+            verify['MAX'] = bool(stats['MAX'] <= stats['UNMASKED_MAX'])
 
-            verify['MIN'] = True if stats['MIN'] >= stats['UNMASKED_MIN'] else False
-            verify['MAX'] = True if stats['MAX'] <= stats['UNMASKED_MAX'] else False
-
-            verify['PROB_TEST'] = True if stats['STAT_OUTLIERS'] == stats['DEFECT_PIXELS'] else False
+            verify['PROB_TEST'] = bool(stats['STAT_OUTLIERS'] == stats['DEFECT_PIXELS'])
 
             verify['SUCCESS'] = bool(np.all(list(verify.values())))
             if verify['SUCCESS'] is False:
                 success = False
-
-            # Why is this necessary?  Why are these booleans not
-            # boolean enough for yaml.safe_dump?
-            verify = {key: bool(value) for key, value in verify.items()}
 
             verifyStats[ampName] = verify
 

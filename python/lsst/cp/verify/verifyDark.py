@@ -65,28 +65,24 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
 
         detector = exposure.getDetector()
         ampStats = statisticsDictionary['AMP']
-        verifyStats = dict()
+        verifyStats = {}
         success = True
         for ampName, stats in ampStats.items():
-            verify = dict()
+            verify = {}
 
             # Test 5.2: Mean is 0.0:
-            verify['MEAN'] = (np.abs(stats['MEAN']) < stats['NOISE'])
+            verify['MEAN'] = bool(np.abs(stats['MEAN']) < stats['NOISE'])
 
             # Test 5.3: Clipped mean matches readNoise
             amp = detector[ampName]
-            verify['NOISE'] = (np.abs(stats['NOISE'] - amp.getReadNoise())/amp.getReadNoise() <= 0.05)
+            verify['NOISE'] = bool(np.abs(stats['NOISE'] - amp.getReadNoise())/amp.getReadNoise() <= 0.05)
 
             # Test 5.4: CR rejection matches clipped mean
-            verify['CR_NOISE'] = (np.abs(stats['NOISE'] - stats['CR_NOISE'])/stats['CR_NOISE'] <= 0.05)
+            verify['CR_NOISE'] = bool(np.abs(stats['NOISE'] - stats['CR_NOISE'])/stats['CR_NOISE'] <= 0.05)
 
             verify['SUCCESS'] = bool(np.all(list(verify.values())))
             if verify['SUCCESS'] is False:
                 success = False
-
-            # Why is this necessary?  Why are these booleans not
-            # boolean enough for yaml.safe_dump?
-            verify = {key: bool(value) for key, value in verify.items()}
 
             verifyStats[ampName] = verify
 
