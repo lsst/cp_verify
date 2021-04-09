@@ -42,7 +42,7 @@ class CpVerifyBiasConfig(CpVerifyStatsConfig,
 
 
 class CpVerifyBiasTask(CpVerifyStatsTask):
-    """
+    """Bias verification sub-class, implementing the verify method.
     """
     ConfigClass = CpVerifyBiasConfig
     _DefaultName = 'cpVerifyBias'

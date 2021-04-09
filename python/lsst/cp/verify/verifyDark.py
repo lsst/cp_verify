@@ -41,7 +41,7 @@ class CpVerifyDarkConfig(CpVerifyStatsConfig,
 
 
 class CpVerifyDarkTask(CpVerifyStatsTask):
-    """
+    """Dark verification sub-class, implementing the verify method.
     """
     ConfigClass = CpVerifyDarkConfig
     _DefaultName = 'cpVerifyDark'

@@ -62,7 +62,8 @@ class CpVerifyExpMergeConfig(pipeBase.PipelineTaskConfig,
     exposureStatKeywords = pexConfig.DictField(
         keytype=str,
         itemtype=str,
-        doc="Statistics to run on the set of exposure values.",
+        doc="Dictionary of statistics to run on the set of detector values. The key should be the test "
+        "name to record in the output, and the value should be the `lsst.afw.math` statistic name string."
         default={},
     )
 
@@ -171,7 +172,10 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         Parameters
         ----------
         statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
-            Dictionary of measured statistics.
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
 
         Returns
         -------
@@ -216,7 +220,8 @@ class CpVerifyRunMergeConfig(pipeBase.PipelineTaskConfig,
     runStatKeywords = pexConfig.DictField(
         keytype=str,
         itemtype=str,
-        doc="Run statistics to create.",
+        doc="Dictionary of statistics to run on the set of exposure values. The key should be the test "
+        "name to record in the output, and the value should be the `lsst.afw.math` statistic name string."
         default={},
     )
 
@@ -303,8 +308,11 @@ class CpVerifyRunMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
 
         Parameters
         ----------
-        statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
-            Dictionary of measured statistics.
+        statisticsDictionary : `dict` [`str`, `dict`],
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
 
         Returns
         -------

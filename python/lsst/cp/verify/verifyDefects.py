@@ -50,7 +50,9 @@ class CpVerifyDefectsConfig(CpVerifyStatsConfig,
 
 
 class CpVerifyDefectsTask(CpVerifyStatsTask):
-    """
+    """Defects verification sub-class, implementing the verify method.
+
+    This also applies additional image processing statistics.
     """
     ConfigClass = CpVerifyDefectsConfig
     _DefaultName = 'cpVerifyDefects'

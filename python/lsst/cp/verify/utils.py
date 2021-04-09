@@ -29,10 +29,8 @@ def mergeStatDict(statDictA, statDictB):
 
     Parameters
     ----------
-    statDictA : `dict` [`str`, `dict`]
-        A dictionary of statistics.
-    statDictB : `dict` [`str`, `dict`]
-        Another dictionary of statistics.
+    statDictA, statDictB : `dict` [`str`, `dict`]
+        Input dictionaries of statistics.
 
     Returns
     -------
