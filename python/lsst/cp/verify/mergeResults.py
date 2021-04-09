@@ -63,7 +63,7 @@ class CpVerifyExpMergeConfig(pipeBase.PipelineTaskConfig,
         keytype=str,
         itemtype=str,
         doc="Dictionary of statistics to run on the set of detector values. The key should be the test "
-        "name to record in the output, and the value should be the `lsst.afw.math` statistic name string."
+        "name to record in the output, and the value should be the `lsst.afw.math` statistic name string.",
         default={},
     )
 
@@ -150,7 +150,7 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
                 for ampName, ampStats in detStats['VERIFY']['AMP'].items():
                     ampSuccess = ampStats.pop('SUCCESS')
                     if not ampSuccess:
-                        for testName, testResult in ampStats:
+                        for testName, testResult in ampStats.items():
                             if testResult is False:
                                 calcStats['FAILURES'].append(ampName + " " + testName)
 
@@ -221,7 +221,7 @@ class CpVerifyRunMergeConfig(pipeBase.PipelineTaskConfig,
         keytype=str,
         itemtype=str,
         doc="Dictionary of statistics to run on the set of exposure values. The key should be the test "
-        "name to record in the output, and the value should be the `lsst.afw.math` statistic name string."
+        "name to record in the output, and the value should be the `lsst.afw.math` statistic name string.",
         default={},
     )
 
