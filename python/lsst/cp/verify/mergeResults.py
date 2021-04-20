@@ -1,4 +1,3 @@
-#
 # This file is part of cp_verify.
 #
 # Developed for the LSST Data Management System.
@@ -19,7 +18,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
 import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
 import lsst.pex.config as pexConfig
@@ -179,7 +177,7 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
 
         Returns
         -------
-        outputStats : `dict` [`str`, `dict` [`str`, `bool`]]
+        outputStatistics : `dict` [`str`, `dict` [`str`, `bool`]]
             A dictionary indexed by the amplifier name, containing
             dictionaries of the verification criteria.
         success : `bool`
@@ -316,7 +314,7 @@ class CpVerifyRunMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
 
         Returns
         -------
-        outputStats : `dict` [`str`, `dict` [`str`, `bool`]]
+        outputStatistics : `dict` [`str`, `dict` [`str`, `bool`]]
             A dictionary indexed by the amplifier name, containing
             dictionaries of the verification criteria.
         success : `bool`

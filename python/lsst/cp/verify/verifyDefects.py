@@ -1,4 +1,3 @@
-#
 # This file is part of cp_verify.
 #
 # Developed for the LSST Data Management System.
@@ -19,7 +18,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
 import numpy as np
 import scipy
 
@@ -31,7 +29,7 @@ __all__ = ['CpVerifyDefectsConfig', 'CpVerifyDefectsTask']
 
 class CpVerifyDefectsConfig(CpVerifyStatsConfig,
                             pipelineConnections=CpVerifyStatsConnections):
-    """Inherits from base CpVerifyStatsConfig
+    """Inherits from base CpVerifyStatsConfig.
     """
 
     def setDefaults(self):
@@ -68,16 +66,16 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
         exposure : `lsst.afw.image.Exposure`
             Exposure containing the ISR processed data to measure.
         statControl : `lsst.afw.math.StatControl`
-            Statistics control object with the parameters defined by
+            Statistics control object with parameters defined by
             the config.
 
         Returns
         -------
-        outputStats : `dict` [`str`, `dict` [`str`, scalar]]
+        outputStatistics : `dict` [`str`, `dict` [`str`, scalar]]
             A dictionary indexed by the amplifier name, containing
             dictionaries of the statistics measured and their values.
         """
-        outputStats = super().imageStatistics(exposure, statControl)
+        outputStatistics = super().imageStatistics(exposure, statControl)
 
         # Is this a useful test?  It saves having to do chi^2 fits,
         # which are going to be biased by the bulk of points.
@@ -88,32 +86,37 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             normImage = ampExp.getImage()
             normArray = normImage.getArray()
 
-            normArray -= outputStats[ampName]['MEDIAN']
-            normArray /= outputStats[ampName]['STDEV']
+            normArray -= outputStatistics[ampName]['MEDIAN']
+            normArray /= outputStatistics[ampName]['STDEV']
 
             probability = scipy.stats.norm.pdf(normArray)
             outliers = np.where(probability < 1.0 / probability.size, 1.0, 0.0)
-            outputStats[ampName]['STAT_OUTLIERS'] = np.sum(outliers)
+            outputStatistics[ampName]['STAT_OUTLIERS'] = np.sum(outliers)
 
-        return outputStats
+        return outputStatistics
 
-    def verify(self, exposure, statisticsDictionary):
-        """Verify if the measured statistics meet the verification criteria.
+    def verify(self, exposure, statisticsDict):
+        """Verify that the measured statistics meet the verification criteria.
 
         Parameters
         ----------
+        exposure : `lsst.afw.image.Exposure`
+            The exposure the statistics are from.
         statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
-            Dictionary of measured statistics.
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
 
         Returns
         -------
-        outputStats : `dict` [`str`, `dict` [`str`, `bool`]]
+        outputStatistics : `dict` [`str`, `dict` [`str`, `bool`]]
             A dictionary indexed by the amplifier name, containing
             dictionaries of the verification criteria.
         success : `bool`
             A boolean indicating if all tests have passed.
         """
-        ampStats = statisticsDictionary['AMP']
+        ampStats = statisticsDict['AMP']
         verifyStats = {}
         success = True
         for ampName, stats in ampStats.items():

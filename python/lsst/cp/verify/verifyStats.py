@@ -1,4 +1,3 @@
-#
 # This file is part of cp_verify.
 #
 # Developed for the LSST Data Management System.
@@ -19,7 +18,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
 import math
 
 import lsst.afw.geom as afwGeom
@@ -63,7 +61,7 @@ class CpVerifyStatsConnections(pipeBase.PipelineTaskConnections,
 
 class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
                           pipelineConnections=CpVerifyStatsConnections):
-    """Configuration parameters for CpVerifyTask
+    """Configuration parameters for CpVerifyStatsTask.
     """
     maskNameList = pexConfig.ListField(
         dtype=str,
@@ -81,6 +79,7 @@ class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
         default=False,
     )
 
+    # Cosmic ray handling options.
     doCR = pexConfig.Field(
         dtype=bool,
         doc="Run CR rejection?",
@@ -98,7 +97,7 @@ class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
     psfSize = pexConfig.Field(
         dtype=int,
         default=21,
-        doc="Repair PSF size (pixels).",
+        doc="Repair PSF bounding-box size (pixels).",
     )
     crGrow = pexConfig.Field(
         dtype=int,
@@ -106,16 +105,16 @@ class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
         doc="Grow radius for CR (pixels).",
     )
 
+    # Statistics options.
     useReadNoise = pexConfig.Field(
         dtype=bool,
         doc="Compare sigma against read noise?",
         default=True,
     )
-
     numSigmaClip = pexConfig.Field(
         dtype=float,
         doc="Rejection threshold (sigma) for statistics clipping.",
-        default=3.0,
+        default=5.0,
     )
     clipMaxIter = pexConfig.Field(
         dtype=int,
@@ -123,6 +122,7 @@ class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
         default=3,
     )
 
+    # Keywords and statistics to measure from different sources.
     imageStatKeywords = pexConfig.DictField(
         keytype=str,
         itemtype=str,
@@ -150,19 +150,23 @@ class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
     catalogStatKeywords = pexConfig.DictField(
         keytype=str,
         itemtype=str,
-        doc="Image statistics to run on expTime normalized amplifier segments.",
+        doc="Statistics to measure from source catalogs of objects in the exposure.",
         default={},
     )
     detectorStatKeywords = pexConfig.DictField(
         keytype=str,
         itemtype=str,
-        doc="Detector statistics to create.",
+        doc="Statistics to create for the full detector from the per-amplifier measurements.",
         default={},
     )
 
 
 class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
-    """
+    """Main statistic measurement and validation class.
+
+    This operates on a single (exposure, detector) pair, and is
+    designed to be subclassed so specific calibrations can apply their
+    own validation methods.
     """
     ConfigClass = CpVerifyStatsConfig
     _DefaultName = 'cpVerifyStats'
@@ -178,9 +182,9 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         Parameters
         ----------
         inputExp : `lsst.afw.image.Exposure`
-            The ISR processed exposure to me measured.
+            The ISR processed exposure to be measured.
         camera : `lsst.afw.cameraGeom.Camera`
-             The camera geometry for this exposure.
+             The camera geometry for ``inputExp``.
 
         Returns
         -------
@@ -222,24 +226,24 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         outputStats = {}
 
         if self.config.doVignette:
-            VignetteExposure(inputExp, doUpdateMask=True, maskPlane='BAD',
+            VignetteExposure(inputExp, doUpdateMask=True, maskPlane='NO_DATA',
                              doSetValue=False, log=self.log)
 
         mask = inputExp.getMask()
         maskVal = mask.getPlaneBitMask(self.config.maskNameList)
-        statsControl = afwMath.StatisticsControl(self.config.numSigmaClip,
-                                                 self.config.clipMaxIter,
-                                                 maskVal)
+        statControl = afwMath.StatisticsControl(self.config.numSigmaClip,
+                                                self.config.clipMaxIter,
+                                                maskVal)
 
         # This is wrapped below to check for config lengths, as we can
         # make a number of different image stats.
-        outputStats['AMP'] = self.imageStatistics(inputExp, statsControl)
+        outputStats['AMP'] = self.imageStatistics(inputExp, statControl)
         if len(self.config.catalogStatKeywords):
-            outputStats['CATALOG'] = self.catalogStatistics(inputExp, statsControl)
+            outputStats['CATALOG'] = self.catalogStatistics(inputExp, statControl)
         else:
             outputStats['CATALOG'] = {}
         if len(self.config.detectorStatKeywords):
-            outputStats['DET'] = self.detectorStatistics(outputStats, statsControl)
+            outputStats['DET'] = self.detectorStatistics(outputStats, statControl)
         else:
             outputStats['DET'] = {}
 
@@ -260,7 +264,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
 
         Returns
         -------
-        outputStats : `dict` [`str`, `dict`]
+        outputStatistics : `dict` [`str`, `dict`]
             A skeleton statistics dictionary.
 
         Raises
@@ -268,55 +272,59 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         RuntimeError :
             Raised if no detector can be found.
         """
-        outputStats = {}
+        outputStatistics = {}
         detector = exposure.getDetector()
         if detector is None:
             raise RuntimeError("No detector found in exposure!")
 
         for amp in detector.getAmplifiers():
-            outputStats[amp.getName()] = {}
+            outputStatistics[amp.getName()] = {}
 
-        return outputStats
+        return outputStatistics
 
     # Image measurement methods.
     def imageStatistics(self, exposure, statControl):
-        """Measure all types of image statistics.
+        """Measure image statistics for a number of simple image
+        modifications.
 
         Parameters
         ----------
         exposure : `lsst.afw.image.Exposure`
             Exposure containing the ISR processed data to measure.
-        statControl : `lsst.afw.math.StatControl`
-            Statistics control object with the parameters defined by
+        statControl : `lsst.afw.math.StatisticsControl`
+            Statistics control object with parameters defined by
             the config.
 
         Returns
         -------
-        outputStats : `dict` [`str`, `dict` [`str`, scalar]]
+        outputStatistics : `dict` [`str`, `dict` [`str`, scalar]]
             A dictionary indexed by the amplifier name, containing
             dictionaries of the statistics measured and their values.
-        """
 
-        outputStats = self._emptyAmpDict(exposure)
+        """
+        outputStatistics = self._emptyAmpDict(exposure)
 
         if len(self.config.imageStatKeywords):
-            outputStats = mergeStatDict(outputStats, self.amplifierStats(exposure,
-                                                                         self.config.imageStatKeywords,
-                                                                         statControl))
+            outputStatistics = mergeStatDict(outputStatistics,
+                                             self.amplifierStats(exposure,
+                                                                 self.config.imageStatKeywords,
+                                                                 statControl))
 
         if len(self.config.unmaskedImageStatKeywords):
-            outputStats = mergeStatDict(outputStats, self.unmaskedImageStats(exposure, statControl))
+            outputStatistics = mergeStatDict(outputStatistics, self.unmaskedImageStats(exposure))
 
         if len(self.config.normImageStatKeywords):
-            outputStats = mergeStatDict(outputStats, self.normalizedImageStats(exposure, statControl))
+            outputStatistics = mergeStatDict(outputStatistics,
+                                             self.normalizedImageStats(exposure, statControl))
 
         if len(self.config.crImageStatKeywords):
-            outputStats = mergeStatDict(outputStats, self.crImageStats(exposure, statControl))
+            outputStatistics = mergeStatDict(outputStatistics,
+                                             self.crImageStats(exposure, statControl))
 
-        return outputStats
+        return outputStatistics
 
-    def amplifierStats(self, exposure, keywordDict, statsControl):
-        """Measure amplifier level statistics on the data read from disk.
+    def amplifierStats(self, exposure, keywordDict, statControl):
+        """Measure amplifier level statistics from the exposure.
 
         Parameters
         ----------
@@ -326,8 +334,8 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
             A dictionary of keys to use in the output results, with
             values the string name associated with the
             `lsst.afw.math.statistics.Property` to measure.
-        statControl : `lsst.afw.math.StatControl`
-            Statistics control object with the parameters defined by
+        statControl : `lsst.afw.math.StatisticsControl`
+            Statistics control object with parameters defined by
             the config.
 
         Returns
@@ -336,7 +344,6 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
             A dictionary indexed by the amplifier name, containing
             dictionaries of the statistics measured and their values.
         """
-
         ampStats = {}
 
         # Convert the string names in the keywordDict to the afwMath values.
@@ -353,7 +360,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
             ampName = amp.getName()
             theseStats = {}
             ampExp = exposure.Factory(exposure, amp.getBBox())
-            stats = afwMath.makeStatistics(ampExp.getMaskedImage(), statisticToRun, statsControl)
+            stats = afwMath.makeStatistics(ampExp.getMaskedImage(), statisticToRun, statControl)
 
             for k, v in statAccessor.items():
                 theseStats[k] = stats.getValue(v)
@@ -361,24 +368,20 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
 
         return ampStats
 
-    def unmaskedImageStats(self, exposure, statControl):
-        """Measure amplifier level statistics on the data read from disk,
-        ignoring all mask planes.
+    def unmaskedImageStats(self, exposure):
+        """Measure amplifier level statistics on the exposure, including all
+        pixels in the exposure, regardless of any mask planes set.
 
         Parameters
         ----------
         exposure : `lsst.afw.image.Exposure`
             The exposure to measure.
-        statControl : `lsst.afw.math.StatControl`
-            Statistics control object with the parameters defined by
-            the config.
 
         Returns
         -------
-        outputStats : `dict` [`str`, `dict` [`str`, scalar]]
+        outputStatistics : `dict` [`str`, `dict` [`str`, scalar]]
             A dictionary indexed by the amplifier name, containing
             dictionaries of the statistics measured and their values.
-
         """
         noMaskStatsControl = afwMath.StatisticsControl(self.config.numSigmaClip,
                                                        self.config.clipMaxIter,
@@ -386,46 +389,52 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         return self.amplifierStats(exposure, self.config.unmaskedImageStatKeywords, noMaskStatsControl)
 
     def normalizedImageStats(self, exposure, statControl):
-        """Measure amplifier level statistics on the data read from disk,
-        after dividing by the exposure time.
+        """Measure amplifier level statistics on the exposure after dividing
+        by the exposure time.
 
         Parameters
         ----------
         exposure : `lsst.afw.image.Exposure`
             The exposure to measure.
-        statControl : `lsst.afw.math.StatControl`
-            Statistics control object with the parameters defined by
+        statControl : `lsst.afw.math.StatisticsControl`
+            Statistics control object with parameters defined by
             the config.
 
         Returns
         -------
-        outputStats : `dict` [`str`, `dict` [`str`, scalar]]
+        outputStatistics : `dict` [`str`, `dict` [`str`, scalar]]
             A dictionary indexed by the amplifier name, containing
             dictionaries of the statistics measured and their values.
 
+        Raises
+        ------
+        RuntimeError :
+            Raised if the exposure time cannot be used for normalization.
         """
         scaledExposure = exposure.clone()
         exposureTime = scaledExposure.getInfo().getVisitInfo().getExposureTime()
+        if exposureTime <= 0:
+            raise RuntimeError(f"Invalid exposureTime {exposureTime}.")
         mi = scaledExposure.getMaskedImage()
         mi /= exposureTime
 
         return self.amplifierStats(scaledExposure, self.config.normImageStatKeywords, statControl)
 
     def crImageStats(self, exposure, statControl):
-        """Measure amplifier level statistics on the data read from disk,
+        """Measure amplifier level statistics on the exposure,
         after running cosmic ray rejection.
 
         Parameters
         ----------
         exposure : `lsst.afw.image.Exposure`
             The exposure to measure.
-        statControl : `lsst.afw.math.StatControl`
-            Statistics control object with the parameters defined by
+        statControl : `lsst.afw.math.StatisticsControl`
+            Statistics control object with parameters defined by
             the config.
 
         Returns
         -------
-        outputStats : `dict` [`str`, `dict` [`str`, scalar]]
+        outputStatistics : `dict` [`str`, `dict` [`str`, scalar]]
             A dictionary indexed by the amplifier name, containing
             dictionaries of the statistics measured and their values.
 
@@ -452,29 +461,33 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         ----------
         exposure : `lsst.afw.image.Exposure`
             The exposure to measure.
-        statControl : `lsst.afw.math.StatControl`
-            Statistics control object with the parameters defined by
+        statControl : `lsst.afw.math.StatisticsControl`
+            Statistics control object with parameters defined by
             the config.
 
         Returns
         -------
-        outputStats : `dict` [`str`, `dict` [`str`, scalar]]
+        outputStatistics : `dict` [`str`, `dict` [`str`, scalar]]
             A dictionary indexed by the amplifier name, containing
             dictionaries of the statistics measured and their values.
         """
-        raise NotImplementedError("Subclasses must implement verification criteria.")
+        raise NotImplementedError("Subclasses must implement catalog statistics method.")
 
-    def detectorStatistics(self, statisticsDictionary, statControl):
-        """Calculate detector level statistics based on the existing measurements.
+    def detectorStatistics(self, statisticsDict, statControl):
+        """Calculate detector level statistics based on the existing
+        per-amplifier measurements.
 
         Parameters
         ----------
         statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
-            Dictionary of measured statistics.
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
 
         Returns
         -------
-        outputStats : `dict` [`str`, scalar]
+        outputStatistics : `dict` [`str`, scalar]
             A dictionary of the statistics measured and their values.
 
         Raises
@@ -483,23 +496,28 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
             This method must be implemented by the calibration-type
             subclass.
         """
-        raise NotImplementedError("Subclasses must implement verification criteria.")
+        raise NotImplementedError("Subclasses must implement detector statistics method.")
 
-    def verify(self, exposure, statisticsDictionary):
-        """Verify if the measured statistics meet the verification criteria.
+    def verify(self, exposure, statisticsDict):
+        """Verify that the measured statistics meet the verification criteria.
 
         Parameters
         ----------
+        exposure : `lsst.afw.image.Exposure`
+            The exposure the statistics are from.
         statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
-            Dictionary of measured statistics.
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
 
         Returns
         -------
-        outputStats : `dict` [`str`, `dict` [`str`, `bool`]]
+        outputStatistics : `dict` [`str`, `dict` [`str`, `bool`]]
             A dictionary indexed by the amplifier name, containing
             dictionaries of the verification criteria.
         success : `bool`
-            A boolean indicating if all tests have passed.
+            A boolean indicating whether all tests have passed.
 
         Raises
         ------

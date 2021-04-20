@@ -1,4 +1,3 @@
-#
 # This file is part of cp_verify.
 #
 # Developed for the LSST Data Management System.
@@ -19,8 +18,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-
 __all__ = ['mergeStatDict']
 
 
@@ -38,7 +35,14 @@ def mergeStatDict(statDictA, statDictB):
         A dictionary containing the union of the internal
         dictionaries of ``statDictA`` and ``statDictB``, indexed
         by the amplifier names.
+
+    Raises
+    ------
+    RuntimeError :
+        Raised if the merge would overwrite a key/value pair.
     """
     for amp in statDictA.keys():
+        if not statDictA[amp].keys().isdisjoint(statDictB[amp].keys()):
+            raise RuntimeError(f"Duplicate keys passed: {statDictA[amp].keys()} {statDictB[amp].keys()}")
         statDictA[amp].update(statDictB[amp])
     return statDictA

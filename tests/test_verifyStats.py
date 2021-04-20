@@ -28,15 +28,15 @@ import lsst.cp.verify as cpVerify
 import lsst.ip.isr.isrFunctions as isrFunctions
 
 
-def makeMockExp(exposure, addCR=True):
+def updateMockExp(exposure, addCR=True):
     """Update an exposure with a mask and variance plane.
 
     Parameters
     ----------
     exposure : `lsst.afw.image.Exposure`
         Exposure to be modified in place.
-    addCR ; `bool`
-        Whether the cosmic ray should be added.
+    addCR : `bool`
+        Whether a known cosmic ray should be added to ``exposure``.
     """
     if addCR:
         # Add a cosmic ray
@@ -66,18 +66,19 @@ class VerifyStatsTestCase(lsst.utils.tests.TestCase):
     """
 
     def setUp(self):
-        # Generate a mock exposure/camera to test.
+        """Generate a mock exposure/camera to test."""
         self.inputExp = isrMock.CalibratedRawMock().run()
         self.camera = isrMock.IsrMock().getCamera()
 
-        makeMockExp(self.inputExp)
+        updateMockExp(self.inputExp)
 
     def test_failures(self):
-        # Test that all the NotImplementedError methods fail correctly.
+        """Test that all the NotImplementedError methods fail correctly."""
         results = None
         with self.assertRaises(NotImplementedError):
             # We have not implemented a verify method
             config = cpVerify.CpVerifyStatsConfig()
+            config.numSigmaClip = 3.0
             task = cpVerify.CpVerifyStatsTask(config=config)
             results = task.run(self.inputExp, self.camera)
 
@@ -94,8 +95,9 @@ class VerifyStatsTestCase(lsst.utils.tests.TestCase):
         self.assertIsNone(results)
 
     def test_generic(self):
-        # Test a subset of the output values to identify that the
-        # image stat methods haven't changed.
+        """Test a subset of the output values to identify that the
+        image stat methods haven't changed.
+        """
         config = cpVerify.CpVerifyStatsConfig()
         config.imageStatKeywords = {'MEAN': 'MEAN', 'MEDIAN': 'MEDIAN', 'CLIPPED': 'MEANCLIP',
                                     'SIGMA': 'STDEV'}
@@ -107,6 +109,7 @@ class VerifyStatsTestCase(lsst.utils.tests.TestCase):
         config.normImageStatKeywords = {'norm_MEAN': 'MEAN', 'norm_MEDIAN': 'MEDIAN',
                                         'norm_CLIPPED': 'MEANCLIP',
                                         'norm_SIGMA': 'STDEV'}
+        config.numSigmaClip = 3.0
         task = ToySubClass(config=config)
 
         results = task.run(self.inputExp, self.camera)
@@ -124,11 +127,10 @@ class VerifyStatsTestCase(lsst.utils.tests.TestCase):
 
 
 class VerifyBiasTestCase(lsst.utils.tests.TestCase):
-    """Unit test for stats code.
-    """
+    """Unit test for stats code - bias cases."""
 
     def setUp(self):
-        # Generate a mock exposure/camera to test.
+        """Generate a mock exposure/camera to test."""
         config = isrMock.IsrMockConfig()
         config.isTrimmed = True
         config.rngSeed = 12345
@@ -140,30 +142,33 @@ class VerifyBiasTestCase(lsst.utils.tests.TestCase):
         self.inputExp = biasExposure.clone()
         mi = self.inputExp.getMaskedImage()
         mi.scaledMinus(1.0, fakeBias.getMaskedImage())
-        makeMockExp(self.inputExp)
+        updateMockExp(self.inputExp)
 
         self.camera = isrMock.IsrMock().getCamera()
 
     def test_bias(self):
-        # Test a subset of the output values to identify that the
-        # image stat methods haven't changed.
-        task = cpVerify.CpVerifyBiasTask()
+        """Test a subset of the output values to identify that the
+        image stat methods haven't changed.
+        """
+        config = cpVerify.CpVerifyBiasConfig()
+        config.numSigmaClip = 3.0
+        task = cpVerify.CpVerifyBiasTask(config=config)
         results = task.run(self.inputExp, self.camera)
-        resultStats = results.outputStats
+        biasStats = results.outputStats
 
-        self.assertAlmostEqual(resultStats['AMP']['C:0,0']['MEAN'], 2.08672, 4)
-        self.assertAlmostEqual(resultStats['AMP']['C:0,0']['NOISE'], 13.99547, 4)
-        self.assertAlmostEqual(resultStats['AMP']['C:0,0']['CR_NOISE'], 14.11526, 4)
+        self.assertAlmostEqual(biasStats['AMP']['C:0,0']['MEAN'], 2.08672, 4)
+        self.assertAlmostEqual(biasStats['AMP']['C:0,0']['NOISE'], 13.99547, 4)
+        self.assertAlmostEqual(biasStats['AMP']['C:0,0']['CR_NOISE'], 14.11526, 4)
 
-        self.assertIn(resultStats['SUCCESS'], [True, False])
+        self.assertIn(biasStats['SUCCESS'], [True, False])
 
 
 class VerifyDarkTestCase(lsst.utils.tests.TestCase):
-    """Unit test for stats code.
+    """Unit test for stats code - dark cases.
     """
 
     def setUp(self):
-        # Generate a mock exposure/camera to test.
+        """Generate a mock exposure/camera to test."""
         config = isrMock.IsrMockConfig()
         config.isTrimmed = True
         config.rngSeed = 12345
@@ -175,30 +180,34 @@ class VerifyDarkTestCase(lsst.utils.tests.TestCase):
         self.inputExp = darkExposure.clone()
         mi = self.inputExp.getMaskedImage()
         mi.scaledMinus(1.0, fakeDark.getMaskedImage())
-        makeMockExp(self.inputExp)
+        updateMockExp(self.inputExp)
 
         self.camera = isrMock.IsrMock().getCamera()
 
     def test_dark(self):
-        # Test a subset of the output values to identify that the
-        # image stat methods haven't changed.
-        task = cpVerify.CpVerifyDarkTask()
+        """Test a subset of the output values to identify that the
+        image stat methods haven't changed.
+        """
+        config = cpVerify.CpVerifyDarkConfig()
+        config.numSigmaClip = 3.0
+        task = cpVerify.CpVerifyDarkTask(config=config)
         results = task.run(self.inputExp, self.camera)
-        resultStats = results.outputStats
+        darkStats = results.outputStats
 
-        self.assertAlmostEqual(resultStats['AMP']['C:0,0']['MEAN'], 2.0043, 4)
-        self.assertAlmostEqual(resultStats['AMP']['C:0,0']['NOISE'], 3.12948, 4)
-        self.assertAlmostEqual(resultStats['AMP']['C:0,0']['CR_NOISE'], 3.15946, 4)
+        self.assertAlmostEqual(darkStats['AMP']['C:0,0']['MEAN'], 2.0043, 4)
+        self.assertAlmostEqual(darkStats['AMP']['C:0,0']['NOISE'], 3.12948, 4)
+        self.assertAlmostEqual(darkStats['AMP']['C:0,0']['CR_NOISE'], 3.15946, 4)
 
-        self.assertIn(resultStats['SUCCESS'], [True, False])
+        self.assertIn(darkStats['SUCCESS'], [True, False])
 
 
 class VerifyDefectsTestCase(lsst.utils.tests.TestCase):
-    """Unit test for stats code.
-    """
+    """Unit test for stats code - defect cases."""
+
+    defectFlux = 100000  # Flux to use for simulated defect.
 
     def setUp(self):
-        # Generate a mock exposure/camera to test.
+        """Generate a mock exposure/camera to test."""
         config = isrMock.IsrMockConfig()
         config.isTrimmed = True
         config.doGenerateImage = True
@@ -217,38 +226,40 @@ class VerifyDefectsTestCase(lsst.utils.tests.TestCase):
         self.inputExp = isrMock.IsrMock(config=config).run()
 
         # These are simulated defects
-        self.inputExp.getImage().getArray()[0, 0] = -100000
-        self.inputExp.getImage().getArray()[40, 50] = 100000
+        self.inputExp.getImage().getArray()[0, 0] = -1.0 * self.defectFlux
+        self.inputExp.getImage().getArray()[40, 50] = self.defectFlux
         self.inputExp.getImage().getArray()[75, 50] = np.nan
 
-        makeMockExp(self.inputExp, addCR=False)
+        updateMockExp(self.inputExp, addCR=False)
 
         self.inputExp.getMask().getArray()[0, 0] = 1
         self.inputExp.getMask().getArray()[40, 50] = 1
         self.inputExp.getMask().getArray()[75, 50] = 1
 
-        self.inputExp.writeFits("/home/czw/tmp/fake_flat.fits")
         self.camera = isrMock.IsrMock().getCamera()
 
     def test_defects(self):
-        # Test a subset of the output values to identify that the
-        # image stat methods haven't changed.
-        task = cpVerify.CpVerifyDefectsTask()
+        """Test a subset of the output values to identify that the
+        image stat methods haven't changed.
+        """
+        config = cpVerify.CpVerifyDefectsConfig()
+        config.numSigmaClip = 3.0
+        task = cpVerify.CpVerifyDefectsTask(config=config)
         results = task.run(self.inputExp, self.camera)
-        resultStats = results.outputStats
+        defectStats = results.outputStats
 
-        self.assertEqual(resultStats['AMP']['C:0,0']['DEFECT_PIXELS'], 53)
-        self.assertEqual(resultStats['AMP']['C:0,0']['OUTLIERS'], 17)
-        self.assertEqual(resultStats['AMP']['C:0,0']['STAT_OUTLIERS'], 3)
-        self.assertAlmostEqual(resultStats['AMP']['C:0,0']['MEDIAN'], 999.466, 4)
-        self.assertAlmostEqual(resultStats['AMP']['C:0,0']['STDEV'], 30.96303, 4)
-        self.assertAlmostEqual(resultStats['AMP']['C:0,0']['MIN'], 881.56146, 4)
-        self.assertAlmostEqual(resultStats['AMP']['C:0,0']['MAX'], 1124.19934, 4)
+        self.assertEqual(defectStats['AMP']['C:0,0']['DEFECT_PIXELS'], 53)
+        self.assertEqual(defectStats['AMP']['C:0,0']['OUTLIERS'], 17)
+        self.assertEqual(defectStats['AMP']['C:0,0']['STAT_OUTLIERS'], 3)
+        self.assertAlmostEqual(defectStats['AMP']['C:0,0']['MEDIAN'], 999.466, 4)
+        self.assertAlmostEqual(defectStats['AMP']['C:0,0']['STDEV'], 30.96303, 4)
+        self.assertAlmostEqual(defectStats['AMP']['C:0,0']['MIN'], 881.56146, 4)
+        self.assertAlmostEqual(defectStats['AMP']['C:0,0']['MAX'], 1124.19934, 4)
 
-        self.assertAlmostEqual(resultStats['AMP']['C:0,0']['UNMASKED_MIN'], -100000, 4)
-        self.assertAlmostEqual(resultStats['AMP']['C:0,0']['UNMASKED_MAX'], 100000, 4)
+        self.assertEqual(defectStats['AMP']['C:0,0']['UNMASKED_MIN'], -1.0 * self.defectFlux, 4)
+        self.assertEqual(defectStats['AMP']['C:0,0']['UNMASKED_MAX'], self.defectFlux, 4)
 
-        self.assertIn(resultStats['SUCCESS'], [True, False])
+        self.assertIn(defectStats['SUCCESS'], [True, False])
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):

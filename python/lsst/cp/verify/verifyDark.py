@@ -1,4 +1,3 @@
-#
 # This file is part of cp_verify.
 #
 # Developed for the LSST Data Management System.
@@ -19,7 +18,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
 import numpy as np
 
 from .verifyStats import CpVerifyStatsConfig, CpVerifyStatsTask, CpVerifyStatsConnections
@@ -30,7 +28,7 @@ __all__ = ['CpVerifyDarkConfig', 'CpVerifyDarkTask']
 
 class CpVerifyDarkConfig(CpVerifyStatsConfig,
                          pipelineConnections=CpVerifyStatsConnections):
-    """Inherits from base CpVerifyStatsConfig
+    """Inherits from base CpVerifyStatsConfig.
     """
 
     def setDefaults(self):
@@ -46,25 +44,29 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
     ConfigClass = CpVerifyDarkConfig
     _DefaultName = 'cpVerifyDark'
 
-    def verify(self, exposure, statisticsDictionary):
-        """Verify if the measured statistics meet the verification criteria.
+    def verify(self, exposure, statisticsDict):
+        """Verify that the measured statistics meet the verification criteria.
 
         Parameters
         ----------
+        exposure : `lsst.afw.image.Exposure`
+            The exposure the statistics are from.
         statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
-            Dictionary of measured statistics.
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
 
         Returns
         -------
-        outputStats : `dict` [`str`, `dict` [`str`, `bool`]]
+        outputStatistics : `dict` [`str`, `dict` [`str`, `bool`]]
             A dictionary indexed by the amplifier name, containing
             dictionaries of the verification criteria.
         success : `bool`
             A boolean indicating if all tests have passed.
         """
-
         detector = exposure.getDetector()
-        ampStats = statisticsDictionary['AMP']
+        ampStats = statisticsDict['AMP']
         verifyStats = {}
         success = True
         for ampName, stats in ampStats.items():
