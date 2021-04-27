@@ -74,14 +74,14 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
         for ampName, stats in ampStats.items():
             verify = {}
 
-            # Test 4.2: Mean is 0.0 within noise.
+            # DMTN-101 Test 4.2: Mean is 0.0 within noise.
             verify['MEAN'] = bool(np.abs(stats['MEAN']) < stats['NOISE'])
 
-            # Test 4.3: Clipped mean matches readNoise.
+            # DMTN-101 Test 4.3: Clipped mean matches readNoise.
             amp = detector[ampName]
             verify['NOISE'] = bool(np.abs(stats['NOISE'] - amp.getReadNoise())/amp.getReadNoise() <= 0.05)
 
-            # Test 4.4: CR rejection matches clipped mean.
+            # DMTN-101 Test 4.4: CR rejection matches clipped mean.
             verify['CR_NOISE'] = bool(np.abs(stats['NOISE'] - stats['CR_NOISE'])/stats['CR_NOISE'] <= 0.05)
 
             verify['SUCCESS'] = bool(np.all(list(verify.values())))

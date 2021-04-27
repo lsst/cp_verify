@@ -39,8 +39,12 @@ def mergeStatDict(statDictA, statDictB):
     Raises
     ------
     RuntimeError :
-        Raised if the merge would overwrite a key/value pair.
+        Raised if the merge would overwrite a key/value pair, or if
+        the amplifier names do not match between the two inputs.
     """
+    if set(statDictA.keys()) != set(statDictB.keys()):
+        raise RuntimeError(f"Mismatch in amplifier names: {statDictA.keys()} {statDictB.keys()}")
+
     for amp in statDictA.keys():
         if not statDictA[amp].keys().isdisjoint(statDictB[amp].keys()):
             raise RuntimeError(f"Duplicate keys passed: {statDictA[amp].keys()} {statDictB[amp].keys()}")
