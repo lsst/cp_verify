@@ -120,7 +120,7 @@ class MergeResultsTestCase(lsst.utils.tests.TestCase):
             ampVerify[ampName] = dict()
             ampSuccess = True
             for value in valueNames:
-                if ampDict[ampName][value] < 14.0:
+                if ampDict[ampName][value] < threshold:
                     ampVerify[ampName][value + "_TEST"] = True
                 else:
                     ampVerify[ampName][value + "_TEST"] = False

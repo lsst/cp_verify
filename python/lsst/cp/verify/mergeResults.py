@@ -55,7 +55,7 @@ class CpVerifyExpMergeConnections(pipeBase.PipelineTaskConnections,
 
 class CpVerifyExpMergeConfig(pipeBase.PipelineTaskConfig,
                              pipelineConnections=CpVerifyExpMergeConnections):
-    """Configuration paramters for exposure stats merging.
+    """Configuration parameters for exposure stats merging.
     """
     exposureStatKeywords = pexConfig.DictField(
         keytype=str,
@@ -87,7 +87,8 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         Parameters
         ----------
         inputStats : `list` [`dict`]
-            Measured statistics for a detector.
+            Measured statistics for a detector (from
+            CpVerifyStatsTask).
         camera : `lsst.afw.cameraGeom.Camera`
             The camera geometry for this exposure.
         inputDims : `list` [`dict`]
@@ -103,6 +104,10 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         -------
         outputStats : `dict`
             Merged full exposure statistics.
+
+        See Also
+        --------
+        lsst.cp.verify.CpVerifyStatsTask
 
         Notes
         -----
