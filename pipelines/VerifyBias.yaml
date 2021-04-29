@@ -1,0 +1,36 @@
+description: cp_verify BIAS calibration verification
+tasks:
+  verifyBiasApply:
+    class: lsst.ip.isr.isrTask.IsrTask
+    config:
+      connections.ccdExposure: 'raw'
+      connections.outputExposure: 'verifyBiasProc'
+      doBias: True
+      doVariance: True
+      doLinearize: False
+      doCrosstalk: False
+      doDefect: True
+      doNanMasking: True
+      doInterpolate: True
+      doBrighterFatter: False
+      doDark: False
+      doFlat: False
+      doApplyGains: False
+      doFringe: False
+  verifyMeasureStats:
+    class: lsst.cp.verify.CpVerifyBiasTask
+    config:
+      connections.inputExp: 'verifyBiasProc'
+      connections.outputStats: 'verifyBiasDetStats'
+      doVignette: False
+      useReadNoise: True
+  verifyExposureStats:
+    class: lsst.cp.verify.CpVerifyExpMergeTask
+    config:
+      connections.inputStats: 'verifyBiasDetStats'
+      connections.outputStats: 'verifyBiasExpStats'
+  verifyRunStats:
+    class: lsst.cp.verify.CpVerifyRunMergeTask
+    config:
+      connections.inputStats: 'verifyBiasExpStats'
+      connections.outputStats: 'verifyBiasStats'
