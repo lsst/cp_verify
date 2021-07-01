@@ -5,7 +5,6 @@ setupRequired(ip_isr)
 setupRequired(meas_algorithms)
 setupRequired(pex_config)
 setupRequired(pex_exceptions)
-setupRequired(pipe_base)
 setupRequired(pipe_tasks)
 setupRequired(utils)
 
