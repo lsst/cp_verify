@@ -84,7 +84,12 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
             # DMTN-101 Test 4.4: CR rejection matches clipped mean.
             verify['CR_NOISE'] = bool(np.abs(stats['NOISE'] - stats['CR_NOISE'])/stats['CR_NOISE'] <= 0.05)
 
+            # Confirm this hasn't triggered a raise condition.
+            if 'FORCE_FAILURE' in stats:
+                verify['PROCESSING'] = False
+
             verify['SUCCESS'] = bool(np.all(list(verify.values())))
+
             if verify['SUCCESS'] is False:
                 success = False
 
