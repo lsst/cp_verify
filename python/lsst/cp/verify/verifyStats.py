@@ -102,7 +102,7 @@ class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
     )
     crGrow = pexConfig.Field(
         dtype=int,
-        default=2,
+        default=0,
         doc="Grow radius for CR (pixels).",
     )
 
