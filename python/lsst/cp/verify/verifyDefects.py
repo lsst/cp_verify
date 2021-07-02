@@ -91,7 +91,7 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
             probability = scipy.stats.norm.pdf(normArray)
             outliers = np.where(probability < 1.0 / probability.size, 1.0, 0.0)
-            outputStatistics[ampName]['STAT_OUTLIERS'] = np.sum(outliers)
+            outputStatistics[ampName]['STAT_OUTLIERS'] = int(np.sum(outliers))
 
         return outputStatistics
 
