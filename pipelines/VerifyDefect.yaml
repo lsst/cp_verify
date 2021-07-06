@@ -5,6 +5,7 @@ tasks:
     config:
       connections.ccdExposure: 'raw'
       connections.outputExposure: 'verifyDefectProc'
+      overscan.fitType: 'MEDIAN_PER_ROW'
       doWrite: True
       doOverscan: True
       doAssembleCcd: True
