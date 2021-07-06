@@ -6,6 +6,7 @@ tasks:
       connections.ccdExposure: 'raw'
       connections.outputExposure: 'verifyDarkProc'
       # Disable downstream processing.
+      overscan.fitType: 'MEDIAN_PER_ROW'
       doDark: true
       doFlat: false
       doApplyGains: false
