@@ -20,8 +20,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import pprint
-import defaultdict
+from collections import defaultdict
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+
+import lsst.afw.cameraGeom as cameraGeom
+
+from lsst.pipe.base import Struct
+
 
 def interactiveBlock(description, detStats):
     """Handle interaction during loops.
@@ -47,11 +54,12 @@ def interactiveBlock(description, detStats):
         elif ans in ("q", "x"):
             return False, 0
         elif ans in ('p', ):
-            pprint(detStats)
+            pprint.pprint(detStats)
             break
         elif ans.isnumeric():
             return True, int(ans)
     return True, 0
+
 
 # Taken from faro
 def calcQuartileClippedStats(dataArray, nSigmaToClip=3.0):
@@ -107,6 +115,7 @@ def calcQuartileClippedStats(dataArray, nSigmaToClip=3.0):
         clipValue=clipValue,
         goodArray=good,
     )
+
 
 # Taken from pipe_analysis
 def plotCameraOutline(axes, camera, ccdList, color="k", fontSize=6, metricPerCcdDict=None,
@@ -224,23 +233,29 @@ def plotFailures(runStats, camera, scaleFactor=8):
     scaleFactor : `float`
         Scale factor to apply to plots.
     """
-        numExposures = len(runStats.keys())
+    numExposures = len(runStats.keys())
     # I probably should rethink the structure if I need to do this much work.
-    failedTests = defaultdict(lambda: defaultdict(lambda: defaultdict(list))) # test -> detector -> amp -> list of exposure #
+    # test -> detector -> amp -> list of exposure #
+    failedTests = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for exposure, stats in runStats.items():
-        failures = stats['FAILURES']
+        failures = stats.get('FAILURES', [])
         for failure in failures:
             detector, amp, test = failure.split(" ")
             failedTests[test][detector][amp].append(exposure)
 
-    # Focal plane plots
     numTests = len(failedTests.keys())
+    if numTests == 0:
+        print("No failures found.")
+        return
+
+    # Focal plane plots
     fig, axes = plt.subplots(1, numTests, figsize=(numTests * scaleFactor, scaleFactor))
     if numTests == 1:
         axes = [axes]
     for axis, (testName, failureSet) in zip(axes, failedTests.items()):
         # full camera
-        ccdList = list(set([camera[detName].getId() for detName in failureSet.keys()]))
+        # ccdList = list(set([camera[detName].getId() for
+        #                    detName in failureSet.keys()]))
 
         metricPerCcdDict = defaultdict(float)
         for detName, detFails in failureSet.items():
@@ -261,11 +276,10 @@ def plotFailures(runStats, camera, scaleFactor=8):
             # Plot Nfailures / chip / amp
             ampNames = [amp.getName() for amp in detector]
             ampValues = [len(detFails.get(ampName, [])) for ampName in ampNames]
-            bins = list(map(lambda x: x-0.5, range(1,len(ampNames)+1)))
+            # bins = list(map(lambda x: x-0.5, range(1, len(ampNames)+1)))
 
             axis.bar(ampNames, ampValues, width=1.0)
             axis.axhline(numExposures)
             axis.set_title(f"{testName} {detName}")
             axis.set_xticklabels(ampNames, rotation=45, rotation_mode='anchor', ha='right')
             axis.grid()
-
