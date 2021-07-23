@@ -1,0 +1,31 @@
+description: cp_verify BFK calibration verification
+tasks:
+  verifyBfkIsr:
+    class: lsst.ip.isr.isrTask.IsrTask
+    config:
+      connections.ccdExposure: 'raw'
+      connections.outputExposure: 'verifyBfkIsr'
+  verifyBfkChar:
+    class: lsst.pipe.tasks.CharacterizeImageTask
+    config:
+      connections.exposure: 'verifyBfkIsr'
+  verifyBfkCal:
+    class: lsst.pipe.tasks.calibrate.CalibrateTask
+    config:
+      connections.outputCat: 'verifyBfkCatalog'
+  verifyBfkChip:
+    class: lsst.cp.verify.CpVerifyBfkTask
+    config:
+      connections.inputExp: 'verifyBfkProc'
+      connections.inputCatalog: 'verifyBfkCatalog'
+      connections.outputStats: 'verifyBfkDetStats'
+  verifyBfkExp:
+    class: lsst.cp.verify.CpVerifyExpMergeTask
+    config:
+      connections.inputStats: 'verifyBfkDetStats'
+      connections.outputStats: 'verifyBfkExpStats'
+  verifyBfk:
+    class: lsst.cp.verify.CpVerifyRunMergeTask
+    config:
+      connections.inputStats: 'verifyBfkExpStats'
+      connections.outputStats: 'verifyBfkStats'
