@@ -9,8 +9,4 @@ setupRequired(pipe_base)
 setupRequired(pipe_tasks)
 setupRequired(utils)
 
-envPrepend(DYLD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
-envPrepend(LSST_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
-envPrepend(LD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
-envPrepend(PATH, ${PRODUCT_DIR}/bin)
