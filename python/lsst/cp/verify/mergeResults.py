@@ -179,7 +179,7 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
 
         Parameters
         ----------
-        statisticsDIctionary : `dict [`str`, `dict` [`str`, scalar]],
+        statisticsDictionary : `dict [`str`, `dict` [`str`, scalar]],
             Dictionary of measured statistics.  The top level
             dictionary is keyed on the detector names, and contains
             the measured statistics from the per-detector
@@ -190,7 +190,7 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         outputStatistics : `dict` [`str, scalar]
             A dictionary of the statistics measured and their values.
         """
-        raise NotImplementedError("Subclasses must implement verification criteria. CZW??")
+        raise NotImplementedError("Subclasses must implement verification criteria.")
 
     def verify(self, detectorStatistics, statisticsDictionary):
 

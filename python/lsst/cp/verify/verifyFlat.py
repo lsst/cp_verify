@@ -131,6 +131,7 @@ class CpVerifyFlatTask(CpVerifyStatsTask):
 class CpVerifyFlatExpMergeConfig(CpVerifyExpMergeConfig):
     """Inherits from base CpVerifyExpMergeConfig
     """
+
     def setDefaults(self):
         super().setDefaults()
         self.exposureStatKeywords = {'EXPOSURE_SCATTER': 'STDEV',  # noqa F841
@@ -141,12 +142,25 @@ class CpVerifyFlatExpMergeTask(CpVerifyExpMergeTask):
     """Inherits from base CpVerifyExpMergeTask
     """
 
-    def exposureStatistics(self, mergedStatistics):
-        """XXX
-        """
+    def exposureStatistics(self, statisticsDictionary):
+        """Calculate exposure level statistics based on the existing
+        per-amplifier and per-detector measurements.
 
+        Parameters
+        ----------
+        statisticsDictionary : `dict [`str`, `dict` [`str`, scalar]],
+            Dictionary of measured statistics.  The top level
+            dictionary is keyed on the detector names, and contains
+            the measured statistics from the per-detector
+            measurements.
+
+        Returns
+        -------
+        outputStatistics : `dict` [`str, scalar]
+            A dictionary of the statistics measured and their values.
+        """
         detectorMeans = []
-        for detName, stats in mergedStatistics.items():
+        for detName, stats in statisticsDictionary.items():
             # Get detector stats:
             detectorMeans.append(stats['DET']['MEAN'])
 
