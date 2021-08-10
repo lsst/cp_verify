@@ -128,10 +128,13 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         outputStats = {}
         success = True
 
+        mergedStats = {}
         for detStats, dimensions in zip(inputStats, inputDims):
             detId = dimensions['detector']
             detName = camera[detId].getName()
             calcStats = {}
+
+            mergedStats[detName] = detStats
 
             if detStats['SUCCESS'] is True:
                 calcStats['SUCCESS'] = True
@@ -161,7 +164,8 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
 
         exposureSuccess = True
         if len(self.config.exposureStatKeywords):
-            outputStats['VERIFY'], exposureSuccess = self.verify(outputStats)
+            outputStats['EXP'] = self.exposureStatistics(mergedStats)
+            outputStats['VERIFY'], exposureSuccess = self.verify(mergedStats, outputStats)
 
         outputStats['SUCCESS'] = success & exposureSuccess
 
@@ -169,12 +173,34 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
             outputStats=outputStats,
         )
 
-    def verify(self, statisticsDictionary):
+    def exposureStatistics(self, statisticsDict):
+        """Calculate exposure level statistics based on the existing
+        per-amplifier and per-detector measurements.
+
+        Parameters
+        ----------
+        statisticsDIctionary : `dict [`str`, `dict` [`str`, scalar]],
+            Dictionary of measured statistics.  The top level
+            dictionary is keyed on the detector names, and contains
+            the measured statistics from the per-detector
+            measurements.
+
+        Returns
+        -------
+        outputStatistics : `dict` [`str, scalar]
+            A dictionary of the statistics measured and their values.
+        """
+        raise NotImplementedError("Subclasses must implement verification criteria. CZW??")
+
+    def verify(self, detectorStatistics, statisticsDictionary):
+
         """Verify if the measured statistics meet the verification criteria.
 
         Parameters
         ----------
-        statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
+        detectorStatistics : `dict` [`str`, `dict` [`str`, scalar]]
+            Merged set of input detector level statistics.
+        statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]]
             Dictionary of measured statistics.  The inner dictionary
             should have keys that are statistic names (`str`) with
             values that are some sort of scalar (`int` or `float` are
