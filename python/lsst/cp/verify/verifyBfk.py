@@ -27,7 +27,7 @@ __all__ = ['CpVerifyBfkConfig', 'CpVerifyBfkTask']
 
 
 class CpVerifyBfkConfig(CpVerifyStatsConfig,
-                         pipelineConnections=CpVerifyStatsConnections):
+                        pipelineConnections=CpVerifyStatsConnections):
     """Inherits from base CpVerifyStatsConfig.
     """
 
