@@ -27,7 +27,7 @@ import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
 import lsst.meas.algorithms as measAlg
 
-from lsst.cp.pipe.cpCombine import VignetteExposure
+from lsst.cp.pipe.cpCombine import vignetteExposure
 from lsst.pipe.tasks.repair import RepairTask
 from .utils import mergeStatDict
 
@@ -226,7 +226,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         outputStats = {}
 
         if self.config.doVignette:
-            VignetteExposure(inputExp, doUpdateMask=True, maskPlane='NO_DATA',
+            vignetteExposure(inputExp, doUpdateMask=True, maskPlane='NO_DATA',
                              doSetValue=False, log=self.log)
 
         mask = inputExp.getMask()
