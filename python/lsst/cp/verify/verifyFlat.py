@@ -53,7 +53,7 @@ class CpVerifyFlatTask(CpVerifyStatsTask):
 
         Parameters
         ----------
-        statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
+        statisticsDict : `dict` [`str`, `dict` [`str`, scalar]],
             Dictionary of measured statistics.  The inner dictionary
             should have keys that are statistic names (`str`) with
             values that are some sort of scalar (`int` or `float` are
@@ -85,7 +85,7 @@ class CpVerifyFlatTask(CpVerifyStatsTask):
         ----------
         exposure : `lsst.afw.image.Exposure`
             The exposure the statistics are from.
-        statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
+        statisticsDict : `dict` [`str`, `dict` [`str`, scalar]],
             Dictionary of measured statistics.  The inner dictionary
             should have keys that are statistic names (`str`) with
             values that are some sort of scalar (`int` or `float` are
