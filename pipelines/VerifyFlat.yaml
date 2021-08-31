@@ -6,8 +6,8 @@ tasks:
       connections.ccdExposure: 'raw'
       connections.outputExposure: 'verifyFlatProc'
       # Disable downstream processing.
-      doApplyGains: False
-      doFringe: False
+      doApplyGains: false
+      doFringe: false
   verifyFlatChip:
     class: lsst.cp.verify.CpVerifyFlatTask
     config:

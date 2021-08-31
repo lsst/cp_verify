@@ -6,10 +6,10 @@ tasks:
       connections.ccdExposure: 'raw'
       connections.outputExposure: 'verifyDarkProc'
       # Disable downstream processing.
-      doDark: True
-      doFlat: False
-      doApplyGains: False
-      doFringe: False
+      doDark: true
+      doFlat: false
+      doApplyGains: false
+      doFringe: false
   verifyDarkChip:
     class: lsst.cp.verify.CpVerifyDarkTask
     config:
