@@ -24,6 +24,6 @@ from .verifyStats import *
 from .mergeResults import *
 
 from .verifyBias import *
-from .verifyDark import *
 from .verifyDefects import *
-
+from .verifyDark import *
+from .verifyFlat import *

@@ -5,25 +5,25 @@ tasks:
     config:
       connections.ccdExposure: 'raw'
       connections.outputExposure: 'verifyBiasProc'
-      doBias: True
-      doVariance: True
-      doLinearize: False
-      doCrosstalk: False
-      doDefect: True
-      doNanMasking: True
-      doInterpolate: True
-      doBrighterFatter: False
-      doDark: False
-      doFlat: False
-      doApplyGains: False
-      doFringe: False
+      doBias: true
+      doVariance: true
+      doLinearize: false
+      doCrosstalk: false
+      doDefect: true
+      doNanMasking: true
+      doInterpolate: true
+      doBrighterFatter: false
+      doDark: false
+      doFlat: false
+      doApplyGains: false
+      doFringe: false
   verifyMeasureStats:
     class: lsst.cp.verify.CpVerifyBiasTask
     config:
       connections.inputExp: 'verifyBiasProc'
       connections.outputStats: 'verifyBiasDetStats'
-      doVignette: False
-      useReadNoise: True
+      doVignette: false
+      useReadNoise: true
   verifyExposureStats:
     class: lsst.cp.verify.CpVerifyExpMergeTask
     config:

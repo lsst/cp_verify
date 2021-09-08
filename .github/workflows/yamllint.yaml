@@ -1,8 +1,10 @@
-name: lint
+name: Lint YAML Files
 
 on:
-  - push
-  - pull_request
+  push:
+    branches:
+      - master
+  pull_request:
 
 jobs:
   lint:
@@ -16,7 +18,7 @@ jobs:
           python-version: 3.8
 
       - name: Install
-        run: pip install -r <(curl https://raw.githubusercontent.com/lsst/linting/master/requirements.txt)
+        run: pip install yamllint
 
       - name: Run linter
-        run: flake8
+        run: yamllint .

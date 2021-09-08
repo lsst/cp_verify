@@ -1,0 +1,41 @@
+description: cp_verify DEFECT calibration verification
+tasks:
+  verifyDefectApply:
+    class: lsst.ip.isr.IsrTask
+    config:
+      connections.ccdExposure: 'raw'
+      connections.outputExposure: 'verifyDefectProc'
+      overscan.fitType: 'MEDIAN_PER_ROW'
+      doWrite: true
+      doOverscan: true
+      doAssembleCcd: true
+      doBias: true
+      doVariance: false
+      doLinearize: false
+      doCrosstalk: false
+      doBrighterFatter: false
+      doDark: true
+      doStrayLight: false
+      doFlat: true
+      doFringe: false
+      doApplyGains: false
+      doDefect: true
+      doSaturationInterpolation: false
+      growSaturationFootprintSize: 0
+  verifyMeasureStats:
+    class: lsst.cp.verify.CpVerifyDefectsTask
+    config:
+      connections.inputExp: 'verifyDefectProc'
+      connections.outputStats: 'verifyDefectDetStats'
+      doVignette: false
+      useReadNoise: false
+  verifyExposureStats:
+    class: lsst.cp.verify.CpVerifyExpMergeTask
+    config:
+      connections.inputStats: 'verifyDefectDetStats'
+      connections.outputStats: 'verifyDefectExpStats'
+  verifyRunStats:
+    class: lsst.cp.verify.CpVerifyRunMergeTask
+    config:
+      connections.inputStats: 'verifyDefectExpStats'
+      connections.outputStats: 'verifyDefectStats'

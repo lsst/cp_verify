@@ -323,6 +323,36 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
 
         return outputStatistics
 
+    @staticmethod
+    def _configHelper(keywordDict):
+        """Helper to convert keyword dictionary to stat value.
+
+        Convert the string names in the keywordDict to the afwMath values.
+        The statisticToRun is then the bitwise-or of that set.
+
+        Parameters
+        ----------
+        keywordDict : `dict` [`str`, `str`]
+            A dictionary of keys to use in the output results, with
+            values the string name associated with the
+            `lsst.afw.math.statistics.Property` to measure.
+
+        Returns
+        -------
+        statisticToRun : `int`
+            The merged `lsst.afw.math` statistics property.
+        statAccessor : `dict` [`str`, `int`]
+            Dictionary containing statistics property indexed by name.
+        """
+        statisticToRun = 0
+        statAccessor = {}
+        for k, v in keywordDict.items():
+            statValue = afwMath.stringToStatisticsProperty(v)
+            statisticToRun |= statValue
+            statAccessor[k] = statValue
+
+        return statisticToRun, statAccessor
+
     def amplifierStats(self, exposure, keywordDict, statControl):
         """Measure amplifier level statistics from the exposure.
 
@@ -346,14 +376,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         """
         ampStats = {}
 
-        # Convert the string names in the keywordDict to the afwMath values.
-        # The statisticToRun is then the bitwise-or of that set.
-        statisticToRun = 0
-        statAccessor = {}
-        for k, v in keywordDict.items():
-            statValue = afwMath.stringToStatisticsProperty(v)
-            statisticToRun |= statValue
-            statAccessor[k] = statValue
+        statisticToRun, statAccessor = self._configHelper(keywordDict)
 
         # Measure stats on all amplifiers.
         for ampIdx, amp in enumerate(exposure.getDetector()):

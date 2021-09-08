@@ -1,0 +1,25 @@
+description: cp_verify FLAT calibration verification
+tasks:
+  verifyFlatApply:
+    class: lsst.ip.isr.isrTask.IsrTask
+    config:
+      connections.ccdExposure: 'raw'
+      connections.outputExposure: 'verifyFlatProc'
+      # Disable downstream processing.
+      doApplyGains: false
+      doFringe: false
+  verifyFlatChip:
+    class: lsst.cp.verify.CpVerifyFlatTask
+    config:
+      connections.inputExp: 'verifyFlatProc'
+      connections.outputStats: 'verifyFlatDetStats'
+  verifyFlatExp:
+    class: lsst.cp.verify.CpVerifyExpMergeTask
+    config:
+      connections.inputStats: 'verifyFlatDetStats'
+      connections.outputStats: 'verifyFlatExpStats'
+  verifyFlat:
+    class: lsst.cp.verify.CpVerifyRunMergeTask
+    config:
+      connections.inputStats: 'verifyFlatExpStats'
+      connections.outputStats: 'verifyFlatStats'
