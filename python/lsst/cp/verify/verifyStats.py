@@ -472,6 +472,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
             crMask = crRejectedExp.getMaskedImage().getMask().getPlaneBitMask("CR")
             spans = afwGeom.SpanSet.fromMask(crRejectedExp.mask, crMask)
             spans = spans.dilated(self.config.crGrow)
+            spans = spans.clippedTo(crRejectedExp.getBBox())
             spans.setMask(crRejectedExp.mask, crMask)
 
         return self.amplifierStats(crRejectedExp, self.config.crImageStatKeywords, statControl)
