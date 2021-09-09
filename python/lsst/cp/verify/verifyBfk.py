@@ -19,11 +19,38 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
+import lsst.pipe.base.connectionTypes as cT
 
 from .verifyStats import CpVerifyStatsConfig, CpVerifyStatsTask, CpVerifyStatsConnections
 
 
+
 __all__ = ['CpVerifyBfkConfig', 'CpVerifyBfkTask']
+
+
+class CpVerifyBfkConnections(CpVerifyStatsConnections,
+                             dimensions={'instrument', "exposure", 'visit', 'detector'}):
+    inputExp = cT.Input(
+        name="postISRCCD",
+        doc="Input exposure to calculate statistics for.",
+        storageClass="Exposure",
+        dimensions=["instrument", "exposure", "visit", "detector"],
+    )
+    camera = cT.PrerequisiteInput(
+        name="camera",
+        storageClass="Camera",
+        doc="Input camera.",
+        dimensions=["instrument", ],
+        isCalibration=True,
+    )
+
+    outputStats = cT.Output(
+        name="detectorStats",
+        doc="Output statistics from cp_verify.",
+        storageClass="StructuredDataDict",
+        dimensions=["instrument", "exposure", "detector"],
+    )
+
 
 
 class CpVerifyBfkConfig(CpVerifyStatsConfig,
