@@ -18,12 +18,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import pprint
 from collections import defaultdict
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+
+from IPython.display import HTML, display
 
 import lsst.afw.cameraGeom as cameraGeom
 
@@ -48,12 +49,14 @@ def interactiveBlock(description, detStats):
         Number of further examples to skip.
     """
     while True:
-        ans = input(f"{description} Continue? [c, q, p, #]").lower()
+        ans = input(f"{description} Continue? [h, c, q, p, #]").lower()
         if ans in ("", "c"):
             break
+        elif ans in ("h"):
+            print("[h]elp, [c]ontinue, [q]uit, [p]rint stats, skip next [#] plots")
         elif ans in ("q", "x"):
             return False, 0
-        elif ans in ('p', ):
+        elif ans in ("p", ):
             pprint.pprint(detStats)
             break
         elif ans.isnumeric():
@@ -61,7 +64,55 @@ def interactiveBlock(description, detStats):
     return True, 0
 
 
-# Taken from faro
+def display_table(table, tests):
+    html = "<table>"
+    html += "<td>Exposure</td><td>Detector</td>"
+    for test in tests:
+        html += f"<td>{test}</td>"
+    html += "</tr>"
+    for exposure in table:
+        html += "<tr>"
+        html += f"<td>{exposure}</td>"
+        for detector in table[exposure]:
+            html += f"<td>{detector}</td>"
+            for test in tests:
+                value = table[exposure][detector].get(test, 0)
+                if value == 0:
+                    color = 'green'
+                elif value < 8:
+                    color = 'yellow'
+                else:
+                    color = 'red'
+                html += f"<td style=\"background-color:{color};color:black;\">{value}</td>"
+        html += "</tr>"
+    html += "</table>"
+    display(HTML(html))
+
+
+def failureTable(stats):
+    table = {}
+    tests = set()
+    for exposure in stats:
+        if 'FAILURES' in stats[exposure]:
+            fails = stats[exposure]['FAILURES']
+            table[exposure] = {}
+            for fail in fails:
+                detector, amp, test = fail.split(" ")
+                tests.add(test)
+                if detector in table[exposure]:
+                    if test in table[exposure][detector]:
+                        table[exposure][detector][test] += 1
+                    else:
+                        table[exposure][detector][test] = 1
+                else:
+                    table[exposure][detector] = {}
+                    table[exposure][detector][test] = 1
+        else:
+            table[exposure] = {}
+            table[exposure]['ALL PASS'] = {}
+    display_table(table, tests)
+
+
 def calcQuartileClippedStats(dataArray, nSigmaToClip=3.0):
     """Calculate the quartile-based clipped statistics of a data array.
     The difference between quartiles[2] and quartiles[0] is the interquartile
