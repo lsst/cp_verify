@@ -21,3 +21,4 @@ version.py
 bin/
 .pytest_cache
 pytest_session.txt
+examples/.ipynb_checkpoints

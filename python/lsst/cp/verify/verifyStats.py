@@ -23,6 +23,7 @@ import math
 import lsst.afw.geom as afwGeom
 import lsst.afw.math as afwMath
 import lsst.pex.config as pexConfig
+import lsst.pex.exceptions as pexException
 import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
 import lsst.meas.algorithms as measAlg
@@ -101,7 +102,7 @@ class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
     )
     crGrow = pexConfig.Field(
         dtype=int,
-        default=2,
+        default=0,
         doc="Grow radius for CR (pixels).",
     )
 
@@ -353,7 +354,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
 
         return statisticToRun, statAccessor
 
-    def amplifierStats(self, exposure, keywordDict, statControl):
+    def amplifierStats(self, exposure, keywordDict, statControl, failAll=False):
         """Measure amplifier level statistics from the exposure.
 
         Parameters
@@ -367,6 +368,8 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         statControl : `lsst.afw.math.StatisticsControl`
             Statistics control object with parameters defined by
             the config.
+        failAll : `bool`, optional
+            If True, all tests will be set as failed.
 
         Returns
         -------
@@ -387,6 +390,9 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
 
             for k, v in statAccessor.items():
                 theseStats[k] = stats.getValue(v)
+
+            if failAll:
+                theseStats['FORCE_FAILURE'] = failAll
             ampStats[ampName] = theseStats
 
         return ampStats
@@ -467,7 +473,13 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
                                         self.config.psfSize,
                                         self.config.psfFwhm/(2*math.sqrt(2*math.log(2))))
         crRejectedExp.setPsf(psf)
-        self.repair.run(crRejectedExp, keepCRs=False)
+        try:
+            self.repair.run(crRejectedExp, keepCRs=False)
+            failAll = False
+        except pexException.LengthError:
+            self.log.warn("Failure masking cosmic rays (too many found).  Continuing.")
+            failAll = True
+
         if self.config.crGrow > 0:
             crMask = crRejectedExp.getMaskedImage().getMask().getPlaneBitMask("CR")
             spans = afwGeom.SpanSet.fromMask(crRejectedExp.mask, crMask)
@@ -475,7 +487,8 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
             spans = spans.clippedTo(crRejectedExp.getBBox())
             spans.setMask(crRejectedExp.mask, crMask)
 
-        return self.amplifierStats(crRejectedExp, self.config.crImageStatKeywords, statControl)
+        return self.amplifierStats(crRejectedExp, self.config.crImageStatKeywords,
+                                   statControl, failAll=failAll)
 
     # Methods that need to be implemented by the calibration-level subclasses.
     def catalogStatistics(self, exposure, statControl):

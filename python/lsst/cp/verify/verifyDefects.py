@@ -44,6 +44,7 @@ class CpVerifyDefectsConfig(CpVerifyStatsConfig,
                                   'MAX': 'MAX', }
         self.unmaskedImageStatKeywords = {'UNMASKED_MIN': 'MIN',  # noqa F821
                                           'UNMASKED_MAX': 'MAX',
+                                          'UNMASKED_STDEV': 'STDEVCLIP',
                                           'UNMASKED_OUTLIERS': 'NCLIPPED', }
 
 
@@ -91,7 +92,7 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
             probability = scipy.stats.norm.pdf(normArray)
             outliers = np.where(probability < 1.0 / probability.size, 1.0, 0.0)
-            outputStatistics[ampName]['STAT_OUTLIERS'] = np.sum(outliers)
+            outputStatistics[ampName]['STAT_OUTLIERS'] = int(np.sum(outliers))
 
         return outputStatistics
 
@@ -123,10 +124,12 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             verify = {}
 
             # These are not defined in DMTN-101 yet.
-            verify['OUTLIERS'] = bool(stats['UNMASKED_OUTLIERS'] > stats['OUTLIERS'])
-            verify['MIN'] = bool(stats['MIN'] >= stats['UNMASKED_MIN'])
-            verify['MAX'] = bool(stats['MAX'] <= stats['UNMASKED_MAX'])
+            verify['OUTLIERS'] = bool(stats['UNMASKED_OUTLIERS'] >= stats['OUTLIERS'])
+            verify['STDEV'] = bool(stats['UNMASKED_STDEV'] >= stats['STDEV'])
+            verify['MIN'] = bool(stats['UNMASKED_MIN'] <= stats['MIN'])
+            verify['MAX'] = bool(stats['UNMASKED_MAX'] >= stats['MAX'])
 
+            # This test is bad, and should be made not bad.
             verify['PROB_TEST'] = bool(stats['STAT_OUTLIERS'] == stats['DEFECT_PIXELS'])
 
             verify['SUCCESS'] = bool(np.all(list(verify.values())))

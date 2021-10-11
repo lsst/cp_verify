@@ -5,6 +5,7 @@ tasks:
     config:
       connections.ccdExposure: 'raw'
       connections.outputExposure: 'verifyBiasProc'
+      overscan.fitType: 'MEDIAN_PER_ROW'
       doBias: true
       doVariance: true
       doLinearize: false
