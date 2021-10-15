@@ -48,13 +48,12 @@ class CpVerifyBfkConnections(CpVerifyStatsConnections,
         name="detectorStats",
         doc="Output statistics from cp_verify.",
         storageClass="StructuredDataDict",
-        dimensions=["instrument", "exposure", "detector"],
+        dimensions=["instrument", "visit", "detector"],
     )
 
 
-
 class CpVerifyBfkConfig(CpVerifyStatsConfig,
-                        pipelineConnections=CpVerifyStatsConnections):
+                        pipelineConnections=CpVerifyBfkConnections):
     """Inherits from base CpVerifyStatsConfig.
     """
 
@@ -66,6 +65,7 @@ class CpVerifyBfkConfig(CpVerifyStatsConfig,
 class CpVerifyBfkTask(CpVerifyStatsTask):
     """Bfk verification sub-class, implementing the verify method.
     """
+
     ConfigClass = CpVerifyBfkConfig
     _DefaultName = 'cpVerifyBfk'
 
