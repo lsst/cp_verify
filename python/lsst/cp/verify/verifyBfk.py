@@ -21,20 +21,27 @@
 import numpy as np
 import lsst.pipe.base.connectionTypes as cT
 
+from lsstDebug import getDebugFrame
+from lsst.cp.pipe.utils import (funcPolynomial, irlsFit)
 from .verifyStats import CpVerifyStatsConfig, CpVerifyStatsTask, CpVerifyStatsConnections
-
 
 
 __all__ = ['CpVerifyBfkConfig', 'CpVerifyBfkTask']
 
 
 class CpVerifyBfkConnections(CpVerifyStatsConnections,
-                             dimensions={'instrument', "exposure", 'visit', 'detector'}):
+                             dimensions={'instrument', 'visit', 'detector'}):
     inputExp = cT.Input(
-        name="postISRCCD",
+        name="icExp",
         doc="Input exposure to calculate statistics for.",
-        storageClass="Exposure",
-        dimensions=["instrument", "exposure", "visit", "detector"],
+        storageClass="ExposureF",
+        dimensions=["instrument", "visit", "detector"],
+    )
+    inputCatalog = cT.Input(
+        name="icSrc",
+        doc="Input catalog to calculate statistics from.",
+        storageClass="SourceCatalog",
+        dimensions=["instrument", "visit", "detector"],
     )
     camera = cT.PrerequisiteInput(
         name="camera",
@@ -88,7 +95,66 @@ class CpVerifyBfkTask(CpVerifyStatsTask):
             A dictionary indexed by the amplifier name, containing
             dictionaries of the statistics measured and their values.
         """
-        pass
+        outputStatistics = {}
+        magnitude = -2.5 * np.log10(catalog.getPsfInstFlux())
+        # This is a simple version
+        # size = np.sqrt(0.5 * (catalog.getIxx() + catalog.getIyy()))
+        # This is the pipe_analysis version
+        srcSize = np.sqrt(0.5*(catalog['base_SdssShape_xx'] + catalog['base_SdssShape_yy']))
+        psfSize = np.sqrt(0.5*(catalog['base_SdssShape_psf_xx'] + catalog['base_SdssShape_psf_yy']))
+        size = 100*(srcSize - psfSize)/(0.5*(srcSize + psfSize))
+
+        if 'BRIGHT_SLOPE' in self.config.catalogStatKeywords:
+            linearFit, linearFitErr, chiSq, weights = irlsFit([np.median(size), 0.0],
+                                                              magnitude, size, funcPolynomial)
+
+            outputStatistics['BRIGHT_SLOPE'] = float(linearFit[1])
+            self.debugFit('brightSlope', magnitude, size, linearFit)
+
+        # This should have a debug view
+        return outputStatistics
+
+    def debugFit(self, stepname, xVector, yVector, yModel):
+        """Debug method for linearity fitting.
+        Parameters
+        ----------
+        stepname : `str`
+            A label to use to check if we care to debug at a given
+            line of code.
+        xVector : `numpy.array`, (N,)
+            The values to use as the independent variable in the
+            linearity fit.
+        yVector : `numpy.array`, (N,)
+            The values to use as the dependent variable in the
+            linearity fit.
+        yModel : `numpy.array`, (N,)
+            The values to use as the linearized result.
+        """
+        frame = getDebugFrame(self._display, stepname)
+        if frame:
+            import matplotlib.pyplot as plt
+            #            import pdb; pdb.set_trace()
+            figure, axes = plt.subplots(1)
+
+            axes.scatter(xVector, yVector, c='blue', marker='+')
+            modelX = np.arange(np.min(xVector) - 1, np.max(xVector) + 1, 0.1)
+            axes.plot(modelX, yModel[0] + yModel[1] * modelX, 'r-')
+            plt.xlabel("Instrumental PSF magnitude")
+            plt.ylabel("Source size trace")
+            plt.title(f"BFK slope: {yModel[0]:.3f} + {yModel[1]:.3f} m")
+            figure.show()
+            prompt = "Press Enter or c to continue [chp]..."
+
+            while True:
+                ans = input(prompt).lower()
+                if ans in ("", " ", "c",):
+                    break
+                elif ans in ("p", ):
+                    import pdb
+                    pdb.set_trace()
+                elif ans in ("h", ):
+                    print("[h]elp [c]ontinue [p]db e[x]itDebug")
+            plt.close()
 
     def verify(self, exposure, statisticsDict):
         """Verify that the measured statistics meet the verification criteria.
@@ -111,28 +177,13 @@ class CpVerifyBfkTask(CpVerifyStatsTask):
         success : `bool`
             A boolean indicating if all tests have passed.
         """
-        detector = exposure.getDetector()
-        ampStats = statisticsDict['AMP']
-
         verifyStats = {}
         success = True
-        for ampName, stats in ampStats.items():
-            verify = {}
+        catalogVerify = {}
+        catStats = statisticsDict['CATALOG']
 
-            # DMTN-101 Test 4.2: Mean is 0.0 within noise.
-            verify['MEAN'] = bool(np.abs(stats['MEAN']) < stats['NOISE'])
+        catalogVerify['BRIGHT_SLOPE'] = True
+        if np.abs(catStats['BRIGHT_SLOPE']) > 0.05:
+            catalogVerify['BRIGHT_SLOPE'] = False
 
-            # DMTN-101 Test 4.3: Clipped mean matches readNoise.
-            amp = detector[ampName]
-            verify['NOISE'] = bool(np.abs(stats['NOISE'] - amp.getReadNoise())/amp.getReadNoise() <= 0.05)
-
-            # DMTN-101 Test 4.4: CR rejection matches clipped mean.
-            verify['CR_NOISE'] = bool(np.abs(stats['NOISE'] - stats['CR_NOISE'])/stats['CR_NOISE'] <= 0.05)
-
-            verify['SUCCESS'] = bool(np.all(list(verify.values())))
-            if verify['SUCCESS'] is False:
-                success = False
-
-            verifyStats[ampName] = verify
-
-        return {'AMP': verifyStats}, bool(success)
+        return {'AMP': verifyStats, 'CATALOG': catalogVerify}, bool(success)
