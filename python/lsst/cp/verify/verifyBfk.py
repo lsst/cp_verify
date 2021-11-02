@@ -19,10 +19,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
+import lsst.afw.table as afwTable
+import lsst.pex.config as pexConfig
 import lsst.pipe.base.connectionTypes as cT
 
+from scipy.optimize import least_squares
 from lsstDebug import getDebugFrame
-from lsst.cp.pipe.utils import (funcPolynomial, irlsFit)
 from .verifyStats import CpVerifyStatsConfig, CpVerifyStatsTask, CpVerifyStatsConnections
 
 
@@ -70,9 +72,29 @@ class CpVerifyBfkConfig(CpVerifyStatsConfig,
     """Inherits from base CpVerifyStatsConfig.
     """
 
+    matchRadiusPix = pexConfig.Field(
+        dtype=float,
+        default=3,
+        doc=("Match radius for matching icSourceCat objects to sourceCat objects (pixels)"),
+    )
+
     def setDefaults(self):
         super().setDefaults()
-        self.catalogStatKeywords = {'BRIGHT_SLOPE': None}  # noqa F841
+        self.catalogStatKeywords = {'BRIGHT_SLOPE': None,
+                                    'NUM_MATCHES': None,
+                                   }  # noqa F841
+
+
+def exponentialModel(x, A, alpha, x0):
+    """An exponential model.
+    """
+    return A * np.exp(alpha * (x - x0))
+
+
+def modelResidual(p, x, y):
+    """Model residual for fit below.
+    """
+    return y - exponentialModel(x, *p)
 
 
 class CpVerifyBfkTask(CpVerifyStatsTask):
@@ -104,20 +126,33 @@ class CpVerifyBfkTask(CpVerifyStatsTask):
             dictionaries of the statistics measured and their values.
         """
         outputStatistics = {}
-        magnitude = -2.5 * np.log10(catalog.getPsfInstFlux())
-        # This is a simple version
-        # size = np.sqrt(0.5 * (catalog.getIxx() + catalog.getIyy()))
-        # This is the pipe_analysis version
-        srcSize = np.sqrt(0.5*(catalog['base_SdssShape_xx'] + catalog['base_SdssShape_yy']))
-        psfSize = np.sqrt(0.5*(catalog['base_SdssShape_psf_xx'] + catalog['base_SdssShape_psf_yy']))
-        size = 100*(srcSize - psfSize)/(0.5*(srcSize + psfSize))
 
+        matches = afwTable.matchXy(catalog, uncorrectedCatalog, self.config.matchRadiusPix)
+        outputStatistics['NUM_MATCHES'] = len(matches)
+
+        magnitude = []
+        sizeDiff = []
+        for source, uncorrectedSource, d in matches:
+            # This uses the simple difference in source moments.
+            sourceMagnitude = -2.5 * np.log10(source.getPsfInstFlux())
+            sourceSize = source['base_SdssShape_xx'] + source['base_SdssShape_yy']
+            uncorrectedSize = uncorrectedSource['base_SdssShape_xx'] + uncorrectedSource['base_SdssShape_yy']
+
+            magnitude.append(float(sourceMagnitude))
+            sizeDiff.append(float(uncorrectedSize - sourceSize))
+
+        mask = np.isfinite(magnitude) * np.isfinite(sizeDiff)
         if 'BRIGHT_SLOPE' in self.config.catalogStatKeywords:
-            linearFit, linearFitErr, chiSq, weights = irlsFit([np.median(size), 0.0],
-                                                              magnitude, size, funcPolynomial)
+            exponentialFit = least_squares(modelResidual, [0.0, 0.0, 0.0],
+                                           args=(np.array(magnitude)[mask], np.array(sizeDiff)[mask]),
+                                           loss='cauchy')
 
-            outputStatistics['BRIGHT_SLOPE'] = float(linearFit[1])
-            self.debugFit('brightSlope', magnitude, size, linearFit)
+            outputStatistics['BRIGHT_SLOPE'] = float(exponentialFit.x[1])
+            outputStatistics['FIT_SUCCESS'] = exponentialFit.success
+            self.debugFit('brightSlope', magnitude, sizeDiff, exponentialFit.x)
+
+        outputStatistics['MAGNITUDES'] = magnitude
+        outputStatistics['SIZE_DIFF'] = sizeDiff
 
         # This should have a debug view
         return outputStatistics
@@ -141,12 +176,11 @@ class CpVerifyBfkTask(CpVerifyStatsTask):
         frame = getDebugFrame(self._display, stepname)
         if frame:
             import matplotlib.pyplot as plt
-            #            import pdb; pdb.set_trace()
             figure, axes = plt.subplots(1)
 
             axes.scatter(xVector, yVector, c='blue', marker='+')
             modelX = np.arange(np.min(xVector) - 1, np.max(xVector) + 1, 0.1)
-            axes.plot(modelX, yModel[0] + yModel[1] * modelX, 'r-')
+            axes.plot(modelX, exponentialModel(modelX, *yModel), 'r-')
             plt.xlabel("Instrumental PSF magnitude")
             plt.ylabel("Source size trace")
             plt.title(f"BFK slope: {yModel[0]:.3f} + {yModel[1]:.3f} m")
@@ -190,8 +224,14 @@ class CpVerifyBfkTask(CpVerifyStatsTask):
         catalogVerify = {}
         catStats = statisticsDict['CATALOG']
 
-        catalogVerify['BRIGHT_SLOPE'] = True
-        if np.abs(catStats['BRIGHT_SLOPE']) > 0.05:
-            catalogVerify['BRIGHT_SLOPE'] = False
+        catalogVerify['BRIGHT_SLOPE'] = False
+        catalogVerify['NUM_MATCHES'] = False
+        # These values need justification.
+        if catStats['FIT_SUCCESS'] and catStats['BRIGHT_SLOPE'] < -0.5:
+            catalogVerify['BRIGHT_SLOPE'] = True
+        if catStats['NUM_MATCHES'] > 10:
+            catalogVerify['NUM_MATCHES'] = True
 
+        if catalogVerify['NUM_MATCHES'] and not catalogVerify['BRIGHT_SLOPE']:
+            success = False
         return {'AMP': verifyStats, 'CATALOG': catalogVerify}, bool(success)
