@@ -13,11 +13,29 @@ tasks:
       connections.exposure: 'verifyBfkIsr'
       doApCorr: false
       doDeblend: false
+  verifyUncorrectedBfkIsr:
+    class: lsst.ip.isr.isrTask.IsrTask
+    config:
+      connections.ccdExposure: 'raw'
+      connections.outputExposure: 'verifyUncorrBfkIsr'
+      connections.newBFKernel: 'bfk'
+      doBrighterFatter: false
+  verifyUncorrectedBfkChar:
+    class: lsst.pipe.tasks.characterizeImage.CharacterizeImageTask
+    config:
+      connections.exposure: 'verifyUncorrBfkIsr'
+      connections.characterized: 'verifyUncorrBfkExp'
+      connections.sourceCat: 'verifyUncorrBfkSrc'
+      connections.backgroundModel: 'verifyUncorrBfkBackground'
+      connections.outputSchema: 'verifyUncorrBfk_schema'
+      doApCorr: false
+      doDeblend: false
   verifyBfkChip:
     class: lsst.cp.verify.verifyBfk.CpVerifyBfkTask
     config:
       connections.inputExp: 'icExp'
       connections.inputCatalog: 'icSrc'
+      connections.uncorrectedCatalog: 'verifyUncorrBfkSrc'
       connections.outputStats: 'verifyBfkDetStats'
   verifyBfkExp:
     class: lsst.cp.verify.CpVerifyVisitExpMergeTask

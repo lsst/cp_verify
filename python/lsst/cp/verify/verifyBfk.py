@@ -43,6 +43,12 @@ class CpVerifyBfkConnections(CpVerifyStatsConnections,
         storageClass="SourceCatalog",
         dimensions=["instrument", "visit", "detector"],
     )
+    uncorrectedCatalog = cT.Input(
+        name="uncorrectedSrc",
+        doc="Input catalog without correction applied.",
+        storageClass="SourceCatalog",
+        dimensions=["instrument", "visit", "detector"],
+    )
     camera = cT.PrerequisiteInput(
         name="camera",
         storageClass="Camera",
@@ -76,7 +82,7 @@ class CpVerifyBfkTask(CpVerifyStatsTask):
     ConfigClass = CpVerifyBfkConfig
     _DefaultName = 'cpVerifyBfk'
 
-    def catalogStatistics(self, exposure, catalog, statControl):
+    def catalogStatistics(self, exposure, catalog, uncorrectedCatalog, statControl):
         """Measure the catalog statistics.
 
         Parameters
@@ -85,6 +91,8 @@ class CpVerifyBfkTask(CpVerifyStatsTask):
             The exposure to measure.
         catalog : `lsst.afw.table.Table`
             The catalog to measure.
+        uncorrectedCatalog : `lsst.afw.table.Table`
+            The uncorrected catalog to measure.
         statControl : `lsst.afw.math.StatisticsControl`
             Statistics control object with parameters defined by
             the config.
