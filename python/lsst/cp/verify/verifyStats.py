@@ -66,6 +66,12 @@ class CpVerifyStatsConnections(pipeBase.PipelineTaskConnections,
         dimensions=["instrument", "exposure", "detector"],
     )
 
+    def __init__(self, *, config=None):
+        super().__init__(config=config)
+
+        if len(config.metadataStatKeywords) < 1:
+            self.inputs.discard('taskMetadata')
+
 
 class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
                           pipelineConnections=CpVerifyStatsConnections):
