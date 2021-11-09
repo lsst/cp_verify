@@ -37,6 +37,7 @@ class CpVerifyBiasConfig(CpVerifyStatsConfig,
                                   'NOISE': 'STDEVCLIP', }
 
         self.crImageStatKeywords = {'CR_NOISE': 'STDEV', }  # noqa F841
+        self.metadataStatKeywords = {'RESIDUAL STDEV': 'AMP', }  # noqa F841
 
 
 class CpVerifyBiasTask(CpVerifyStatsTask):
@@ -68,18 +69,25 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
         """
         detector = exposure.getDetector()
         ampStats = statisticsDict['AMP']
+        metadataStats = statisticsDict['METADATA']
 
         verifyStats = {}
         success = True
         for ampName, stats in ampStats.items():
             verify = {}
-
+            readNoiseMatch = True
             # DMTN-101 Test 4.2: Mean is 0.0 within noise.
             verify['MEAN'] = bool(np.abs(stats['MEAN']) < stats['NOISE'])
 
             # DMTN-101 Test 4.3: Clipped mean matches readNoise.
-            amp = detector[ampName]
-            verify['NOISE'] = bool(np.abs(stats['NOISE'] - amp.getReadNoise())/amp.getReadNoise() <= 0.05)
+            readNoise = detector[ampName].getReadNoise()
+            if 'RESIDUAL STDEV' in metadataStats and ampName in metadataStats['RESIDUAL STDEV']:
+                overscanReadNoise = metadataStats['RESIDUAL STDEV'][ampName]
+                if ((overscanReadNoise - readNoise)/readNoise > 0.05):
+                    readNoiseMatch = False
+                readNoise = overscanReadNoise
+
+            verify['NOISE'] = bool(np.abs(stats['NOISE'] - readNoise)/readNoise <= 0.05)
 
             # DMTN-101 Test 4.4: CR rejection matches clipped mean.
             verify['CR_NOISE'] = bool(np.abs(stats['NOISE'] - stats['CR_NOISE'])/stats['CR_NOISE'] <= 0.05)
@@ -89,9 +97,10 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
                 verify['PROCESSING'] = False
 
             verify['SUCCESS'] = bool(np.all(list(verify.values())))
-
             if verify['SUCCESS'] is False:
                 success = False
+            # This isn't something to fail on yet.
+            verify['READ_NOISE_CONSISTENT'] = readNoiseMatch
 
             verifyStats[ampName] = verify
 
