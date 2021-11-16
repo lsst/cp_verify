@@ -79,6 +79,15 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
             verify['MEAN'] = bool(np.abs(stats['MEAN']) < stats['NOISE'])
 
             # DMTN-101 Test 5.3: Clipped mean matches readNoise
+            # The read noise from the detector object may not match
+            # the read noise of the camera taking the images. If
+            # possible, pull the residual remaining after the serial
+            # overscan has been overscan corrected from the task
+            # metadata (stored with the key f"RESIDUAL STDEV {ampName}").
+            # This should provide a measurement of the actual read
+            # noise in the exposure.  A test below (that does not
+            # trigger failure) will note if the detector read noise
+            # matched the measured read noise.
             readNoise = detector[ampName].getReadNoise()
             if 'RESIDUAL STDEV' in metadataStats and ampName in metadataStats['RESIDUAL STDEV']:
                 overscanReadNoise = metadataStats['RESIDUAL STDEV'][ampName]
@@ -99,7 +108,8 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
             verify['SUCCESS'] = bool(np.all(list(verify.values())))
             if verify['SUCCESS'] is False:
                 success = False
-            # This isn't something to fail on yet.
+            # This is a notice so we can track the read noise
+            # stability.  We shouldn't fail on it.
             verify['READ_NOISE_CONSISTENT'] = readNoiseMatch
 
             verifyStats[ampName] = verify
