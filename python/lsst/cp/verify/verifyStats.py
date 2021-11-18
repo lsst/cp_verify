@@ -32,6 +32,7 @@ from lsst.cp.pipe.cpCombine import vignetteExposure
 from lsst.pipe.tasks.repair import RepairTask
 from .utils import mergeStatDict
 
+
 __all__ = ['CpVerifyStatsConfig', 'CpVerifyStatsTask']
 
 
@@ -42,6 +43,12 @@ class CpVerifyStatsConnections(pipeBase.PipelineTaskConnections,
         name="postISRCCD",
         doc="Input exposure to calculate statistics for.",
         storageClass="Exposure",
+        dimensions=["instrument", "exposure", "detector"],
+    )
+    taskMetadata = cT.Input(
+        name="isrTask_metadata",
+        doc="Input task metadata to extract statistics from.",
+        storageClass="PropertySet",
         dimensions=["instrument", "exposure", "detector"],
     )
     camera = cT.PrerequisiteInput(
@@ -58,6 +65,12 @@ class CpVerifyStatsConnections(pipeBase.PipelineTaskConnections,
         storageClass="StructuredDataDict",
         dimensions=["instrument", "exposure", "detector"],
     )
+
+    def __init__(self, *, config=None):
+        super().__init__(config=config)
+
+        if len(config.metadataStatKeywords) < 1:
+            self.inputs.discard('taskMetadata')
 
 
 class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
@@ -148,6 +161,12 @@ class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
         doc="Image statistics to run on expTime normalized amplifier segments.",
         default={},
     )
+    metadataStatKeywords = pexConfig.DictField(
+        keytype=str,
+        itemtype=str,
+        doc="Statistics to measure from the metadata of the exposure.",
+        default={},
+    )
     catalogStatKeywords = pexConfig.DictField(
         keytype=str,
         itemtype=str,
@@ -176,7 +195,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         super().__init__(**kwargs)
         self.makeSubtask("repair")
 
-    def run(self, inputExp, camera):
+    def run(self, inputExp, camera, taskMetadata=None):
         """Calculate quality statistics and verify they meet the requirements
         for a calibration.
 
@@ -184,6 +203,8 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         ----------
         inputExp : `lsst.afw.image.Exposure`
             The ISR processed exposure to be measured.
+        taskMetadata : `lsst.daf.base.PropertySet`, optional
+            Task metadata containing additional statistics.
         camera : `lsst.afw.cameraGeom.Camera`
              The camera geometry for ``inputExp``.
 
@@ -239,6 +260,13 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         # This is wrapped below to check for config lengths, as we can
         # make a number of different image stats.
         outputStats['AMP'] = self.imageStatistics(inputExp, statControl)
+
+        if len(self.config.metadataStatKeywords):
+            # These are also defined on a amp-by-amp basis.
+            outputStats['METADATA'] = self.metadataStatistics(inputExp, taskMetadata)
+        else:
+            outputStats['METADATA'] = {}
+
         if len(self.config.catalogStatKeywords):
             outputStats['CATALOG'] = self.catalogStatistics(inputExp, statControl)
         else:
@@ -310,7 +338,6 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
                                              self.amplifierStats(exposure,
                                                                  self.config.imageStatKeywords,
                                                                  statControl))
-
         if len(self.config.unmaskedImageStatKeywords):
             outputStatistics = mergeStatDict(outputStatistics, self.unmaskedImageStats(exposure))
 
@@ -353,6 +380,44 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
             statAccessor[k] = statValue
 
         return statisticToRun, statAccessor
+
+    def metadataStatistics(self, exposure, taskMetadata):
+        """Extract task metadata information for verification.
+
+        Parameters
+        ----------
+        exposure : `lsst.afw.image.Exposure`
+            The exposure to measure.
+        taskMetadata : `lsst.daf.base.PropertySet`
+            The metadata to extract values from.
+
+        Returns
+        -------
+        ampStats : `dict` [`str`, `dict` [`str`, scalar]]
+            A dictionary indexed by the amplifier name, containing
+            dictionaries of the statistics measured and their values.
+        """
+        metadataStats = {}
+        keywordDict = self.config.metadataStatKeywords
+
+        if taskMetadata:
+            for key, value in keywordDict.items():
+                if value == 'AMP':
+                    metadataStats[key] = {}
+                    for ampIdx, amp in enumerate(exposure.getDetector()):
+                        ampName = amp.getName()
+                        expectedKey = f"{key} {ampName}"
+                        metadataStats[key][ampName] = None
+                        for name in taskMetadata.names():
+                            if expectedKey in taskMetadata[name]:
+                                metadataStats[key][ampName] = taskMetadata[name][expectedKey]
+                else:
+                    # Assume it's detector-wide.
+                    expectedKey = key
+                    for name in taskMetadata.names():
+                        if expectedKey in taskMetadata[name]:
+                            metadataStats[key] = taskMetadata[name][expectedKey]
+        return metadataStats
 
     def amplifierStats(self, exposure, keywordDict, statControl, failAll=False):
         """Measure amplifier level statistics from the exposure.

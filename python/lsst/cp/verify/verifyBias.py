@@ -35,8 +35,8 @@ class CpVerifyBiasConfig(CpVerifyStatsConfig,
         super().setDefaults()
         self.imageStatKeywords = {'MEAN': 'MEAN',  # noqa F841
                                   'NOISE': 'STDEVCLIP', }
-
         self.crImageStatKeywords = {'CR_NOISE': 'STDEV', }  # noqa F841
+        self.metadataStatKeywords = {'RESIDUAL STDEV': 'AMP', }  # noqa F841
 
 
 class CpVerifyBiasTask(CpVerifyStatsTask):
@@ -68,18 +68,35 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
         """
         detector = exposure.getDetector()
         ampStats = statisticsDict['AMP']
+        metadataStats = statisticsDict['METADATA']
 
         verifyStats = {}
         success = True
         for ampName, stats in ampStats.items():
             verify = {}
-
+            readNoiseMatch = True
             # DMTN-101 Test 4.2: Mean is 0.0 within noise.
             verify['MEAN'] = bool(np.abs(stats['MEAN']) < stats['NOISE'])
 
             # DMTN-101 Test 4.3: Clipped mean matches readNoise.
-            amp = detector[ampName]
-            verify['NOISE'] = bool(np.abs(stats['NOISE'] - amp.getReadNoise())/amp.getReadNoise() <= 0.05)
+            # The read noise from the detector object may not match
+            # the read noise of the camera taking the images. If
+            # possible, pull the residual remaining after the serial
+            # overscan has been overscan corrected from the task
+            # metadata (stored with the key f"RESIDUAL STDEV {ampName}").
+            # This should provide a measurement of the actual read
+            # noise in the exposure.  A test below (that does not
+            # trigger failure) will note if the detector read noise
+            # matched the measured read noise.
+            readNoise = detector[ampName].getReadNoise()
+            if 'RESIDUAL STDEV' in metadataStats and ampName in metadataStats['RESIDUAL STDEV']:
+                overscanReadNoise = metadataStats['RESIDUAL STDEV'][ampName]
+                if overscanReadNoise:
+                    if ((overscanReadNoise - readNoise)/readNoise > 0.05):
+                        readNoiseMatch = False
+                    readNoise = overscanReadNoise
+
+            verify['NOISE'] = bool(np.abs(stats['NOISE'] - readNoise)/readNoise <= 0.05)
 
             # DMTN-101 Test 4.4: CR rejection matches clipped mean.
             verify['CR_NOISE'] = bool(np.abs(stats['NOISE'] - stats['CR_NOISE'])/stats['CR_NOISE'] <= 0.05)
@@ -89,9 +106,11 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
                 verify['PROCESSING'] = False
 
             verify['SUCCESS'] = bool(np.all(list(verify.values())))
-
             if verify['SUCCESS'] is False:
                 success = False
+            # This is a notice so we can track the read noise
+            # stability.  We shouldn't fail on it.
+            verify['READ_NOISE_CONSISTENT'] = readNoiseMatch
 
             verifyStats[ampName] = verify
 

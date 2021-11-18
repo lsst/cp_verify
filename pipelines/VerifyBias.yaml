@@ -22,6 +22,7 @@ tasks:
     class: lsst.cp.verify.CpVerifyBiasTask
     config:
       connections.inputExp: 'verifyBiasProc'
+      connections.taskMetadata: 'verifyBiasApply_metadata'
       connections.outputStats: 'verifyBiasDetStats'
       doVignette: false
       useReadNoise: true
