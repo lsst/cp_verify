@@ -542,7 +542,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
             self.repair.run(crRejectedExp, keepCRs=False)
             failAll = False
         except pexException.LengthError:
-            self.log.warn("Failure masking cosmic rays (too many found).  Continuing.")
+            self.log.warning("Failure masking cosmic rays (too many found).  Continuing.")
             failAll = True
 
         if self.config.crGrow > 0:
