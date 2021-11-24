@@ -27,8 +27,6 @@ import lsst.ip.isr.isrMock as isrMock
 import lsst.cp.verify as cpVerify
 import lsst.ip.isr.isrFunctions as isrFunctions
 
-from lsst.daf.base import PropertySet
-
 
 def updateMockExp(exposure, addCR=True):
     """Update an exposure with a mask and variance plane.
@@ -186,11 +184,11 @@ class VerifyDarkTestCase(lsst.utils.tests.TestCase):
 
         # Use this to test the metadataStats code, as this is the case
         # it's designed to fix.
-        metadataContents = PropertySet()
-        metadataContents.setFloat("RESIDUAL STDEV C:0,0", 12.0)
-        metadataContents.setFloat("RESIDUAL STDEV", 24.0)
-        self.metadata = PropertySet()
-        self.metadata.setPropertySet("subGroup", metadataContents)
+        metadataContents = {}
+        metadataContents["RESIDUAL STDEV C:0,0"] = 12.0
+        metadataContents["RESIDUAL STDEV"] = 24.0
+        self.metadata = {}
+        self.metadata["subGroup"] = metadataContents
 
         self.camera = isrMock.IsrMock().getCamera()
 
