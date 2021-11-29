@@ -26,7 +26,8 @@ import lsst.pex.config as pexConfig
 __all__ = ['CpVerifyExpMergeConfig', 'CpVerifyExpMergeTask',
            'CpVerifyRunMergeConfig', 'CpVerifyRunMergeTask',
            'CpVerifyVisitExpMergeConfig', 'CpVerifyVisitExpMergeTask',
-           'CpVerifyVisitRunMergeConfig', 'CpVerifyVisitRunMergeTask']
+           'CpVerifyVisitRunMergeConfig', 'CpVerifyVisitRunMergeTask',
+           'CpVerifyCalibMergeConfig', 'CpVerifyCalibMergeTask']
 
 
 class CpVerifyExpMergeConnections(pipeBase.PipelineTaskConnections,
@@ -439,3 +440,148 @@ class CpVerifyVisitRunMergeTask(CpVerifyRunMergeTask):
     _DefaultName = 'cpVerifyVisitRunMerge'
 
     pass
+
+
+class CpVerifyCalibMergeConnections(pipeBase.PipelineTaskConnections,
+                                    dimensions={"instrument"},
+                                    defaultTemplates={}):
+    inputStats = cT.Input(
+        name="exposureStats",
+        doc="Input statistics to merge.",
+        storageClass="StructuredDataDict",
+        dimensions=["instrument", "exposure"],
+        multiple=True,
+    )
+    camera = cT.PrerequisiteInput(
+        name="camera",
+        storageClass="Camera",
+        doc="Input camera.",
+        dimensions=["instrument", ],
+        isCalibration=True,
+    )
+
+    outputStats = cT.Output(
+        name="exposureStats",
+        doc="Output statistics.",
+        storageClass="StructuredDataDict",
+        dimensions=["instrument", "visit"],
+    )
+
+
+class CpVerifyCalibMergeConfig(pipeBase.PipelineTaskConfig,
+                               pipelineConnections=CpVerifyCalibMergeConnections):
+    """Configuration paramters for exposure stats merging.
+    """
+    runStatKeywords = pexConfig.DictField(
+        keytype=str,
+        itemtype=str,
+        doc="Dictionary of statistics to run on the set of exposure values. The key should be the test "
+        "name to record in the output, and the value should be the `lsst.afw.math` statistic name string.",
+        default={},
+    )
+
+
+class CpVerifyCalibMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
+    """Merge statistics from detectors together.
+    """
+    ConfigClass = CpVerifyCalibMergeConfig
+    _DefaultName = 'cpVerifyCalibMerge'
+
+    def runQuantum(self, butlerQC, inputRefs, outputRefs):
+        inputs = butlerQC.get(inputRefs)
+
+        dimensions = [exp.dataId.byName() for exp in inputRefs.inputStats]
+        inputs['inputDims'] = dimensions
+
+        outputs = self.run(**inputs)
+        butlerQC.put(outputs, outputRefs)
+
+    def run(self, inputStats, camera, inputDims):
+        """Merge statistics.
+
+        Parameters
+        ----------
+        inputStats : `list` [`dict`]
+            Measured statistics for a detector.
+        camera : `lsst.afw.cameraGeom.Camera`
+            The camera geometry for this exposure.
+        inputDims : `list` [`dict`]
+            List of dictionaries of input data dimensions/values.
+            Each list entry should contain:
+
+            ``"detector"``
+                detector id value (`int`)
+
+        Returns
+        -------
+        outputStats : `dict`
+            Merged full exposure statistics.
+
+        Notes
+        -----
+        The outputStats should have a yaml representation as follows.
+
+        VERIFY:
+          DetectorId1:
+            VERIFY_MEAN: boolean
+            VERIFY_SIGMA: boolean
+          DetectorId2:
+            [...]
+          MEAN_UNIMODAL: boolean
+          SIGMA_UNIMODAL: boolean
+        """
+        outputStats = {}
+        success = True
+        for detStats, dimensions in zip(inputStats, inputDims):
+            detId = dimensions['detector']
+            detName = camera[detId].getName()
+            calcStats = {}
+
+            detSuccess = detStats.pop('SUCCESS')
+            if detSuccess:
+                calcStats['SUCCESS'] = True
+            else:
+                calcStats['FAILURES'] = list()
+                success = False
+                for testName in detStats['VERIFY']:
+                    calcStats['FAILURES'].append(detName + " " + testName)
+
+            outputStats[detName] = calcStats
+
+        runSuccess = True
+        if len(self.config.runStatKeywords):
+            outputStats['VERIFY'], runSuccess = self.verify(outputStats)
+
+        outputStats['SUCCESS'] = success & runSuccess
+
+        return pipeBase.Struct(
+            outputStats=outputStats,
+        )
+
+    def verify(self, statisticsDictionary):
+        """Verify if the measured statistics meet the verification criteria.
+
+        Parameters
+        ----------
+        statisticsDictionary : `dict` [`str`, `dict`],
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
+
+        Returns
+        -------
+        outputStatistics : `dict` [`str`, `dict` [`str`, `bool`]]
+            A dictionary indexed by the amplifier name, containing
+            dictionaries of the verification criteria.
+        success : `bool`
+            A boolean indicating if all tests have passed.
+
+        Raises
+        ------
+        NotImplementedError :
+            This method must be implemented by the calibration-type
+            subclass.
+
+        """
+        raise NotImplementedError("Subclasses must implement verification criteria.")
