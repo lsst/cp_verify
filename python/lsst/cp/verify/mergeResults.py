@@ -449,7 +449,7 @@ class CpVerifyCalibMergeConnections(pipeBase.PipelineTaskConnections,
         name="exposureStats",
         doc="Input statistics to merge.",
         storageClass="StructuredDataDict",
-        dimensions=["instrument", "exposure"],
+        dimensions=["instrument", "detector"],
         multiple=True,
     )
     camera = cT.PrerequisiteInput(

@@ -1,0 +1,29 @@
+description: cp_verify CROSSTALK calibration verification
+tasks:
+  verifyCrosstalkApply:
+    class: lsst.ip.isr.isrTask.IsrTask
+    config:
+      connections.ccdExposure: 'raw'
+      connections.outputExposure: 'verifyCrosstalkProc'
+      connections.crosstalk: 'crosstalk'
+      doCrosstalk: true
+  verifyCrosstalkExtract:
+    class: lsst.cp.pipe.measureCrosstalk.CrosstalkExtractTask
+    config:
+      connections.inputExp: 'verifyCrosstalkProc'
+      connections.outputRatios: 'verifyCrosstalkRatio'
+  verifyCrosstalkSolve:
+    class: lsst.cp.pipe.measureCrosstalk.CrosstalkSolveTask
+    config:
+      connections.inputRatios: 'verifyCrosstalkRatio'
+      connections.outputCrosstalk: 'verifyCrosstalk'
+  verifyCrosstalkCalib:
+    class: lsst.cp.verify.verifyCrosstalk.CpVerifyCrosstalkTask
+    config:
+      connections.inputCalib: 'verifyCrosstalk'
+      connections.outputStats: 'verifyCrosstalkDetStats'
+  verifyCrosstalk:
+    class: lsst.cp.verify.CpVerifyCalibMergeTask
+    config:
+      connections.inputStats: 'verifyCrosstalkDetStats'
+      connections.outputStats: 'verifyCrosstalkStats'
