@@ -28,7 +28,7 @@ import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
 import lsst.meas.algorithms as measAlg
 
-from lsst.cp.pipe.cpCombine import vignetteExposure
+from lsst.ip.isr.vignette import maskVignettedRegion
 from lsst.pipe.tasks.repair import RepairTask
 from .utils import mergeStatDict
 
@@ -248,8 +248,9 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         outputStats = {}
 
         if self.config.doVignette:
-            vignetteExposure(inputExp, doUpdateMask=True, maskPlane='NO_DATA',
-                             doSetValue=False, log=self.log)
+            polygon = inputExp.getInfo().getValidPolygon()
+            maskVignettedRegion(inputExp, polygon, maskPlane='NO_DATA',
+                                vignetteValue=None, log=self.log)
 
         mask = inputExp.getMask()
         maskVal = mask.getPlaneBitMask(self.config.maskNameList)
