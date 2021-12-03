@@ -132,6 +132,11 @@ class CpVerifyBfkTask(CpVerifyStatsTask):
 
         magnitude = []
         sizeDiff = []
+        if not matches:
+            outputStatistics['MAGNITUDES'] = magnitude
+            outputStatistics['SIZE_DIFF'] = sizeDiff
+            return outputStatistics
+
         for source, uncorrectedSource, d in matches:
             # This uses the simple difference in source moments.
             sourceMagnitude = -2.5 * np.log10(source.getPsfInstFlux())
@@ -143,7 +148,7 @@ class CpVerifyBfkTask(CpVerifyStatsTask):
 
         mask = np.isfinite(magnitude) * np.isfinite(sizeDiff)
         if 'BRIGHT_SLOPE' in self.config.catalogStatKeywords:
-            exponentialFit = least_squares(modelResidual, [0.0, 0.0, 0.0],
+            exponentialFit = least_squares(modelResidual, [0.0, -0.01, 0.0],
                                            args=(np.array(magnitude)[mask], np.array(sizeDiff)[mask]),
                                            loss='cauchy')
 
@@ -154,7 +159,6 @@ class CpVerifyBfkTask(CpVerifyStatsTask):
         outputStatistics['MAGNITUDES'] = magnitude
         outputStatistics['SIZE_DIFF'] = sizeDiff
 
-        # This should have a debug view
         return outputStatistics
 
     def debugFit(self, stepname, xVector, yVector, yModel):
