@@ -409,13 +409,13 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
                         ampName = amp.getName()
                         expectedKey = f"{key} {ampName}"
                         metadataStats[key][ampName] = None
-                        for name in taskMetadata.names():
+                        for name in taskMetadata:
                             if expectedKey in taskMetadata[name]:
                                 metadataStats[key][ampName] = taskMetadata[name][expectedKey]
                 else:
                     # Assume it's detector-wide.
                     expectedKey = key
-                    for name in taskMetadata.names():
+                    for name in taskMetadata:
                         if expectedKey in taskMetadata[name]:
                             metadataStats[key] = taskMetadata[name][expectedKey]
         return metadataStats
