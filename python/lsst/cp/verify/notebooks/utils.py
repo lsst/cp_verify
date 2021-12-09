@@ -97,7 +97,11 @@ def failureTable(stats):
             fails = stats[exposure]['FAILURES']
             table[exposure] = {}
             for fail in fails:
-                detector, amp, test = fail.split(" ")
+                failureInfo = fail.split(" ")
+                if len(failureInfo) == 3:
+                    detector, _, test = failureInfo
+                elif len(failureInfo) == 2:
+                    detector, test = failureInfo
                 tests.add(test)
                 if detector in table[exposure]:
                     if test in table[exposure][detector]:

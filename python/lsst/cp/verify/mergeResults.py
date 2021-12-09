@@ -24,7 +24,9 @@ import lsst.pex.config as pexConfig
 
 
 __all__ = ['CpVerifyExpMergeConfig', 'CpVerifyExpMergeTask',
-           'CpVerifyRunMergeConfig', 'CpVerifyRunMergeTask']
+           'CpVerifyRunMergeConfig', 'CpVerifyRunMergeTask',
+           'CpVerifyVisitExpMergeConfig', 'CpVerifyVisitExpMergeTask',
+           'CpVerifyVisitRunMergeConfig', 'CpVerifyVisitRunMergeTask']
 
 
 class CpVerifyExpMergeConnections(pipeBase.PipelineTaskConnections,
@@ -305,7 +307,10 @@ class CpVerifyRunMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         outputStats = {}
         success = True
         for expStats, dimensions in zip(inputStats, inputDims):
-            expId = dimensions['exposure']
+            expId = dimensions.get('exposure', dimensions.get('visit', None))
+            if expId is None:
+                raise RuntimeError("Could not identify the exposure from %s", dimensions)
+
             calcStats = {}
 
             expSuccess = expStats.pop('SUCCESS')
@@ -359,3 +364,76 @@ class CpVerifyRunMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
 
         """
         raise NotImplementedError("Subclasses must implement verification criteria.")
+
+
+class CpVerifyVisitExpMergeConnections(pipeBase.PipelineTaskConnections,
+                                       dimensions={"instrument", "visit"},
+                                       defaultTemplates={}):
+    inputStats = cT.Input(
+        name="detectorStats",
+        doc="Input statistics to merge.",
+        storageClass="StructuredDataDict",
+        dimensions=["instrument", "visit", "detector"],
+        multiple=True,
+    )
+    camera = cT.PrerequisiteInput(
+        name="camera",
+        storageClass="Camera",
+        doc="Input camera.",
+        dimensions=["instrument", ],
+        isCalibration=True,
+    )
+
+    outputStats = cT.Output(
+        name="exposureStats",
+        doc="Output statistics.",
+        storageClass="StructuredDataDict",
+        dimensions=["instrument", "visit"],
+    )
+
+
+class CpVerifyVisitExpMergeConfig(CpVerifyExpMergeConfig,
+                                  pipelineConnections=CpVerifyVisitExpMergeConnections):
+    pass
+
+
+class CpVerifyVisitExpMergeTask(CpVerifyExpMergeTask):
+    """Merge visit based data."""
+
+    ConfigClass = CpVerifyVisitExpMergeConfig
+    _DefaultName = 'cpVerifyVisitExpMerge'
+
+    pass
+
+
+class CpVerifyVisitRunMergeConnections(pipeBase.PipelineTaskConnections,
+                                       dimensions={"instrument"},
+                                       defaultTemplates={}):
+    inputStats = cT.Input(
+        name="exposureStats",
+        doc="Input statistics to merge.",
+        storageClass="StructuredDataDict",
+        dimensions=["instrument", "visit"],
+        multiple=True,
+    )
+
+    outputStats = cT.Output(
+        name="runStats",
+        doc="Output statistics.",
+        storageClass="StructuredDataDict",
+        dimensions=["instrument"],
+    )
+
+
+class CpVerifyVisitRunMergeConfig(CpVerifyRunMergeConfig,
+                                  pipelineConnections=CpVerifyVisitRunMergeConnections):
+    pass
+
+
+class CpVerifyVisitRunMergeTask(CpVerifyRunMergeTask):
+    """Merge visit based data."""
+
+    ConfigClass = CpVerifyVisitRunMergeConfig
+    _DefaultName = 'cpVerifyVisitRunMerge'
+
+    pass

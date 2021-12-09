@@ -51,6 +51,18 @@ class CpVerifyStatsConnections(pipeBase.PipelineTaskConnections,
         storageClass="PropertySet",
         dimensions=["instrument", "exposure", "detector"],
     )
+    inputCatalog = cT.Input(
+        name="src",
+        doc="Input catalog to calculate statistics for.",
+        storageClass="SourceCatalog",
+        dimensions=["instrument", "visit", "detector"],
+    )
+    uncorrectedCatalog = cT.Input(
+        name="uncorrectedSrc",
+        doc="Input catalog without correction applied.",
+        storageClass="SourceCatalog",
+        dimensions=["instrument", "visit", "detector"],
+    )
     camera = cT.PrerequisiteInput(
         name="camera",
         storageClass="Camera",
@@ -195,7 +207,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         super().__init__(**kwargs)
         self.makeSubtask("repair")
 
-    def run(self, inputExp, camera, taskMetadata=None):
+    def run(self, inputExp, camera, taskMetadata=None, inputCatalog=None, uncorrectedCatalog=None):
         """Calculate quality statistics and verify they meet the requirements
         for a calibration.
 
@@ -203,10 +215,14 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         ----------
         inputExp : `lsst.afw.image.Exposure`
             The ISR processed exposure to be measured.
-        taskMetadata : `lsst.daf.base.PropertySet`, optional
-            Task metadata containing additional statistics.
         camera : `lsst.afw.cameraGeom.Camera`
              The camera geometry for ``inputExp``.
+        taskMetadata : `lsst.daf.base.PropertySet`, optional
+            Task metadata containing additional statistics.
+        inputCatalog : `lsst.afw.image.Table`
+            The source catalog to measure.
+        uncorrectedCatalog : `lsst.afw.image.Table`
+            The alternate source catalog to measure.
 
         Returns
         -------
@@ -269,7 +285,8 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
             outputStats['METADATA'] = {}
 
         if len(self.config.catalogStatKeywords):
-            outputStats['CATALOG'] = self.catalogStatistics(inputExp, statControl)
+            outputStats['CATALOG'] = self.catalogStatistics(inputExp, inputCatalog, uncorrectedCatalog,
+                                                            statControl)
         else:
             outputStats['CATALOG'] = {}
         if len(self.config.detectorStatKeywords):
@@ -557,13 +574,17 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
                                    statControl, failAll=failAll)
 
     # Methods that need to be implemented by the calibration-level subclasses.
-    def catalogStatistics(self, exposure, statControl):
+    def catalogStatistics(self, exposure, catalog, uncorrectedCatalog, statControl):
         """Calculate statistics from a catalog.
 
         Parameters
         ----------
         exposure : `lsst.afw.image.Exposure`
             The exposure to measure.
+        catalog : `lsst.afw.table.Table`
+            The catalog to measure.
+        uncorrectedCatalog : `lsst.afw.table.Table`
+            The alternate catalog to measure.
         statControl : `lsst.afw.math.StatisticsControl`
             Statistics control object with parameters defined by
             the config.
