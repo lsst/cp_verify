@@ -84,6 +84,10 @@ class CpVerifyStatsConnections(pipeBase.PipelineTaskConnections,
         if len(config.metadataStatKeywords) < 1:
             self.inputs.discard('taskMetadata')
 
+        if len(config.catalogStatKeywords) < 1:
+            self.inputs.discard('inputCatalog')
+            self.inputs.discard('uncorrectedCatalog')
+
 
 class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
                           pipelineConnections=CpVerifyStatsConnections):
