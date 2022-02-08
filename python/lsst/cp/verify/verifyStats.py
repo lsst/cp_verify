@@ -221,7 +221,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
             The ISR processed exposure to be measured.
         camera : `lsst.afw.cameraGeom.Camera`
              The camera geometry for ``inputExp``.
-        taskMetadata : `lsst.daf.base.TaskMetadata`, optional
+        taskMetadata : `lsst.pipe.base.TaskMetadata`, optional
             Task metadata containing additional statistics.
         inputCatalog : `lsst.afw.image.Table`
             The source catalog to measure.
@@ -410,7 +410,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         ----------
         exposure : `lsst.afw.image.Exposure`
             The exposure to measure.
-        taskMetadata : `lsst.daf.base.TaskMetadata`
+        taskMetadata : `lsst.pipe.base.TaskMetadata`
             The metadata to extract values from.
 
         Returns
