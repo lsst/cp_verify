@@ -36,13 +36,6 @@ class CpVerifyCalibConnections(pipeBase.PipelineTaskConnections,
         dimensions=["instrument", "detector"],
         isCalibration=True
     )
-    camera = cT.PrerequisiteInput(
-        name="camera",
-        storageClass="Camera",
-        doc="Input camera.",
-        dimensions=["instrument", ],
-        isCalibration=True,
-    )
 
     outputStats = cT.Output(
         name="calibStats",
@@ -93,7 +86,7 @@ class CpVerifyCalibTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
     ConfigClass = CpVerifyCalibConfig
     _DefaultName = 'cpVerifyCalib'
 
-    def run(self, inputCalib, camera):
+    def run(self, inputCalib):
         """Calculate quality statistics and verify they meet the requirements
         for a calibration.
 
@@ -101,8 +94,6 @@ class CpVerifyCalibTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         ----------
         inputCalib : `lsst.ip.isr.IsrCalib`
             The calibration to be measured.
-        camera : `lsst.afw.cameraGeom.Camera`
-             The camera geometry.
 
         Returns
         -------

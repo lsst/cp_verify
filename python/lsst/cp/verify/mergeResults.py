@@ -452,19 +452,12 @@ class CpVerifyCalibMergeConnections(pipeBase.PipelineTaskConnections,
         dimensions=["instrument", "detector"],
         multiple=True,
     )
-    camera = cT.PrerequisiteInput(
-        name="camera",
-        storageClass="Camera",
-        doc="Input camera.",
-        dimensions=["instrument", ],
-        isCalibration=True,
-    )
 
     outputStats = cT.Output(
         name="exposureStats",
         doc="Output statistics.",
         storageClass="StructuredDataDict",
-        dimensions=["instrument", "visit"],
+        dimensions=["instrument"],
     )
 
 
@@ -496,15 +489,13 @@ class CpVerifyCalibMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         outputs = self.run(**inputs)
         butlerQC.put(outputs, outputRefs)
 
-    def run(self, inputStats, camera, inputDims):
+    def run(self, inputStats, inputDims):
         """Merge statistics.
 
         Parameters
         ----------
         inputStats : `list` [`dict`]
             Measured statistics for a detector.
-        camera : `lsst.afw.cameraGeom.Camera`
-            The camera geometry for this exposure.
         inputDims : `list` [`dict`]
             List of dictionaries of input data dimensions/values.
             Each list entry should contain:
@@ -534,7 +525,7 @@ class CpVerifyCalibMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         success = True
         for detStats, dimensions in zip(inputStats, inputDims):
             detId = dimensions['detector']
-            detName = camera[detId].getName()
+            detName = f"Detector {detId}"
             calcStats = {}
 
             detSuccess = detStats.pop('SUCCESS')
