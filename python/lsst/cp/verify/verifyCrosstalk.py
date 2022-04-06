@@ -68,8 +68,7 @@ class CpVerifyCrosstalkTask(CpVerifyCalibTask):
             A dictionary of the statistics measured and their values.
         """
         outputStatistics = {}
-
-        outputStatistics['N_VALID'] = int(np.sum(np.logical_not(inputCalib.coeffValid)))
+        outputStatistics['N_VALID'] = int(np.sum(inputCalib.coeffValid))
         outputStatistics['N_AMP'] = inputCalib.nAmp
 
         return outputStatistics
@@ -100,7 +99,7 @@ class CpVerifyCrosstalkTask(CpVerifyCalibTask):
         success = True
         verifyStats['NO_SIGNIFICANT_DETECTION'] = True
 
-        if detectorStats['N_VALID'] < detectorStats['N_AMP']**2:
+        if detectorStats['N_VALID'] > 0:
             verifyStats['NO_SIGNIFICANT_DETECTION'] = False
             success = False
 
