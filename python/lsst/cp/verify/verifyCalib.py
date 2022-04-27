@@ -105,36 +105,20 @@ class CpVerifyCalibTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         Notes
         -----
         The outputStats should have a yaml representation of the form
+        (with STAT and TEST being the appropriate statistic and test
+        names)
 
-        AMP:
-          Amp1:
-            STAT: value
-            STAT2: value2
-          Amp2:
-          Amp3:
         DET:
           STAT: value
           STAT2: value
-        CATALOG:
-          STAT: value
-          STAT2: value
         VERIFY:
-          DET:
-            TEST: boolean
-          CATALOG:
-            TEST: boolean
-          AMP:
-            Amp1:
-              TEST: boolean
-              TEST2: boolean
-            Amp2:
-            Amp3:
+          TEST: boolean
         SUCCESS: boolean
 
         """
         outputStats = {}
 
-        outputStats['DETECTOR'] = self.detectorStatistics(inputCalib)
+        outputStats['DET'] = self.detectorStatistics(inputCalib)
         outputStats['VERIFY'], outputStats['SUCCESS'] = self.verify(inputCalib, outputStats)
 
         return pipeBase.Struct(

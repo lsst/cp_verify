@@ -95,7 +95,7 @@ class CpVerifyCrosstalkTask(CpVerifyCalibTask):
             A boolean indicating whether all tests have passed.
         """
         verifyStats = {}
-        detectorStats = statisticsDict['DETECTOR']
+        detectorStats = statisticsDict['DET']
         success = True
         verifyStats['NO_SIGNIFICANT_DETECTION'] = True
 
