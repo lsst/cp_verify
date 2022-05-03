@@ -146,9 +146,11 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
                 success = False
                 # See if the detector failed
                 if 'DET' in detStats['VERIFY']:
-                    for testName, testResult in detStats['VERIFY']['DET'].items():
-                        if testResult is False:
-                            calcStats['FAILURES'].append(testName)
+                    detSuccess = detStats['VERIFY']['DET'].pop('SUCCESS', False)
+                    if not detSuccess:
+                        for testName, testResult in detStats['VERIFY']['DET'].items():
+                            if testResult is False:
+                                calcStats['FAILURES'].append(testName)
                 # See if the catalog failed
                 if 'CATALOG' in detStats['VERIFY']:
                     for testName, testResult in detStats['VERIFY']['CATALOG'].items():
