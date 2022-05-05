@@ -300,12 +300,12 @@ class CpVerifyRunMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
 
         VERIFY:
           ExposureId1:
-            VERIFY_MEAN: boolean
-            VERIFY_SIGMA: boolean
+            VERIFY_TEST1: boolean
+            VERIFY_TEST2: boolean
           ExposureId2:
             [...]
-          MEAN_UNIMODAL: boolean
-          SIGMA_UNIMODAL: boolean
+          TEST_VALUE: boolean
+          TEST_VALUE2: boolean
         """
         outputStats = {}
         success = True
@@ -512,14 +512,10 @@ class CpVerifyCalibMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
         -----
         The outputStats should have a yaml representation as follows.
 
-        VERIFY:
-          DetectorId1:
-            VERIFY_MEAN: boolean
-            VERIFY_SIGMA: boolean
-          DetectorId2:
-            [...]
-          MEAN_UNIMODAL: boolean
-          SIGMA_UNIMODAL: boolean
+        Detector detId:
+          FAILURES:
+          - Detector detId TEST_NAME
+        SUCCESS: boolean
         """
         outputStats = {}
         success = True
