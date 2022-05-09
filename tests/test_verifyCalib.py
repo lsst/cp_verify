@@ -47,8 +47,8 @@ class VerifyCrosstalkTestCase(lsst.utils.tests.TestCase):
         results = task.run(crosstalk)
         crosstalkStats = results.outputStats
 
-        self.assertEqual(crosstalkStats['DETECTOR']['N_AMP'], crosstalk.nAmp)
-        self.assertEqual(crosstalkStats['DETECTOR']['N_VALID'], 2)
+        self.assertEqual(crosstalkStats['DET']['N_AMP'], crosstalk.nAmp)
+        self.assertEqual(crosstalkStats['DET']['N_VALID'], 2)
 
         self.assertFalse(crosstalkStats['SUCCESS'])
         self.assertFalse(crosstalkStats['VERIFY']['NO_SIGNIFICANT_DETECTION'])
@@ -68,8 +68,8 @@ class VerifyCrosstalkTestCase(lsst.utils.tests.TestCase):
         results = task.run(crosstalk)
         crosstalkStats = results.outputStats
 
-        self.assertEqual(crosstalkStats['DETECTOR']['N_AMP'], crosstalk.nAmp)
-        self.assertEqual(crosstalkStats['DETECTOR']['N_VALID'], 0)
+        self.assertEqual(crosstalkStats['DET']['N_AMP'], crosstalk.nAmp)
+        self.assertEqual(crosstalkStats['DET']['N_VALID'], 0)
 
         self.assertTrue(crosstalkStats['SUCCESS'])
         self.assertTrue(crosstalkStats['VERIFY']['NO_SIGNIFICANT_DETECTION'])
