@@ -21,9 +21,11 @@
 
 from .version import *
 from .verifyStats import *
+from .verifyCalib import *
 from .mergeResults import *
 
 from .verifyBias import *
 from .verifyDefects import *
 from .verifyDark import *
 from .verifyFlat import *
+from .verifyCrosstalk import *
