@@ -22,6 +22,7 @@ import lsst.pex.config as pexConfig
 import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
 
+from ._lookupStaticCalibration import lookupStaticCalibration
 
 __all__ = ['CpVerifyCalibConfig', 'CpVerifyCalibTask']
 
@@ -35,6 +36,15 @@ class CpVerifyCalibConnections(pipeBase.PipelineTaskConnections,
         storageClass="IsrCalib",
         dimensions=["instrument", "detector"],
         isCalibration=True
+    )
+
+    camera = cT.PrerequisiteInput(
+        name="camera",
+        doc="Input camera to use for gain lookup.",
+        storageClass="Camera",
+        dimensions=("instrument",),
+        lookupFunction=lookupStaticCalibration,
+        isCalibration=True,
     )
 
     outputStats = cT.Output(
@@ -111,6 +121,9 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         DET:
           STAT: value
           STAT2: value
+        AMP:
+          STAT: value
+          STAT2: value
         VERIFY:
           TEST: boolean
         SUCCESS: boolean
@@ -119,6 +132,7 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         outputStats = {}
 
         outputStats['DET'] = self.detectorStatistics(inputCalib)
+        outputStats['AMP'] = self.amplifierStatistics(inputCalib)
         outputStats['VERIFY'], outputStats['SUCCESS'] = self.verify(inputCalib, outputStats)
 
         return pipeBase.Struct(
