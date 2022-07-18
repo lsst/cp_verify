@@ -22,7 +22,7 @@ import lsst.pex.config as pexConfig
 import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
 
-from ._lookupStaticCalibration import lookupStaticCalibration
+from lsst.cp.pipe._lookupStaticCalibration import lookupStaticCalibration
 
 __all__ = ['CpVerifyCalibConfig', 'CpVerifyCalibTask']
 
