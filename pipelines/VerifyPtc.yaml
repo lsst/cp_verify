@@ -1,21 +1,5 @@
 description: cp_verify Photon Transfer Curve calibration verification
 tasks:
-  verifyPtcApply:
-    class: lsst.ip.isr.isrTask.IsrTask
-    config:
-      connections.ccdExposure: 'raw'
-      connections.outputExposure: 'verifyPtcProc'
-      connections.ptc: 'ptc'
-  verifyPtcExtract:
-    class: lsst.cp.pipe.ptc.PhotonTransferCurveExtractTask
-    config:
-      connections.inputExp: 'verifyPtcProc'
-      connections.outputCovariances: 'verifyPtcCovariances'
-  verifyPtcSolve:
-    class: lsst.cp.pipe.ptc.PhotonTransferCurveSolveTask
-    config:
-      connections.inputCovariances: 'verifyPtcCovariances'
-      connections.outputPtcDataset: 'verifyPtc'
   verifyPtcCalib:
     class: lsst.cp.verify.verifyPtc.CpVerifyPtcTask
     config:
