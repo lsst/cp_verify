@@ -22,7 +22,7 @@ import numpy as np
 
 import lsst.pipe.base.connectionTypes as cT
 from .verifyCalib import CpVerifyCalibConfig, CpVerifyCalibTask, CpVerifyCalibConnections
-
+from lsst.cp.pipe._lookupStaticCalibration import lookupStaticCalibration
 
 __all__ = ['CpVerifyPtcConnections', 'CpVerifyPtcConfig', 'CpVerifyPtcTask']
 
