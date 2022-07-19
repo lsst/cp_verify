@@ -22,7 +22,6 @@ import numpy as np
 
 import lsst.pipe.base.connectionTypes as cT
 from .verifyCalib import CpVerifyCalibConfig, CpVerifyCalibTask, CpVerifyCalibConnections
-from lsst.cp.pipe._lookupStaticCalibration import lookupStaticCalibration
 
 __all__ = ['CpVerifyPtcConnections', 'CpVerifyPtcConfig', 'CpVerifyPtcTask']
 
@@ -45,7 +44,6 @@ class CpVerifyPtcConfig(CpVerifyCalibConfig,
 
     def setDefaults(self):
         super().setDefaults()
-        #self.calibStatKeywords = {'GAIN': ''}  # noqa F841
 
 
 class CpVerifyPtcTask(CpVerifyCalibTask):
@@ -67,13 +65,9 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
         outputStatistics : `dict` [`str`, scalar]
             A dictionary of the statistics measured and their values.
         """
-        outputStatistics = {}
-        outputStatistics['GAIN'] = True
-        outputStatistics['NOISE'] = True
+        return {}
 
-        return outputStatistics
-
-    def amplifierStatistics(self, inputCalib, camera):
+    def amplifierStatistics(self, inputCalib):
         """Calculate detector level statistics from the calibration.
 
         Parameters
@@ -86,23 +80,9 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
         outputStatistics : `dict` [`str`, scalar]
             A dictionary of the statistics measured and their values.
         """
-        outputStatistics = {'GAIN', 'NOISE', 'PTC_TURNOFF'}
-        ampNames = inputCalib.ampNames
-        outputStatistics['GAIN'] = {ampName: True for ampName in ampNames}
-        outputStatistics['NOISE'] = {ampName: True for ampName in ampNames}
-        outputStatistics['PTC_TURNOFF'] = {ampName: True for ampName in ampNames}
+        return {}
 
-        for amp in camera[0]:
-            ampName = amp.getName()
-            testGain = np.abs(inputCalib.gain[ampName] - amp.getGain()) / amp.getGain()
-            testNoise = np.abs(inputCalib.noise[ampName] - amp.getReadNoise()) / amp.getReadNoise()
-
-            outputStatistics['GAIN'][ampName] = bool(testGain < 0.05)
-            outputStatistics['NOISE'][ampName] = bool(testNoise < 0.05)
-            outputStatistics['PTC_TURNOFF'][ampName] = bool(amp.getSaturation > 90000)
-        return outputStatistics
-
-    def verify(self, calib, statisticsDict):
+    def verify(self, calib, statisticsDict, camera=None):
         """Verify that the calibration meets the verification criteria.
 
         Parameters
@@ -114,6 +94,8 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             should have keys that are statistic names (`str`) with
             values that are some sort of scalar (`int` or `float` are
             the mostly likely types).
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera to get detectors from.
 
         Returns
         -------
@@ -124,12 +106,23 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             A boolean indicating whether all tests have passed.
         """
         verifyStats = {}
-        detectorStats = statisticsDict['DET']
-        success = True
-        verifyStats['NO_SIGNIFICANT_DETECTION'] = True
+        detId = calib.getMetadata().toDict()['DETECTOR']
+        detector = camera[detId]
 
-        if detectorStats['N_VALID'] > 0:
-            verifyStats['NO_SIGNIFICANT_DETECTION'] = False
-            success = False
+        for amp in detector:
+            verify = {}
+            ampName = amp.getName()
+            testGain = np.abs(calib.gain[ampName] - amp.getGain()) / amp.getGain()
+            testNoise = np.abs(calib.noise[ampName] - amp.getReadNoise()) / amp.getReadNoise()
 
-        return verifyStats, success
+            verify['GAIN'] = bool(testGain < 0.05)
+            verify['NOISE'] = bool(testNoise < 0.05)
+            verify['PTC_TURNOFF'] = bool(amp.getSaturation > 90000)
+
+            verify['SUCCESS'] = bool(np.all(list(verify.values())))
+            if verify['SUCCESS'] is False:
+                success = False
+
+            verifyStats[ampName] = verify
+
+        return {'AMP': verifyStats}, bool(success)

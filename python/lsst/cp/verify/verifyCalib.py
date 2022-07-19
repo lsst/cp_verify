@@ -96,7 +96,24 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
     ConfigClass = CpVerifyCalibConfig
     _DefaultName = 'cpVerifyCalib'
 
-    def run(self, inputCalib):
+    def runQuantum(self, butlerQC, inputRefs, outputRefs):
+        """Ensure that the input and output dimensions are passed along.
+
+        Parameters
+        ----------
+        butlerQC : `~lsst.daf.butler.butlerQuantumContext.ButlerQuantumContext`
+            Butler to operate on.
+        inputRefs : `~lsst.pipe.base.connections.InputQuantizedConnection`
+            Input data refs to load.
+        ouptutRefs : `~lsst.pipe.base.connections.OutputQuantizedConnection`
+            Output data refs to persist.
+        """
+
+        inputs = butlerQC.get(inputRefs)
+        outputs = self.run(inputCalib=inputs['inputCalib'], camera=inputs['camera'])
+        butlerQC.put(outputs, outputRefs)
+
+    def run(self, inputCalib, camera=None):
         """Calculate quality statistics and verify they meet the requirements
         for a calibration.
 
@@ -104,7 +121,8 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         ----------
         inputCalib : `lsst.ip.isr.IsrCalib`
             The calibration to be measured.
-
+         camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera.
         Returns
         -------
         result : `lsst.pipe.base.Struct`
@@ -130,10 +148,9 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
 
         """
         outputStats = {}
-
         outputStats['DET'] = self.detectorStatistics(inputCalib)
         outputStats['AMP'] = self.amplifierStatistics(inputCalib)
-        outputStats['VERIFY'], outputStats['SUCCESS'] = self.verify(inputCalib, outputStats)
+        outputStats['VERIFY'], outputStats['SUCCESS'] = self.verify(inputCalib, outputStats, camera=camera)
 
         return pipeBase.Struct(
             outputStats=outputStats,
@@ -182,7 +199,7 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         """
         raise NotImplementedError("Subclasses must implement amplifier statistics method.")
 
-    def verify(self, inputCalib, statisticsDict):
+    def verify(self, inputCalib, statisticsDict, camera=None):
         """Verify that the measured calibration meet the verification criteria.
 
         Parameters
