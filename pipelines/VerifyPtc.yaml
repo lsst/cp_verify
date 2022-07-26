@@ -3,7 +3,7 @@ tasks:
   verifyPtcCalib:
     class: lsst.cp.verify.verifyPtc.CpVerifyPtcTask
     config:
-      connections.inputCalib: 'verifyPtc'
+      connections.inputCalib: 'ptc'
       connections.outputStats: 'verifyPtcDetStats'
   verifyPtc:
     class: lsst.cp.verify.CpVerifyCalibMergeTask
