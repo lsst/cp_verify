@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
+import lsst.pex.config as pexConfig
 
 import lsst.pipe.base.connectionTypes as cT
 from .verifyCalib import CpVerifyCalibConfig, CpVerifyCalibTask, CpVerifyCalibConnections
@@ -44,6 +45,50 @@ class CpVerifyPtcConfig(CpVerifyCalibConfig,
 
     def setDefaults(self):
         super().setDefaults()
+
+    gainThreshold = pexConfig.Field(
+        dtype=float,
+        doc="Maximum percentage difference between PTC gain and nominal amplifier gain.",
+        default=5.0,
+    )
+
+    noiseThreshold = pexConfig.Field(
+        dtype=float,
+        doc="Maximum percentage difference between PTC readout noise and nominal "
+            "amplifier readout noise.",
+        default=5.0,
+    )
+
+    turnoffThreshold = pexConfig.Field(
+        dtype=float,
+        doc="Minimun full well requirement (in electrons). To be compared with the "
+            "reported PTC turnoff per amplifier.",
+        default=90000,
+    )
+
+    a00MinITL = pexConfig.Field(
+        dtype=float,
+        doc="Minimum a00 (c.f., Astier+19) for ITL CCDs.",
+        default=-4.56e-6,
+    )
+
+    a00MaxITL = pexConfig.Field(
+        dtype=float,
+        doc="Maximum a00 (c.f., Astier+19) for ITL CCDs.",
+        default=6.91e-7,
+    )
+
+    a00MinE2V = pexConfig.Field(
+        dtype=float,
+        doc="Minimum a00 (c.f., Astier+19) for E2V CCDs.",
+        default=-3.52e-6,
+    )
+
+    a00MaxE2V = pexConfig.Field(
+        dtype=float,
+        doc="Maximum a00 (c.f., Astier+19) for E2V CCDs.",
+        default=-2.61e-6,
+    )
 
 
 class CpVerifyPtcTask(CpVerifyCalibTask):
@@ -106,23 +151,55 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             A boolean indicating whether all tests have passed.
         """
         verifyStats = {}
-        detId = calib.getMetadata().toDict()['DETECTOR']
+        success = True
+        calibMetadata = calib.getMetadata().toDict()
+        detId = calibMetadata['DETECTOR']
         detector = camera[detId]
+        ptcFitType = calibMetadata['PTC_FIT_TYPE']
+        # 'DET_SER' is of the form 'ITL-3800C-229'
+        detVendor = calibMetadata['DET_SER'].split('-')[0]
 
         for amp in detector:
             verify = {}
             ampName = amp.getName()
-            testGain = np.abs(calib.gain[ampName] - amp.getGain()) / amp.getGain()
-            testNoise = np.abs(calib.noise[ampName] - amp.getReadNoise()) / amp.getReadNoise()
+            diffGain = np.abs(calib.gain[ampName] - amp.getGain()) / amp.getGain()
+            diffNoise = np.abs(calib.noise[ampName] - amp.getReadNoise()) / amp.getReadNoise()
 
-            verify['GAIN'] = bool(testGain < 0.05)
-            verify['NOISE'] = bool(testNoise < 0.05)
-            verify['PTC_TURNOFF'] = bool(amp.getSaturation > 90000)
+            # The fractional relative difference between the fitted PTC and the
+            # nominal amplifier gain and readout noise values should be less
+            # than a certain threshold (default: 5%).
+            verify['GAIN'] = bool(diffGain < self.config.gainThreshold)
+            verify['NOISE'] = bool(diffNoise < self.config.noiseThreshold)
+
+            # Check that the measured PTC turnoff is at least greater than the
+            # full-well requirement.
+            turnoffCut = self.config.turnoffThreshold
+            verify['PTC_TURNOFF'] = bool(calib.ptcTurnoff[ampName]*calib.gain[ampName] > turnoffCut)
+            # Check the a00 value (brighter-fatter effect).
+            # This is a purely electrostatic parameter that should not change
+            # unless voltages are changed (e.g., parallel, bias voltages).
+            # Check that the fitted a00 parameter is withing a range motivated
+            # by measurements on data (DM-30171).
+            if ptcFitType in ['EXPAPPROXIMATION', 'FULLCOVARIANCE']:
+                # a00 is a fit parameter from these models.
+                if ptcFitType == 'EXPAPPROXIMATION':
+                    a00 = calib.ptcFitPars[ampName][0]
+                else:
+                    a00 = calib.aMatrix[ampName][0][0]
+                if detVendor == 'ITL':
+                    a00Max = self.config.a00MaxITL
+                    a00Min = self.config.a00MinITL
+                    verify['BFE_A00'] = bool(a00 > a00Min and a00 < a00Max)
+                elif detVendor == 'E2V':
+                    a00Max = self.config.a00MaxE2V
+                    a00Min = self.config.a00MinE2V
+                    verify['BFE_A00'] = bool(a00 > a00Min and a00 < a00Max)
+                else:
+                    raise RuntimeError(f"Detector type {detVendor} not one of 'ITL' or 'E2V'")
 
             verify['SUCCESS'] = bool(np.all(list(verify.values())))
             if verify['SUCCESS'] is False:
                 success = False
 
             verifyStats[ampName] = verify
-
         return {'AMP': verifyStats}, bool(success)

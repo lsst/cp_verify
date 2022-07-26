@@ -121,7 +121,7 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         ----------
         inputCalib : `lsst.ip.isr.IsrCalib`
             The calibration to be measured.
-         camera : `lsst.afw.cameraGeom.Camera`, optional
+        camera : `lsst.afw.cameraGeom.Camera`, optional
             Input camera.
         Returns
         -------
