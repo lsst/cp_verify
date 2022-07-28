@@ -172,14 +172,14 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             verify['NOISE'] = bool(diffNoise < self.config.noiseThreshold)
 
             # Check that the measured PTC turnoff is at least greater than the
-            # full-well requirement.
+            # full-well requirement of 90k e-.
             turnoffCut = self.config.turnoffThreshold
             verify['PTC_TURNOFF'] = bool(calib.ptcTurnoff[ampName]*calib.gain[ampName] > turnoffCut)
             # Check the a00 value (brighter-fatter effect).
             # This is a purely electrostatic parameter that should not change
             # unless voltages are changed (e.g., parallel, bias voltages).
-            # Check that the fitted a00 parameter is withing a range motivated
-            # by measurements on data (DM-30171).
+            # Check that the fitted a00 parameter per CCD vendor is within a
+            # range motivated by measurements on data (DM-30171).
             if ptcFitType in ['EXPAPPROXIMATION', 'FULLCOVARIANCE']:
                 # a00 is a fit parameter from these models.
                 if ptcFitType == 'EXPAPPROXIMATION':
@@ -196,10 +196,31 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
                     verify['BFE_A00'] = bool(a00 > a00Min and a00 < a00Max)
                 else:
                     raise RuntimeError(f"Detector type {detVendor} not one of 'ITL' or 'E2V'")
-
+            # Overall success among all tests for this amp.
             verify['SUCCESS'] = bool(np.all(list(verify.values())))
             if verify['SUCCESS'] is False:
                 success = False
 
             verifyStats[ampName] = verify
-        return {'AMP': verifyStats}, bool(success)
+
+        # Loop over amps to make a detector summary.
+        verifyDetStats = {'GAIN': [], 'NOISE': [], 'PTC_TURNOFF': [], 'BFE_A00': []}
+        for amp in verifyStats:
+            for testName in verifyStats[amp]:
+                if testName == 'SUCCESS':
+                    continue
+                verifyDetStats[testName].append(verifyStats[amp][testName])
+
+        # If ptc model did not fit for a00 (e.g., POLYNOMIAL)
+        if not len(verifyDetStats['BFE_A00']):
+            verifyDetStats.pop('BFE_A00')
+
+        # Overwrite verifyDetStats with final boolean test over all amps
+        verifyDetStatsFinal = {}
+        for testName in verifyDetStats:
+            testBool = bool(np.all(list(verifyDetStats[testName])))
+            # Save the tests that failed
+            if not testBool:
+                verifyDetStatsFinal[testName] = bool(np.all(list(verifyDetStats[testName])))
+
+        return verifyDetStatsFinal, bool(success)
