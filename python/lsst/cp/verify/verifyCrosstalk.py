@@ -73,7 +73,7 @@ class CpVerifyCrosstalkTask(CpVerifyCalibTask):
 
         return outputStatistics
 
-    def verify(self, calib, statisticsDict):
+    def verify(self, calib, statisticsDict, **kwargs):
         """Verify that the calibration meets the verification criteria.
 
         Parameters
