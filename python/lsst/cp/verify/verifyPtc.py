@@ -112,21 +112,6 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
         """
         return {}
 
-    def amplifierStatistics(self, inputCalib):
-        """Calculate detector level statistics from the calibration.
-
-        Parameters
-        ----------
-        inputCalib : `lsst.ip.isr.IsrCalib`
-            The calibration to verify.
-
-        Returns
-        -------
-        outputStatistics : `dict` [`str`, scalar]
-            A dictionary of the statistics measured and their values.
-        """
-        return {}
-
     def verify(self, calib, statisticsDict, camera=None):
         """Verify that the calibration meets the verification criteria.
 

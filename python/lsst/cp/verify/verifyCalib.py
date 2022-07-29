@@ -149,7 +149,6 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         """
         outputStats = {}
         outputStats['DET'] = self.detectorStatistics(inputCalib)
-        outputStats['AMP'] = self.amplifierStatistics(inputCalib)
         outputStats['VERIFY'], outputStats['SUCCESS'] = self.verify(inputCalib, outputStats, camera=camera)
 
         return pipeBase.Struct(
@@ -177,27 +176,6 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             subclass.
         """
         raise NotImplementedError("Subclasses must implement detector statistics method.")
-
-    def amplifierStatistics(self, inputCalib):
-        """Calculate amplifier level statistics from the calibration.
-
-        Parameters
-        ----------
-        inputCalib : `lsst.ip.isr.IsrCalib`
-            The calibration to verify.
-
-        Returns
-        -------
-        outputStatistics : `dict` [`str`, scalar]
-            A dictionary of the statistics measured and their values.
-
-        Raises
-        ------
-        NotImplementedError :
-            This method must be implemented by the calibration-type
-            subclass.
-        """
-        raise NotImplementedError("Subclasses must implement amplifier statistics method.")
 
     def verify(self, inputCalib, statisticsDict, camera=None):
         """Verify that the measured calibration meet the verification criteria.
