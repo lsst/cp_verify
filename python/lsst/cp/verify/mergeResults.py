@@ -69,7 +69,7 @@ class CpVerifyExpMergeConfig(pipeBase.PipelineTaskConfig,
     )
 
 
-class CpVerifyExpMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
+class CpVerifyExpMergeTask(pipeBase.PipelineTask):
     """Merge statistics from detectors together.
     """
     ConfigClass = CpVerifyExpMergeConfig
@@ -260,7 +260,7 @@ class CpVerifyRunMergeConfig(pipeBase.PipelineTaskConfig,
     )
 
 
-class CpVerifyRunMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
+class CpVerifyRunMergeTask(pipeBase.PipelineTask):
     """Merge statistics from detectors together.
     """
     ConfigClass = CpVerifyRunMergeConfig
@@ -474,7 +474,7 @@ class CpVerifyCalibMergeConfig(pipeBase.PipelineTaskConfig,
     )
 
 
-class CpVerifyCalibMergeTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
+class CpVerifyCalibMergeTask(pipeBase.PipelineTask):
     """Merge statistics from detectors together.
     """
     ConfigClass = CpVerifyCalibMergeConfig
