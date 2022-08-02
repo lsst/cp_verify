@@ -75,7 +75,7 @@ class CpVerifyCalibConfig(pipeBase.PipelineTaskConfig,
     )
 
 
-class CpVerifyCalibTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
+class CpVerifyCalibTask(pipeBase.PipelineTask):
     """Main statistic measurement and validation class.
 
     This operates on a generic calibration, and is designed to be

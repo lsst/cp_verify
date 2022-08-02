@@ -197,7 +197,7 @@ class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
     )
 
 
-class CpVerifyStatsTask(pipeBase.PipelineTask, pipeBase.CmdLineTask):
+class CpVerifyStatsTask(pipeBase.PipelineTask):
     """Main statistic measurement and validation class.
 
     This operates on a single (exposure, detector) pair, and is
