@@ -150,16 +150,19 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             diffGain = np.abs(calib.gain[ampName] - amp.getGain()) / amp.getGain()
             diffNoise = np.abs(calib.noise[ampName] - amp.getReadNoise()) / amp.getReadNoise()
 
+            # DMTN-101: 16.1 and 16.2
             # The fractional relative difference between the fitted PTC and the
             # nominal amplifier gain and readout noise values should be less
             # than a certain threshold (default: 5%).
             verify['GAIN'] = bool(diffGain < self.config.gainThreshold)
             verify['NOISE'] = bool(diffNoise < self.config.noiseThreshold)
 
+            # DMTN-101: 16.3
             # Check that the measured PTC turnoff is at least greater than the
             # full-well requirement of 90k e-.
             turnoffCut = self.config.turnoffThreshold
             verify['PTC_TURNOFF'] = bool(calib.ptcTurnoff[ampName]*calib.gain[ampName] > turnoffCut)
+            # DMTN-101: 16.4
             # Check the a00 value (brighter-fatter effect).
             # This is a purely electrostatic parameter that should not change
             # unless voltages are changed (e.g., parallel, bias voltages).
