@@ -6,29 +6,29 @@ tasks:
       connections.ccdExposure: 'raw'
       connections.outputExposure: 'verifyDefectProc'
       overscan.fitType: 'MEDIAN_PER_ROW'
-      doWrite: True
-      doOverscan: True
-      doAssembleCcd: True
-      doBias: True
-      doVariance: False
-      doLinearize: False
-      doCrosstalk: False
-      doBrighterFatter: False
-      doDark: False
-      doStrayLight: False
-      doFlat: False
-      doFringe: False
-      doApplyGains: False
-      doDefect: True
-      doSaturationInterpolation: False
+      doWrite: true
+      doOverscan: true
+      doAssembleCcd: true
+      doBias: true
+      doVariance: false
+      doLinearize: false
+      doCrosstalk: false
+      doBrighterFatter: false
+      doDark: false
+      doStrayLight: false
+      doFlat: false
+      doFringe: false
+      doApplyGains: false
+      doDefect: true
+      doSaturationInterpolation: false
       growSaturationFootprintSize: 0
   verifyMeasureStats:
     class: lsst.cp.verify.CpVerifyDefectsTask
     config:
       connections.inputExp: 'verifyDefectProc'
       connections.outputStats: 'verifyDefectDetStats'
-      doVignette: False
-      useReadNoise: False
+      doVignette: false
+      useReadNoise: false
   verifyExposureStats:
     class: lsst.cp.verify.CpVerifyExpMergeTask
     config:
