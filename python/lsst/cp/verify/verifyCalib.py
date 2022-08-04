@@ -96,23 +96,6 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
     ConfigClass = CpVerifyCalibConfig
     _DefaultName = 'cpVerifyCalib'
 
-    def runQuantum(self, butlerQC, inputRefs, outputRefs):
-        """Ensure that the input and output dimensions are passed along.
-
-        Parameters
-        ----------
-        butlerQC : `~lsst.daf.butler.butlerQuantumContext.ButlerQuantumContext`
-            Butler to operate on.
-        inputRefs : `~lsst.pipe.base.connections.InputQuantizedConnection`
-            Input data refs to load.
-        ouptutRefs : `~lsst.pipe.base.connections.OutputQuantizedConnection`
-            Output data refs to persist.
-        """
-
-        inputs = butlerQC.get(inputRefs)
-        outputs = self.run(inputCalib=inputs['inputCalib'], camera=inputs['camera'])
-        butlerQC.put(outputs, outputRefs)
-
     def run(self, inputCalib, camera=None):
         """Calculate quality statistics and verify they meet the requirements
         for a calibration.
