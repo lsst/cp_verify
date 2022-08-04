@@ -106,6 +106,7 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             The calibration to be measured.
         camera : `lsst.afw.cameraGeom.Camera`, optional
             Input camera.
+
         Returns
         -------
         result : `lsst.pipe.base.Struct`
@@ -131,7 +132,8 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
 
         """
         outputStats = {}
-        outputStats['DET'] = self.detectorStatistics(inputCalib)
+        outputStats['AMP'] = self.amplifierStatistics(inputCalib, camera=camera)
+        outputStats['DET'] = self.detectorStatistics(inputCalib, camera=camera)
         outputStats['VERIFY'], outputStats['SUCCESS'] = self.verify(inputCalib, outputStats, camera=camera)
 
         return pipeBase.Struct(
@@ -139,13 +141,38 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         )
 
     # Methods that need to be implemented by the calibration-level subclasses.
-    def detectorStatistics(self, inputCalib):
+    def detectorStatistics(self, inputCalib, camera=None):
         """Calculate detector level statistics from the calibration.
 
         Parameters
         ----------
         inputCalib : `lsst.ip.isr.IsrCalib`
             The calibration to verify.
+
+        Returns
+        -------
+        outputStatistics : `dict` [`str`, scalar]
+            A dictionary of the statistics measured and their values.
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera.
+
+        Raises
+        ------
+        NotImplementedError :
+            This method must be implemented by the calibration-type
+            subclass.
+        """
+        raise NotImplementedError("Subclasses must implement detector statistics method.")
+
+    def amplifierStatistics(self, inputCalib, camera=None):
+        """Calculate amplifier level statistics from the calibration.
+
+        Parameters
+        ----------
+        inputCalib : `lsst.ip.isr.IsrCalib`
+            The calibration to verify.
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera.
 
         Returns
         -------
@@ -158,7 +185,7 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             This method must be implemented by the calibration-type
             subclass.
         """
-        raise NotImplementedError("Subclasses must implement detector statistics method.")
+        raise NotImplementedError("Subclasses must implement amplifier statistics method.")
 
     def verify(self, inputCalib, statisticsDict, camera=None):
         """Verify that the measured calibration meet the verification criteria.
@@ -172,6 +199,8 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             should have keys that are statistic names (`str`) with
             values that are some sort of scalar (`int` or `float` are
             the mostly likely types).
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera.
 
         Returns
         -------

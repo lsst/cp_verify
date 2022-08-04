@@ -97,7 +97,7 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
     ConfigClass = CpVerifyPtcConfig
     _DefaultName = 'cpVerifyPtc'
 
-    def detectorStatistics(self, inputCalib):
+    def detectorStatistics(self, inputCalib, camera=None):
         """Calculate detector level statistics from the calibration.
 
         Parameters
@@ -111,6 +111,38 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             A dictionary of the statistics measured and their values.
         """
         return {}
+
+    def amplifierStatistics(self, inputCalib, camera=None):
+        """Calculate detector level statistics from the calibration.
+
+        Parameters
+        ----------
+        inputCalib : `lsst.ip.isr.IsrCalib`
+            The calibration to verify.
+
+        Returns
+        -------
+        outputStatistics : `dict` [`str`, scalar]
+            A dictionary of the statistics measured and their values.
+        """
+        outputStatistics = {}
+        calibMetadata = inputCalib.getMetadata().toDict()
+        detId = calibMetadata['DETECTOR']
+        detector = camera[detId]
+        ptcFitType = calibMetadata['PTC_FIT_TYPE']
+        for amp in detector:
+            ampName = amp.getName()
+            outputStatistics['PTC_GAIN'] = inputCalib.gain[ampName]
+            outputStatistics['AMP_GAIN'] = amp.getGain()
+            outputStatistics['PTC_NOISE'] = inputCalib.noise[ampName]
+            outputStatistics['AMP_NOISE'] = amp.getReadNoise()
+            outputStatistics['PTC_TURNOFF'] = inputCalib.ptcTurnoff[ampName]
+            if ptcFitType == 'EXPAPPROXIMATION':
+                outputStatistics['PTC_BFE_A00'] = inputCalib.ptcFitPars[ampName][0]
+            if ptcFitType == 'FULLCOVARIANCE':
+                outputStatistics['PTC_BFE_A00'] = inputCalib.aMatrix[ampName][0][0]
+
+        return outputStatistics
 
     def verify(self, calib, statisticsDict, camera=None):
         """Verify that the calibration meets the verification criteria.
@@ -203,7 +235,7 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
         if not len(verifyDetStats['BFE_A00']):
             verifyDetStats.pop('BFE_A00')
 
-        # Overwrite verifyDetStats with final boolean test over all amps
+        # VerifyDetStatsFinal has final boolean test over all amps
         verifyDetStatsFinal = {}
         for testName in verifyDetStats:
             testBool = bool(np.all(list(verifyDetStats[testName])))
