@@ -29,3 +29,4 @@ from .verifyDefects import *
 from .verifyDark import *
 from .verifyFlat import *
 from .verifyCrosstalk import *
+from .verifyPtc import *

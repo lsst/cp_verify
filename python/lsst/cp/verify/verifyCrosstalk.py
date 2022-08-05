@@ -54,13 +54,15 @@ class CpVerifyCrosstalkTask(CpVerifyCalibTask):
     ConfigClass = CpVerifyCrosstalkConfig
     _DefaultName = 'cpVerifyCrosstalk'
 
-    def detectorStatistics(self, inputCalib):
+    def detectorStatistics(self, inputCalib, camera=None):
         """Calculate detector level statistics from the calibration.
 
         Parameters
         ----------
         inputCalib : `lsst.ip.isr.IsrCalib`
             The calibration to verify.
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera.
 
         Returns
         -------
@@ -73,7 +75,25 @@ class CpVerifyCrosstalkTask(CpVerifyCalibTask):
 
         return outputStatistics
 
-    def verify(self, calib, statisticsDict):
+    def amplifierStatistics(self, inputCalib, camera=None):
+        """Calculate amplifier level statistics from the calibration.
+
+        Parameters
+        ----------
+        inputCalib : `lsst.ip.isr.IsrCalib`
+            The calibration to verify.
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera.
+
+        Returns
+        -------
+        outputStatistics : `dict` [`str`, scalar]
+            A dictionary of the statistics measured and their values.
+        """
+
+        pass
+
+    def verify(self, calib, statisticsDict, camera=None):
         """Verify that the calibration meets the verification criteria.
 
         Parameters
@@ -85,6 +105,8 @@ class CpVerifyCrosstalkTask(CpVerifyCalibTask):
             should have keys that are statistic names (`str`) with
             values that are some sort of scalar (`int` or `float` are
             the mostly likely types).
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera.
 
         Returns
         -------

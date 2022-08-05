@@ -22,6 +22,7 @@ import lsst.pex.config as pexConfig
 import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
 
+from lsst.cp.pipe._lookupStaticCalibration import lookupStaticCalibration
 
 __all__ = ['CpVerifyCalibConfig', 'CpVerifyCalibTask']
 
@@ -35,6 +36,15 @@ class CpVerifyCalibConnections(pipeBase.PipelineTaskConnections,
         storageClass="IsrCalib",
         dimensions=["instrument", "detector"],
         isCalibration=True
+    )
+
+    camera = cT.PrerequisiteInput(
+        name="camera",
+        doc="Input camera to use for gain lookup.",
+        storageClass="Camera",
+        dimensions=("instrument",),
+        lookupFunction=lookupStaticCalibration,
+        isCalibration=True,
     )
 
     outputStats = cT.Output(
@@ -86,7 +96,7 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
     ConfigClass = CpVerifyCalibConfig
     _DefaultName = 'cpVerifyCalib'
 
-    def run(self, inputCalib):
+    def run(self, inputCalib, camera=None):
         """Calculate quality statistics and verify they meet the requirements
         for a calibration.
 
@@ -94,6 +104,8 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         ----------
         inputCalib : `lsst.ip.isr.IsrCalib`
             The calibration to be measured.
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera.
 
         Returns
         -------
@@ -111,28 +123,56 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         DET:
           STAT: value
           STAT2: value
+        AMP:
+          STAT: value
+          STAT2: value
         VERIFY:
           TEST: boolean
         SUCCESS: boolean
 
         """
         outputStats = {}
-
-        outputStats['DET'] = self.detectorStatistics(inputCalib)
-        outputStats['VERIFY'], outputStats['SUCCESS'] = self.verify(inputCalib, outputStats)
+        outputStats['AMP'] = self.amplifierStatistics(inputCalib, camera=camera)
+        outputStats['DET'] = self.detectorStatistics(inputCalib, camera=camera)
+        outputStats['VERIFY'], outputStats['SUCCESS'] = self.verify(inputCalib, outputStats, camera=camera)
 
         return pipeBase.Struct(
             outputStats=outputStats,
         )
 
     # Methods that need to be implemented by the calibration-level subclasses.
-    def detectorStatistics(self, inputCalib):
+    def detectorStatistics(self, inputCalib, camera=None):
         """Calculate detector level statistics from the calibration.
 
         Parameters
         ----------
         inputCalib : `lsst.ip.isr.IsrCalib`
             The calibration to verify.
+
+        Returns
+        -------
+        outputStatistics : `dict` [`str`, scalar]
+            A dictionary of the statistics measured and their values.
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera.
+
+        Raises
+        ------
+        NotImplementedError :
+            This method must be implemented by the calibration-type
+            subclass.
+        """
+        raise NotImplementedError("Subclasses must implement detector statistics method.")
+
+    def amplifierStatistics(self, inputCalib, camera=None):
+        """Calculate amplifier level statistics from the calibration.
+
+        Parameters
+        ----------
+        inputCalib : `lsst.ip.isr.IsrCalib`
+            The calibration to verify.
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera.
 
         Returns
         -------
@@ -145,9 +185,9 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             This method must be implemented by the calibration-type
             subclass.
         """
-        raise NotImplementedError("Subclasses must implement detector statistics method.")
+        raise NotImplementedError("Subclasses must implement amplifier statistics method.")
 
-    def verify(self, inputCalib, statisticsDict):
+    def verify(self, inputCalib, statisticsDict, camera=None):
         """Verify that the measured calibration meet the verification criteria.
 
         Parameters
@@ -159,6 +199,8 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             should have keys that are statistic names (`str`) with
             values that are some sort of scalar (`int` or `float` are
             the mostly likely types).
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera.
 
         Returns
         -------

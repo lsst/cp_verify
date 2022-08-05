@@ -1,0 +1,12 @@
+description: cp_verify Photon Transfer Curve calibration verification
+tasks:
+  verifyPtcCalib:
+    class: lsst.cp.verify.verifyPtc.CpVerifyPtcTask
+    config:
+      connections.inputCalib: 'ptc'
+      connections.outputStats: 'verifyPtcDetStats'
+  verifyPtc:
+    class: lsst.cp.verify.CpVerifyCalibMergeTask
+    config:
+      connections.inputStats: 'verifyPtcDetStats'
+      connections.outputStats: 'verifyPtcStats'
