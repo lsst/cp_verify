@@ -28,19 +28,28 @@ __all__ = ['CpVerifyGainConnections', 'CpVerifyGainConfig', 'CpVerifyGainTask']
 
 
 class CpVerifyGainConnections(CpVerifyCalibConnections,
-                             dimensions={"instrument", "detector"},
-                             defaultTemplates={}):
+                              dimensions={"instrument", "detector"},
+                              defaultTemplates={}):
+    exposure = cT.Input(
+        name="raw",
+        doc="Exposure ID of first flat from flat pair.",
+        storageClass='Exposure',
+        dimensions=("instrument", "detector", "exposure"),
+        multiple=True,
+        deferLoad=True,
+    )
+
     inputCalib = cT.Input(
         name="calib",
         doc="Input calib to calculate statistics for.",
         storageClass="PhotonTransferCurveDataset",
-        dimensions=["instrument", "detector"],
+        dimensions=("instrument", "detector", "exposure"),
         isCalibration=True
     )
 
 
 class CpVerifyGainConfig(CpVerifyCalibConfig,
-                        pipelineConnections=CpVerifyGainConnections):
+                         pipelineConnections=CpVerifyGainConnections):
     """Inherits from base CpVerifyCalibConfig."""
 
     def setDefaults(self):
@@ -52,14 +61,21 @@ class CpVerifyGainConfig(CpVerifyCalibConfig,
         default=5.0,
     )
 
+    noiseThreshold = pexConfig.Field(
+        dtype=float,
+        doc="Maximum percentage difference between PTC readout noise and nominal "
+            "amplifier readout noise.",
+        default=5.0,
+    )
+
 
 class CpVerifyGainTask(CpVerifyCalibTask):
-    """Gain from flat pairs verification sub-class, implementing the verify method.
+    """Gain from flat pairs verification sub-class. Implements verify method.
     """
     ConfigClass = CpVerifyGainConfig
     _DefaultName = 'cpVerifyGain'
 
-    def detectorStatistics(self, inputCalib, camera=None):
+    def detectorStatistics(self, inputCalib, camera=None, exposure=None):
         """Calculate detector level statistics from the calibration.
 
         Parameters
@@ -74,7 +90,7 @@ class CpVerifyGainTask(CpVerifyCalibTask):
         """
         return {}
 
-    def amplifierStatistics(self, inputCalib, camera=None):
+    def amplifierStatistics(self, inputCalib, camera=None, exposure=None):
         """Calculate detector level statistics from the calibration.
 
         Parameters
@@ -93,14 +109,14 @@ class CpVerifyGainTask(CpVerifyCalibTask):
         detector = camera[detId]
         for amp in detector:
             ampName = amp.getName()
-            outputStatistics['GAIN_FROM_FLAT_PAIRS'] = inputCalib.gain[ampName]
+            outputStatistics['GAIN_FROM_FLAT_PAIR'] = inputCalib.gain[ampName]
             outputStatistics['AMP_GAIN'] = amp.getGain()
             outputStatistics['ISR_NOISE'] = inputCalib.noise[ampName]
             outputStatistics['AMP_NOISE'] = amp.getReadNoise()
 
         return outputStatistics
 
-    def verify(self, calib, statisticsDict, camera=None):
+    def verify(self, calib, statisticsDict, camera=None, exposure=None):
         """Verify that the calibration meets the verification criteria.
 
         Parameters
@@ -130,56 +146,27 @@ class CpVerifyGainTask(CpVerifyCalibTask):
         detector = camera[detId]
         # 'DET_SER' is of the form 'ITL-3800C-229'
         detVendor = calibMetadata['DET_SER'].split('-')[0]
-        
-        # Adjust gain for flux
+
+        # Adjust gain estimated from flat pair for flux bias, see DM-35790
         if detVendor == 'ITL':
-            slope = 0.00027 # %/ADU
-        elif detVendor == 'e2V'
-            slope = 0.00046 #%/ADU
+            slope = 0.00027  # %/ADU
+        elif detVendor == 'e2V':
+            slope = 0.00046  # %/ADU
 
         for amp in detector:
             verify = {}
             ampName = amp.getName()
+
             # Gain from a pair of flats, noise from overscan after ISR
-            gain = calib.gain[ampName]/(1 + slope*calib.rawMeans[ampName])
+            correction = (1. - slope*np.array(calib.rawMeans[ampName])/100)
+            gain = correction*calib.gain[ampName]
 
-            diffGain = np.abs(calib.gain[ampName] - amp.getGain()) / amp.getGain()
-            diffNoise = np.abs(calib.noise[ampName] - amp.getReadNoise()) / amp.getReadNoise()
+            diffGain = (np.abs(gain - amp.getGain()) / amp.getGain())*100
+            diffNoise = (np.abs(calib.noise[ampName] - amp.getReadNoise()) / amp.getReadNoise())*100
 
-            # DMTN-101: 16.1 and 16.2
-            # The fractional relative difference between the fitted PTC and the
-            # nominal amplifier gain and readout noise values should be less
-            # than a certain threshold (default: 5%).
-            verify['GAIN'] = bool(diffGain < self.config.gainThreshold)
-            verify['NOISE'] = bool(diffNoise < self.config.noiseThreshold)
+            verify['GAIN_FROM_FLAT_PAIR'] = bool(diffGain < self.config.gainThreshold)
+            verify['ISR_NOISE'] = bool(diffNoise < self.config.noiseThreshold)
 
-            # DMTN-101: 16.3
-            # Check that the measured PTC turnoff is at least greater than the
-            # full-well requirement of 90k e-.
-            turnoffCut = self.config.turnoffThreshold
-            verify['PTC_TURNOFF'] = bool(calib.ptcTurnoff[ampName]*calib.gain[ampName] > turnoffCut)
-            # DMTN-101: 16.4
-            # Check the a00 value (brighter-fatter effect).
-            # This is a purely electrostatic parameter that should not change
-            # unless voltages are changed (e.g., parallel, bias voltages).
-            # Check that the fitted a00 parameter per CCD vendor is within a
-            # range motivated by measurements on data (DM-30171).
-            if ptcFitType in ['EXPAPPROXIMATION', 'FULLCOVARIANCE']:
-                # a00 is a fit parameter from these models.
-                if ptcFitType == 'EXPAPPROXIMATION':
-                    a00 = calib.ptcFitPars[ampName][0]
-                else:
-                    a00 = calib.aMatrix[ampName][0][0]
-                if detVendor == 'ITL':
-                    a00Max = self.config.a00MaxITL
-                    a00Min = self.config.a00MinITL
-                    verify['BFE_A00'] = bool(a00 > a00Min and a00 < a00Max)
-                elif detVendor == 'E2V':
-                    a00Max = self.config.a00MaxE2V
-                    a00Min = self.config.a00MinE2V
-                    verify['BFE_A00'] = bool(a00 > a00Min and a00 < a00Max)
-                else:
-                    raise RuntimeError(f"Detector type {detVendor} not one of 'ITL' or 'E2V'")
             # Overall success among all tests for this amp.
             verify['SUCCESS'] = bool(np.all(list(verify.values())))
             if verify['SUCCESS'] is False:
@@ -188,16 +175,12 @@ class CpVerifyGainTask(CpVerifyCalibTask):
             verifyStats[ampName] = verify
 
         # Loop over amps to make a detector summary.
-        verifyDetStats = {'GAIN': [], 'NOISE': [], 'PTC_TURNOFF': [], 'BFE_A00': []}
+        verifyDetStats = {'GAIN_FROM_FLAT_PAIR': [], 'ISR_NOISE': []}
         for amp in verifyStats:
             for testName in verifyStats[amp]:
                 if testName == 'SUCCESS':
                     continue
                 verifyDetStats[testName].append(verifyStats[amp][testName])
-
-        # If ptc model did not fit for a00 (e.g., POLYNOMIAL)
-        if not len(verifyDetStats['BFE_A00']):
-            verifyDetStats.pop('BFE_A00')
 
         # VerifyDetStatsFinal has final boolean test over all amps
         verifyDetStatsFinal = {}
