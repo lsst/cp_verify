@@ -30,6 +30,16 @@ __all__ = ['CpVerifyCalibConfig', 'CpVerifyCalibTask']
 class CpVerifyCalibConnections(pipeBase.PipelineTaskConnections,
                                dimensions={"instrument", "detector"},
                                defaultTemplates={}):
+
+    exposure = cT.Input(
+        name="raw",
+        doc="Exposure to retreve calibration",
+        storageClass='Exposure',
+        dimensions=("instrument", "detector", "exposure"),
+        multiple=True,
+        deferLoad=True,
+    )
+
     inputCalib = cT.Input(
         name="calib",
         doc="Input calib to calculate statistics for.",
@@ -96,7 +106,7 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
     ConfigClass = CpVerifyCalibConfig
     _DefaultName = 'cpVerifyCalib'
 
-    def run(self, inputCalib, camera=None):
+    def run(self, inputCalib, camera=None, exposure=None):
         """Calculate quality statistics and verify they meet the requirements
         for a calibration.
 
@@ -106,6 +116,9 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             The calibration to be measured.
         camera : `lsst.afw.cameraGeom.Camera`, optional
             Input camera.
+        exposure : `lsst.afw.image.Exposure`, optional
+            Dummy exposure to identify a particular calibration
+            dataset.
 
         Returns
         -------
@@ -141,7 +154,7 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         )
 
     # Methods that need to be implemented by the calibration-level subclasses.
-    def detectorStatistics(self, inputCalib, camera=None):
+    def detectorStatistics(self, inputCalib, camera=None, exposure=None):
         """Calculate detector level statistics from the calibration.
 
         Parameters
@@ -155,6 +168,9 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             A dictionary of the statistics measured and their values.
         camera : `lsst.afw.cameraGeom.Camera`, optional
             Input camera.
+        exposure : `lsst.afw.image.Exposure`, optional
+            Dummy exposure to identify a particular calibration
+            dataset.
 
         Raises
         ------
@@ -164,7 +180,7 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         """
         raise NotImplementedError("Subclasses must implement detector statistics method.")
 
-    def amplifierStatistics(self, inputCalib, camera=None):
+    def amplifierStatistics(self, inputCalib, camera=None, exposure=None):
         """Calculate amplifier level statistics from the calibration.
 
         Parameters
@@ -173,6 +189,9 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             The calibration to verify.
         camera : `lsst.afw.cameraGeom.Camera`, optional
             Input camera.
+        exposure : `lsst.afw.image.Exposure`, optional
+            Dummy exposure to identify a particular calibration
+            dataset.
 
         Returns
         -------
@@ -187,7 +206,7 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         """
         raise NotImplementedError("Subclasses must implement amplifier statistics method.")
 
-    def verify(self, inputCalib, statisticsDict, camera=None):
+    def verify(self, inputCalib, statisticsDict, camera=None, exposure=None):
         """Verify that the measured calibration meet the verification criteria.
 
         Parameters
@@ -201,6 +220,9 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             the mostly likely types).
         camera : `lsst.afw.cameraGeom.Camera`, optional
             Input camera.
+        exposure : `lsst.afw.image.Exposure`, optional
+            Dummy exposure to identify a particular calibration
+            dataset.
 
         Returns
         -------
