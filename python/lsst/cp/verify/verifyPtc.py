@@ -179,8 +179,8 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
         for amp in detector:
             verify = {}
             ampName = amp.getName()
-            diffGain = np.abs(calib.gain[ampName] - amp.getGain()) / amp.getGain()
-            diffNoise = np.abs(calib.noise[ampName] - amp.getReadNoise()) / amp.getReadNoise()
+            diffGain = (np.abs(calib.gain[ampName] - amp.getGain()) / amp.getGain())*100
+            diffNoise = (np.abs(calib.noise[ampName] - amp.getReadNoise()) / amp.getReadNoise())*100
 
             # DMTN-101: 16.1 and 16.2
             # The fractional relative difference between the fitted PTC and the
