@@ -176,6 +176,9 @@ class CpVerifyGainTask(CpVerifyCalibTask):
             diffGain = (np.abs(gain - amp.getGain()) / amp.getGain())*100
             diffNoise = (np.abs(calib.noise[ampName] - amp.getReadNoise()) / amp.getReadNoise())*100
 
+            # DMTN-101: 6.1 and 6.2
+            # Estimate gain from a pair of flats and compare it with the value
+            # in the amplifiers.
             verify['GAIN_FROM_FLAT_PAIR'] = bool(diffGain < self.config.gainThreshold)
             verify['ISR_NOISE'] = bool(diffNoise < self.config.noiseThreshold)
 
