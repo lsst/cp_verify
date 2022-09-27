@@ -63,7 +63,7 @@ class CpVerifyGainConfig(CpVerifyCalibConfig,
 
     noiseThreshold = pexConfig.Field(
         dtype=float,
-        doc="Maximum percentage difference between PTC readout noise and nominal "
+        doc="Maximum percentage difference between overscan readout noise and nominal "
             "amplifier readout noise.",
         default=5.0,
     )
@@ -103,16 +103,28 @@ class CpVerifyGainTask(CpVerifyCalibTask):
         outputStatistics : `dict` [`str`, scalar]
             A dictionary of the statistics measured and their values.
         """
-        outputStatistics = {}
         calibMetadata = inputCalib.getMetadata().toDict()
         detId = calibMetadata['DETECTOR']
         detector = camera[detId]
+        # 'DET_SER' is of the form 'ITL-3800C-229'
+        detVendor = calibMetadata['DET_SER'].split('-')[0]
+        # Adjust gain estimated from flat pair for flux bias, see DM-35790
+        if detVendor == 'ITL':
+            slope = 0.00027  # %/ADU
+        elif detVendor == 'e2V':
+            slope = 0.00046  # %/ADU
+        outputStatistics = {amp.getName(): {} for amp in detector}
+
         for amp in detector:
             ampName = amp.getName()
-            outputStatistics['GAIN_FROM_FLAT_PAIR'] = inputCalib.gain[ampName]
-            outputStatistics['AMP_GAIN'] = amp.getGain()
-            outputStatistics['ISR_NOISE'] = inputCalib.noise[ampName]
-            outputStatistics['AMP_NOISE'] = amp.getReadNoise()
+            # Flux correction to gain-per-flat-pair method, see DM-35790
+            correction = 1. - slope*inputCalib.rawMeans[ampName][0]/100
+            outputStatistics[ampName]['MEAN_FLUX_FLAT_PAIR'] = inputCalib.rawMeans[ampName][0]
+            outputStatistics[ampName]['GAIN_FROM_FLAT_PAIR'] = inputCalib.gain[ampName]
+            outputStatistics[ampName]['GAIN_CORRECTION_FACTOR'] = correction
+            outputStatistics[ampName]['AMP_GAIN'] = amp.getGain()
+            outputStatistics[ampName]['ISR_NOISE'] = inputCalib.noise[ampName]
+            outputStatistics[ampName]['AMP_NOISE'] = amp.getReadNoise()
 
         return outputStatistics
 
@@ -146,7 +158,6 @@ class CpVerifyGainTask(CpVerifyCalibTask):
         detector = camera[detId]
         # 'DET_SER' is of the form 'ITL-3800C-229'
         detVendor = calibMetadata['DET_SER'].split('-')[0]
-
         # Adjust gain estimated from flat pair for flux bias, see DM-35790
         if detVendor == 'ITL':
             slope = 0.00027  # %/ADU
@@ -157,8 +168,9 @@ class CpVerifyGainTask(CpVerifyCalibTask):
             verify = {}
             ampName = amp.getName()
 
-            # Gain from a pair of flats, noise from overscan after ISR
-            correction = (1. - slope*np.array(calib.rawMeans[ampName])/100)
+            # Gain from a pair of flats and noise from overscan after ISR.
+            # See DM-35790.
+            correction = 1. - slope*np.array(calib.rawMeans[ampName][0])/100
             gain = correction*calib.gain[ampName]
 
             diffGain = (np.abs(gain - amp.getGain()) / amp.getGain())*100

@@ -125,22 +125,23 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
         outputStatistics : `dict` [`str`, scalar]
             A dictionary of the statistics measured and their values.
         """
-        outputStatistics = {}
         calibMetadata = inputCalib.getMetadata().toDict()
         detId = calibMetadata['DETECTOR']
         detector = camera[detId]
         ptcFitType = calibMetadata['PTC_FIT_TYPE']
+        outputStatistics = {amp.getName(): {} for amp in detector}
         for amp in detector:
             ampName = amp.getName()
-            outputStatistics['PTC_GAIN'] = inputCalib.gain[ampName]
-            outputStatistics['AMP_GAIN'] = amp.getGain()
-            outputStatistics['PTC_NOISE'] = inputCalib.noise[ampName]
-            outputStatistics['AMP_NOISE'] = amp.getReadNoise()
-            outputStatistics['PTC_TURNOFF'] = inputCalib.ptcTurnoff[ampName]
+            outputStatistics[ampName]['PTC_GAIN'] = inputCalib.gain[ampName]
+            outputStatistics[ampName]['AMP_GAIN'] = amp.getGain()
+            outputStatistics[ampName]['PTC_NOISE'] = inputCalib.noise[ampName]
+            outputStatistics[ampName]['AMP_NOISE'] = amp.getReadNoise()
+            outputStatistics[ampName]['PTC_TURNOFF'] = inputCalib.ptcTurnoff[ampName]
+            outputStatistics[ampName]['PTC_FIT_TYPE'] = ptcFitType
             if ptcFitType == 'EXPAPPROXIMATION':
-                outputStatistics['PTC_BFE_A00'] = inputCalib.ptcFitPars[ampName][0]
+                outputStatistics[ampName]['PTC_BFE_A00'] = inputCalib.ptcFitPars[ampName][0]
             if ptcFitType == 'FULLCOVARIANCE':
-                outputStatistics['PTC_BFE_A00'] = inputCalib.aMatrix[ampName][0][0]
+                outputStatistics[ampName]['PTC_BFE_A00'] = inputCalib.aMatrix[ampName][0][0]
 
         return outputStatistics
 
