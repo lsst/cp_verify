@@ -82,6 +82,11 @@ class CpVerifyGainTask(CpVerifyCalibTask):
         ----------
         inputCalib : `lsst.ip.isr.IsrCalib`
             The calibration to verify.
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera to get detectors from.
+        exposure : `lsst.afw.image.exposure.ExposureF`, optional
+            First flat-field image from pair of flats used to
+            estimate the gain.
 
         Returns
         -------
@@ -97,6 +102,11 @@ class CpVerifyGainTask(CpVerifyCalibTask):
         ----------
         inputCalib : `lsst.ip.isr.IsrCalib`
             The calibration to verify.
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera to get detectors from.
+        exposure : `lsst.afw.image.exposure.ExposureF`, optional
+            First flat-field image from pair of flats used to
+            estimate the gain.
 
         Returns
         -------
@@ -142,6 +152,9 @@ class CpVerifyGainTask(CpVerifyCalibTask):
             the mostly likely types).
         camera : `lsst.afw.cameraGeom.Camera`, optional
             Input camera to get detectors from.
+        exposure : `lsst.afw.image.exposure.ExposureF`, optional
+            First flat-field image from pair of flats used to
+            estimate the gain.
 
         Returns
         -------
@@ -180,6 +193,8 @@ class CpVerifyGainTask(CpVerifyCalibTask):
             # Estimate gain from a pair of flats and compare it with the value
             # in the amplifiers.
             verify['GAIN_FROM_FLAT_PAIR'] = bool(diffGain < self.config.gainThreshold)
+            # Check the empirical noise (as oppossed to fitted noise
+            # from the PTC) calculated from the overscan after ISR.
             verify['ISR_NOISE'] = bool(diffNoise < self.config.noiseThreshold)
 
             # Overall success among all tests for this amp.

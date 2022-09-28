@@ -104,6 +104,8 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
         ----------
         inputCalib : `lsst.ip.isr.IsrCalib`
             The calibration to verify.
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera to get detectors from.
 
         Returns
         -------
@@ -119,6 +121,8 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
         ----------
         inputCalib : `lsst.ip.isr.IsrCalib`
             The calibration to verify.
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera to get detectors from.
 
         Returns
         -------
