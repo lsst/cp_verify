@@ -46,9 +46,19 @@ class CpVerifyLinearityConfig(CpVerifyCalibConfig,
     def setDefaults(self):
         super().setDefaults()
 
-    maxResidualThreshold = pexConfig.Field(
+    maxResidualThresholdSpline = pexConfig.Field(
         dtype=float,
-        doc="Maximum percentage for linearity residuals.",
+        doc="Maximum percentage for linearity residuals, if spline",
+        default=1.0,
+    )
+    expectedQuadraticCoeffPolynomial = pexConfig.Field(
+        dtype=float,
+        doc="Expected amplitude of second-order non-linearity coefficient, if polynomial.",
+        default=1e-6,
+    )
+    maxResidualThresoldTable = pexConfig.Field(
+        dtype=float,
+        doc="Maximum percentage for linearity residuals, if lookup table.",
         default=1.0,
     )
 
@@ -141,21 +151,36 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
             verify = {}
             ampName = amp.getName()
             linearityType = calib.linearityType[ampName]
+            measuredCoeffs = self.calib.linearityCoeffs[ampName]
             if linearityType == 'Spline':
                 binCenters, values = np.split(calib.linearityCoeffs[ampName], 2)
-                maxError = maxError = max(abs(values/binCenters))*100
+                maxError = max(abs(values/binCenters))*100
             elif linearityType == 'Squared':
-                # Define something for the other types
-                maxError = 100
+                c0 = np.abs(measuredCoeffs[2])
+                verify['MAX_RESIDUAL_ERROR'] = bool(c0 <= self.config.expectedQuadraticCoeffPolynomial)
             elif linearityType == 'Polynomial':
-                maxError = 100
+                epsilon = np.sqrt(self.config.expectedQuadraticCoeffPolynomial)
+                coeffs = np.abs(measuredCoeffs[2:])
+                # coeffs[0] is now the quadratic term. Scale higher-order terms
+                # with epsilon.
+                thresholds = [coeffs[0]*epsilon**order for order, c in enumerate(coeffs)]
+                thresholds[0] = epsilon**2
+                verify['MAX_RESIDUAL_ERROR'] = bool(np.all(coeffs <= thresholds))
             elif linearityType == 'LookupTable':
-                maxError = 100
+                # If 'LookupTable', linearityCoeffs is of the form {'C10':
+                # array([0, 0]), 'C11': array([1, 0]), ... }
+                indexTableAmp, offset = calib.linearityCoeffs[ampName]
+                # Indices of second axis of table is flux range, up to
+                # 2**18 ADU
+                indices = np.arange(1, len(calib.tableData.T)) + offset
+                # Look at correction (what the table provides) divided by
+                # signal
+                delta = calib.tableData[indexTableAmp, :][1:] / indices
+                maxError = np.max(np.abs(delta))
+                verify['MAX_RESIDUAL_ERROR'] = bool(maxError <= self.config.maxResidualThresoldTable)
             else:
                 # 'None' "Create a dummy solution.
                 maxError = 100
-
-            verify['MAX_RESIDUAL_ERROR'] = bool(maxError < self.config.maxResidualThreshold)
 
             # Overall success among all tests for this amp.
             verify['SUCCESS'] = bool(np.all(list(verify.values())))
