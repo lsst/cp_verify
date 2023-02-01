@@ -179,8 +179,9 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
                 maxError = np.max(np.abs(delta))
                 verify['MAX_RESIDUAL_ERROR'] = bool(maxError <= self.config.maxResidualThresoldTable)
             else:
-                # 'None' "Create a dummy solution.
-                maxError = 100
+                # 'None' type found. Dummy linearizer.
+                self.log.warning("Dummy linearizer found (type: `None`).")
+                verify['MAX_RESIDUAL_ERROR'] = False
 
             # Overall success among all tests for this amp.
             verify['SUCCESS'] = bool(np.all(list(verify.values())))
