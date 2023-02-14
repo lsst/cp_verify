@@ -107,15 +107,14 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
         outputStatistics = {amp.getName(): {} for amp in detector}
         for amp in detector:
             ampName = amp.getName()
-            outputStatistics[ampName]['FIT_CHI_SQ'] = inputCalib.fitChiSq
-            outputStatistics[ampName]['FIT_PARAMS'] = inputCalib.fitParams
-            outputStatistics[ampName]['FIT_PARAMS_ERR'] = inputCalib.fitParamsErr
-            outputStatistics[ampName]['FIT_RESIDUALS'] = inputCalib.fitResiduals
-            outputStatistics[ampName]['LINEAR_FIT'] = inputCalib.linearFit[ampName]
-            outputStatistics[ampName]['LINEARITY_COEFFS'] = inputCalib.linearityCoeffs[ampName]
+            outputStatistics[ampName]['FIT_PARAMS'] = inputCalib.fitParams[ampName].tolist()
+            outputStatistics[ampName]['FIT_PARAMS_ERR'] = inputCalib.fitParamsErr[ampName].tolist()
+            outputStatistics[ampName]['FIT_RESIDUALS'] = inputCalib.fitResiduals[ampName].tolist()
+            outputStatistics[ampName]['LINEAR_FIT'] = inputCalib.linearFit[ampName].tolist()
+            outputStatistics[ampName]['LINEARITY_COEFFS'] = inputCalib.linearityCoeffs[ampName].tolist()
             outputStatistics[ampName]['LINEARITY_TYPE'] = inputCalib.linearityType[ampName]
-            outputStatistics[ampName]['TABLE_DATA'] = inputCalib.tableData[ampName]
-
+            if inputCalib.linearityType[ampName] == 'LookupTable':
+                outputStatistics[ampName]['TABLE_DATA'] = inputCalib.tableData[ampName].tolist()
         return outputStatistics
 
     def verify(self, calib, statisticsDict, camera=None):
@@ -151,10 +150,11 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
             verify = {}
             ampName = amp.getName()
             linearityType = calib.linearityType[ampName]
-            measuredCoeffs = self.calib.linearityCoeffs[ampName]
+            measuredCoeffs = calib.linearityCoeffs[ampName]
             if linearityType == 'Spline':
                 binCenters, values = np.split(calib.linearityCoeffs[ampName], 2)
                 maxError = max(abs(values/binCenters))*100
+                verify['MAX_RESIDUAL_ERROR'] = bool(maxError <= self.config.maxResidualThresholdSpline)
             elif linearityType == 'Squared':
                 c0 = np.abs(measuredCoeffs[2])
                 verify['MAX_RESIDUAL_ERROR'] = bool(c0 <= self.config.expectedQuadraticCoeffPolynomial)
@@ -205,5 +205,4 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
             # Save the tests that failed
             if not testBool:
                 verifyDetStatsFinal[testName] = bool(np.all(list(verifyDetStats[testName])))
-
         return verifyDetStatsFinal, bool(success)

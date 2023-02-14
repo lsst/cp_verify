@@ -43,7 +43,7 @@ tasks:
       linearityType: Spline
       ignorePtcMask: false
       applyPhotodiodeCorrection: true
-      usePhotodiode: true 
+      usePhotodiode: true
   verifyLinearityCalib:
     class: lsst.cp.verify.verifyLinearity.CpVerifyLinearityTask
     config:
