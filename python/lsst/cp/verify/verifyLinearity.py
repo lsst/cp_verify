@@ -56,7 +56,7 @@ class CpVerifyLinearityConfig(CpVerifyCalibConfig,
         doc="Expected amplitude of second-order non-linearity coefficient, if polynomial.",
         default=1e-6,
     )
-    maxResidualThresoldTable = pexConfig.Field(
+    maxResidualThresholdTable = pexConfig.Field(
         dtype=float,
         doc="Maximum percentage for linearity residuals, if lookup table.",
         default=1.0,
@@ -177,7 +177,7 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
                 # signal
                 delta = calib.tableData[indexTableAmp, :][1:] / indices
                 maxError = np.max(np.abs(delta))
-                verify['MAX_RESIDUAL_ERROR'] = bool(maxError <= self.config.maxResidualThresoldTable)
+                verify['MAX_RESIDUAL_ERROR'] = bool(maxError <= self.config.maxResidualThresholdTable)
             else:
                 # 'None' type found. Dummy linearizer.
                 self.log.warning("Dummy linearizer found (type: `None`).")

@@ -1,4 +1,4 @@
-description: cp_verify LINEARITY calibration verification for LSSTCam
+description: cp_verify LINEARITY calibration verification
 tasks:
   verifyLinearityApply:
     class: lsst.ip.isr.isrTask.IsrTask
@@ -19,31 +19,11 @@ tasks:
       connections.inputCovariances: 'verifyLinearityPtcExtract'
       connections.outputPtcDataset: 'verifyLinearityPtc'
       ptcFitType: EXPAPPROXIMATION
-  verifyLinearityUncorrectedSecondLinearizer:
+  verifyLinearitySecondLinearizer:
     class: lsst.cp.pipe.LinearitySolveTask
     config:
       connections.inputPtc: 'verifyLinearityPtc'
-      connections.outputLinearizer: 'verifyLinearityUnCorrectedLinearizer'
-      linearityType: Spline
-      ignorePtcMask: false
-      applyPhotodiodeCorrection: false
-      usePhotodiode: true
-  verifyLinearityPhotodiodeCorrection:
-    class: lsst.cp.pipe.PhotodiodeCorrectionTask
-    config:
-      connections.inputPtc: 'verifyLinearityPtc'
-      connections.inputLinearizer: 'verifyLinearityUnCorrectedLinearizer'
-      connections.outputPhotodiodeCorrection: 'verifyLinearityPdCorrection'
-  verifyLinearityCorrectedSecondLinearizer:
-    class: lsst.cp.pipe.LinearitySolveTask
-    config:
-      connections.inputPtc: 'verifyLinearityPtc'
-      connections.inputPhotodiodeCorrection: 'verifyLinearityPdCorrection'
       connections.outputLinearizer: 'verifyLinearitySecondLinearizer'
-      linearityType: Spline
-      ignorePtcMask: false
-      applyPhotodiodeCorrection: true
-      usePhotodiode: true
   verifyLinearityCalib:
     class: lsst.cp.verify.verifyLinearity.CpVerifyLinearityTask
     config:
@@ -53,4 +33,4 @@ tasks:
     class: lsst.cp.verify.CpVerifyCalibMergeTask
     config:
       connections.inputStats: 'verifyLinearityDetStats'
-      connections.outputStats: 'verifyLinearityStats'
+      connections.outputStats: 'verifyLinearityStats'   
