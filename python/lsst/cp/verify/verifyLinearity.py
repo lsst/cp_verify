@@ -101,7 +101,7 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
         outputStatistics : `dict` [`str`, scalar]
             A dictionary of the statistics measured and their values.
         """
-        calibMetadata = inputCalib.getMetadata().toDict()
+        calibMetadata = inputCalib.getMetadata()
         detId = calibMetadata['DETECTOR']
         detector = camera[detId]
         outputStatistics = {amp.getName(): {} for amp in detector}
@@ -142,7 +142,7 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
         """
         verifyStats = {}
         success = True
-        calibMetadata = calib.getMetadata().toDict()
+        calibMetadata = calib.getMetadata()
         detId = calibMetadata['DETECTOR']
         detector = camera[detId]
 

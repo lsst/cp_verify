@@ -33,4 +33,4 @@ tasks:
     class: lsst.cp.verify.CpVerifyCalibMergeTask
     config:
       connections.inputStats: 'verifyLinearityDetStats'
-      connections.outputStats: 'verifyLinearityStats'   
+      connections.outputStats: 'verifyLinearityStats'
