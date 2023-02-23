@@ -18,13 +18,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+__all__ = ['CpVerifyLinearityConnections', 'CpVerifyLinearityConfig', 'CpVerifyLinearityTask']
+
+import lsst.cp.pipe as cpPipe
+import lsst.pipe.base as pipeBase
+
 import numpy as np
 import lsst.pex.config as pexConfig
 
 import lsst.pipe.base.connectionTypes as cT
 from .verifyCalib import CpVerifyCalibConfig, CpVerifyCalibTask, CpVerifyCalibConnections
-
-__all__ = ['CpVerifyLinearityConnections', 'CpVerifyLinearityConfig', 'CpVerifyLinearityTask']
 
 
 class CpVerifyLinearityConnections(CpVerifyCalibConnections,
@@ -206,3 +210,103 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
             if not testBool:
                 verifyDetStatsFinal[testName] = bool(np.all(list(verifyDetStats[testName])))
         return verifyDetStatsFinal, bool(success)
+
+# Subclass the linearity classess so that the linearizer
+# is a regular Input instead of a PrerequisiteInput
+
+
+class CpVerifyLinearitySolveConnections(pipeBase.PipelineTaskConnections,
+                                        dimensions=("instrument", "detector")):
+    dummy = cT.Input(
+        name="raw",
+        doc="Dummy exposure.",
+        storageClass='Exposure',
+        dimensions=("instrument", "exposure", "detector"),
+        multiple=True,
+        deferLoad=True,
+    )
+    camera = cT.PrerequisiteInput(
+        name="camera",
+        doc="Camera Geometry definition.",
+        storageClass="Camera",
+        dimensions=("instrument", ),
+        isCalibration=True,
+        lookupFunction=cpPipe._lookupStaticCalibration.lookupStaticCalibration,
+    )
+    inputPtc = cT.Input(
+        name="ptc",
+        doc="Input PTC dataset.",
+        storageClass="PhotonTransferCurveDataset",
+        dimensions=("instrument", "detector"),
+        isCalibration=True,
+    )
+    inputPhotodiodeData = cT.PrerequisiteInput(
+        name="photodiode",
+        doc="Photodiode readings data.",
+        storageClass="IsrCalib",
+        dimensions=("instrument", "exposure"),
+        multiple=True,
+        deferLoad=True,
+        minimum=0,
+    )
+    inputPhotodiodeCorrection = cT.Input(
+        name="pdCorrection",
+        doc="Input photodiode correction.",
+        storageClass="IsrCalib",
+        dimensions=("instrument", ),
+        isCalibration=True,
+    )
+
+    outputLinearizer = cT.Output(
+        name="cptLinearity",
+        doc="Output linearity measurements.",
+        storageClass="Linearizer",
+        dimensions=("instrument", "detector"),
+        isCalibration=True,
+    )
+
+    def __init__(self, *, config=None):
+        super().__init__(config=config)
+
+        if config.applyPhotodiodeCorrection is not True:
+            self.inputs.discard("inputPhotodiodeCorrection")
+
+        if config.usePhotodiode is not True:
+            self.inputs.discard("inputPhotodiodeData")
+
+
+class CpVerifyLinearitySolveConfig(cpPipe.LinearitySolveConfig,
+                                   pipelineConnections=CpVerifyLinearitySolveConnections):
+    pass
+
+
+class CpVerifyLinearitySolveTask(cpPipe.LinearitySolveTask):
+
+    ConfigClass = CpVerifyLinearitySolveConfig
+    _DefaultName = "cpVerifyLinearityTask"
+
+    pass
+
+
+class CpVerifyPhotodiodeCorrectionConnections(pipeBase.PipelineTaskConnections,
+                                              dimensions=("instrument", "detector")):
+    inputPtc = cT.Input(
+        name="ptc",
+        doc="Input PTC dataset.",
+        storageClass="PhotonTransferCurveDataset",
+        dimensions=("instrument", "detector"),
+        isCalibration=True,
+    )
+
+
+class CpVerifyPhotodiodeCorrectionConfig(cpPipe.PhotodiodeCorrectionConfig,
+                                         pipelineConnections=CpVerifyPhotodiodeCorrectionConnections):
+    pass
+
+
+class CpVerifyPhotodiodeCorrectionTask(cpPipe.PhotodiodeCorrectionTask):
+
+    ConfigClass = CpVerifyPhotodiodeCorrectionConfig
+    _DefaultName = "cpVerifyPdCorrTask"
+
+    pass
