@@ -250,7 +250,7 @@ class CpvLinearitySolveConnections(pipeBase.PipelineTaskConnections,
         minimum=0,
     )
     inputPhotodiodeCorrection = cT.Input(
-        name="pdCorrection",
+        name="cpvPdCorrection",
         doc="Input photodiode correction.",
         storageClass="IsrCalib",
         dimensions=("instrument", ),
@@ -258,7 +258,7 @@ class CpvLinearitySolveConnections(pipeBase.PipelineTaskConnections,
     )
 
     outputLinearizer = cT.Output(
-        name="cptLinearity",
+        name="cpvLinearity",
         doc="Output linearity measurements.",
         storageClass="Linearizer",
         dimensions=("instrument", "detector"),
@@ -289,12 +289,40 @@ class CpvLinearitySolveTask(cpPipe.LinearitySolveTask):
 
 
 class CpvPhotodiodeCorrectionConnections(pipeBase.PipelineTaskConnections,
-                                         dimensions=("instrument", "detector")):
+                                         dimensions=("instrument",)):
+
+    camera = cT.PrerequisiteInput(
+        name="camera",
+        doc="Camera Geometry definition.",
+        storageClass="Camera",
+        dimensions=("instrument", ),
+        isCalibration=True,
+        lookupFunction=cpPipe._lookupStaticCalibration.lookupStaticCalibration,
+    )
+
     inputPtc = cT.Input(
         name="ptc",
         doc="Input PTC dataset.",
         storageClass="PhotonTransferCurveDataset",
         dimensions=("instrument", "detector"),
+        multiple=True,
+        isCalibration=True,
+    )
+
+    inputLinearizer = cT.Input(
+        name="unCorrectedLinearizer",
+        doc="Raw linearizers that have not been corrected.",
+        storageClass="Linearizer",
+        dimensions=("instrument", "detector"),
+        multiple=True,
+        isCalibration=True,
+    )
+
+    outputPhotodiodeCorrection = cT.Output(
+        name="pdCorrection",
+        doc="Correction of photodiode systematic error.",
+        storageClass="IsrCalib",
+        dimensions=("instrument", ),
         isCalibration=True,
     )
 
@@ -304,7 +332,7 @@ class CpvPhotodiodeCorrectionConfig(cpPipe.PhotodiodeCorrectionConfig,
     pass
 
 
-class CpVerifyPhotodiodeCorrectionTask(cpPipe.PhotodiodeCorrectionTask):
+class CpvPhotodiodeCorrectionTask(cpPipe.PhotodiodeCorrectionTask):
 
     ConfigClass = CpvPhotodiodeCorrectionConfig
     _DefaultName = "cpvPdCorrTask"
