@@ -215,8 +215,8 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
 # is a regular Input instead of a PrerequisiteInput
 
 
-class CpVerifyLinearitySolveConnections(pipeBase.PipelineTaskConnections,
-                                        dimensions=("instrument", "detector")):
+class CpvLinearitySolveConnections(pipeBase.PipelineTaskConnections,
+                                   dimensions=("instrument", "detector")):
     dummy = cT.Input(
         name="raw",
         doc="Dummy exposure.",
@@ -275,21 +275,21 @@ class CpVerifyLinearitySolveConnections(pipeBase.PipelineTaskConnections,
             self.inputs.discard("inputPhotodiodeData")
 
 
-class CpVerifyLinearitySolveConfig(cpPipe.LinearitySolveConfig,
-                                   pipelineConnections=CpVerifyLinearitySolveConnections):
+class CpvLinearitySolveConfig(cpPipe.LinearitySolveConfig,
+                              pipelineConnections=CpvLinearitySolveConnections):
     pass
 
 
-class CpVerifyLinearitySolveTask(cpPipe.LinearitySolveTask):
+class CpvLinearitySolveTask(cpPipe.LinearitySolveTask):
 
-    ConfigClass = CpVerifyLinearitySolveConfig
-    _DefaultName = "cpVerifyLinearityTask"
+    ConfigClass = CpvLinearitySolveConfig
+    _DefaultName = "cpvLinearityTask"
 
     pass
 
 
-class CpVerifyPhotodiodeCorrectionConnections(pipeBase.PipelineTaskConnections,
-                                              dimensions=("instrument", "detector")):
+class CpvPhotodiodeCorrectionConnections(pipeBase.PipelineTaskConnections,
+                                         dimensions=("instrument", "detector")):
     inputPtc = cT.Input(
         name="ptc",
         doc="Input PTC dataset.",
@@ -299,14 +299,14 @@ class CpVerifyPhotodiodeCorrectionConnections(pipeBase.PipelineTaskConnections,
     )
 
 
-class CpVerifyPhotodiodeCorrectionConfig(cpPipe.PhotodiodeCorrectionConfig,
-                                         pipelineConnections=CpVerifyPhotodiodeCorrectionConnections):
+class CpvPhotodiodeCorrectionConfig(cpPipe.PhotodiodeCorrectionConfig,
+                                    pipelineConnections=CpvPhotodiodeCorrectionConnections):
     pass
 
 
 class CpVerifyPhotodiodeCorrectionTask(cpPipe.PhotodiodeCorrectionTask):
 
-    ConfigClass = CpVerifyPhotodiodeCorrectionConfig
-    _DefaultName = "cpVerifyPdCorrTask"
+    ConfigClass = CpvPhotodiodeCorrectionConfig
+    _DefaultName = "cpvPdCorrTask"
 
     pass

@@ -20,7 +20,7 @@ tasks:
       connections.outputPtcDataset: 'verifyLinearityPtc'
       ptcFitType: EXPAPPROXIMATION
   verifyLinearityUncorrectedSecondLinearizer:
-    class: lsst.cp.pipe.LinearitySolveTask
+    class: lsst.cp.verify.verifyLinearity.CpvLinearitySolveTask
     config:
       connections.inputPtc: 'verifyLinearityPtc'
       connections.outputLinearizer: 'verifyLinearityUnCorrectedLinearizer'
@@ -29,13 +29,13 @@ tasks:
       applyPhotodiodeCorrection: false
       usePhotodiode: true
   verifyLinearityPhotodiodeCorrection:
-    class: lsst.cp.pipe.PhotodiodeCorrectionTask
+    class: lsst.cp.verify.verifyLinearity.CpvPhotodiodeCorrectionTask
     config:
       connections.inputPtc: 'verifyLinearityPtc'
       connections.inputLinearizer: 'verifyLinearityUnCorrectedLinearizer'
       connections.outputPhotodiodeCorrection: 'verifyLinearityPdCorrection'
   verifyLinearityCorrectedSecondLinearizer:
-    class: lsst.cp.pipe.LinearitySolveTask
+    class: lsst.cp.verify.verifyLinearity.CpvLinearitySolveTask
     config:
       connections.inputPtc: 'verifyLinearityPtc'
       connections.inputPhotodiodeCorrection: 'verifyLinearityPdCorrection'

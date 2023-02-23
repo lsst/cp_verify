@@ -20,7 +20,7 @@ tasks:
       connections.outputPtcDataset: 'verifyLinearityPtc'
       ptcFitType: EXPAPPROXIMATION
   verifyLinearitySecondLinearizer:
-    class: lsst.cp.pipe.LinearitySolveTask
+    class: lsst.cp.verify.verifyLinearity.CpvLinearitySolveTask
     config:
       connections.inputPtc: 'verifyLinearityPtc'
       connections.outputLinearizer: 'verifyLinearitySecondLinearizer'
