@@ -107,7 +107,7 @@ class CpVerifyFlatTask(CpVerifyStatsTask):
 
             # DMTN-101 Test 10.X: confirm that per-amplifier scatter is
             #                     consistent with Poissonian
-            verify['NOISE'] = bool(np.abs(stats['NOISE']) <= np.sqrt(stats['MEAN']))
+            verify['NOISE'] = bool(stats['NOISE'] <= np.sqrt(stats['MEAN']))
 
             verify['SUCCESS'] = bool(np.all(list(verify.values())))
             if verify['SUCCESS'] is False:

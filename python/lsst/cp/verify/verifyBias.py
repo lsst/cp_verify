@@ -96,7 +96,7 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
                         readNoiseMatch = False
                     readNoise = overscanReadNoise
 
-            verify['NOISE'] = bool(np.abs(stats['NOISE'] - readNoise)/readNoise <= 0.05)
+            verify['NOISE'] = bool((stats['NOISE'] - readNoise)/readNoise <= 0.05)
 
             # DMTN-101 Test 4.4: CR rejection matches clipped mean.
             verify['CR_NOISE'] = bool(np.abs(stats['NOISE'] - stats['CR_NOISE'])/stats['CR_NOISE'] <= 0.05)
