@@ -1,0 +1,4 @@
+description: cp_verify DEFECT calibration verification
+instrument: lsst.obs.decam.DarkEnergyCamera
+imports:
+  - location: $CP_VERIFY_DIR/pipelines/VerifyDefectPostFlat.yaml
