@@ -94,7 +94,6 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
                 if overscanReadNoise:
                     if ((overscanReadNoise - readNoise)/readNoise > 0.05):
                         readNoiseMatch = False
-                    readNoise = overscanReadNoise
 
             verify['NOISE'] = bool((stats['NOISE'] - readNoise)/readNoise <= 0.05)
 
