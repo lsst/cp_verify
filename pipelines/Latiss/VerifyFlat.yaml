@@ -1,4 +1,4 @@
 description: cp_verify FLAT calibration verification
 instrument: lsst.obs.lsst.Latiss
 imports:
-  - location: $CP_VERIFY_DIR/pipelines/VerifyFlat.yaml
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/VerifyFlat.yaml

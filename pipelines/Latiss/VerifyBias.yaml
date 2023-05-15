@@ -1,4 +1,4 @@
 description: cp_verify BIAS calibration verification
 instrument: lsst.obs.lsst.Latiss
 imports:
-  - location: $CP_VERIFY_DIR/pipelines/VerifyBias.yaml
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/VerifyBias.yaml

@@ -1,4 +1,4 @@
 description: cp_verify DEFECT calibration verification
 instrument: lsst.obs.lsst.LsstCam
 imports:
-  - location: $CP_VERIFY_DIR/pipelines/VerifyDefectPostFlat.yaml
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/VerifyDefectPostFlat.yaml
