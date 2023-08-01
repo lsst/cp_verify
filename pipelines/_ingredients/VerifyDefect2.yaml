@@ -1,0 +1,49 @@
+description: Another cp_verify defect calibration verification pipeline
+tasks:
+  verifyDefectIsr:
+    class: lsst.ip.isr.isrTask.IsrTask
+    config:
+      connections.ccdExposure: 'raw'
+      connections.outputExposure: 'verifyDefectIsr'
+      doDefect: true
+      doCrosstalk: true
+  verifyDefectChar:
+    class: lsst.pipe.tasks.characterizeImage.CharacterizeImageTask
+    config:
+      connections.exposure: 'verifyDefectIsr'
+      doApCorr: false
+      doDeblend: false
+  verifyUncorrectedDefectIsr:
+    class: lsst.ip.isr.isrTask.IsrTask
+    config:
+      connections.ccdExposure: 'raw'
+      connections.outputExposure: 'verifyUncorrDefectIsr'
+      doDefect: false
+      doCrosstalk: true
+  verifyUncorrectedDefectChar:
+    class: lsst.pipe.tasks.characterizeImage.CharacterizeImageTask
+    config:
+      connections.exposure: 'verifyUncorrDefectIsr'
+      connections.characterized: 'verifyUncorrDefectExp'
+      connections.sourceCat: 'verifyUncorrDefectSrc'
+      connections.backgroundModel: 'verifyUncorrDefectBackground'
+      connections.outputSchema: 'verifyUncorrDefect_schema'
+      doApCorr: false
+      doDeblend: false
+  verifyDefectChip:
+    class: lsst.cp.verify.verifyDefects.CpVerifyDefectTask
+    config:
+      connections.inputExp: 'icExp'
+      connections.inputCatalog: 'icSrc'
+      connections.uncorrectedCatalog: 'verifyUncorrDefectSrc'
+      connections.outputStats: 'verifyDefectDetStats'
+  verifyDefectExp:
+    class: lsst.cp.verify.CpVerifyVisitExpMergeTask
+    config:
+      connections.inputStats: 'verifyDefectDetStats'
+      connections.outputStats: 'verifyDefectExpStats'
+  verifyDefect:
+    class: lsst.cp.verify.CpVerifyVisitRunMergeTask
+    config:
+      connections.inputStats: 'verifyDefectExpStats'
+      connections.outputStats: 'verifyDefectStats'
