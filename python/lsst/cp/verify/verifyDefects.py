@@ -20,11 +20,49 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 import scipy.stats
+import lsst.pipe.base.connectionTypes as cT
 
-from .verifyStats import CpVerifyStatsConfig, CpVerifyStatsTask, CpVerifyStatsConnections
+from .verifyStats import (CpVerifyStatsConfig, CpVerifyStatsTask,
+                          CpVerifyStatsConnections)
 
 
 __all__ = ['CpVerifyDefectsConfig', 'CpVerifyDefectsTask']
+
+
+class CpVerifyDefectsConnections(CpVerifyStatsConnections,
+                                 dimensions={'instrument', 'visit',
+                                             'detector'}):
+    inputExp = cT.Input(
+        name="icExp",
+        doc="Input exposure to calculate statistics for.",
+        storageClass="ExposureF",
+        dimensions=["instrument", "visit", "detector"],
+    )
+    inputCatalog = cT.Input(
+        name="icSrc",
+        doc="Input catalog to calculate statistics from.",
+        storageClass="SourceCatalog",
+        dimensions=["instrument", "visit", "detector"],
+    )
+    uncorrectedCatalog = cT.Input(
+        name="uncorrectedSrc",
+        doc="Input catalog without correction applied.",
+        storageClass="SourceCatalog",
+        dimensions=["instrument", "visit", "detector"],
+    )
+    camera = cT.PrerequisiteInput(
+        name="camera",
+        storageClass="Camera",
+        doc="Input camera.",
+        dimensions=["instrument", ],
+        isCalibration=True,
+    )
+    outputStats = cT.Output(
+        name="detectorStats",
+        doc="Output statistics from cp_verify.",
+        storageClass="StructuredDataDict",
+        dimensions=["instrument", "visit", "detector"],
+    )
 
 
 class CpVerifyDefectsConfig(CpVerifyStatsConfig,
