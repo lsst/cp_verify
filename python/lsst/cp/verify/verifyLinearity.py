@@ -231,7 +231,6 @@ class CpvLinearitySolveConnections(pipeBase.PipelineTaskConnections,
         storageClass="Camera",
         dimensions=("instrument", ),
         isCalibration=True,
-        lookupFunction=cpPipe._lookupStaticCalibration.lookupStaticCalibration,
     )
     inputPtc = cT.Input(
         name="ptc",
@@ -297,7 +296,6 @@ class CpvPhotodiodeCorrectionConnections(pipeBase.PipelineTaskConnections,
         storageClass="Camera",
         dimensions=("instrument", ),
         isCalibration=True,
-        lookupFunction=cpPipe._lookupStaticCalibration.lookupStaticCalibration,
     )
 
     inputPtc = cT.Input(
