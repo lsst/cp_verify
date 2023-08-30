@@ -22,8 +22,6 @@ import lsst.pex.config as pexConfig
 import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
 
-from lsst.cp.pipe._lookupStaticCalibration import lookupStaticCalibration
-
 __all__ = ['CpVerifyCalibConfig', 'CpVerifyCalibTask']
 
 
@@ -53,7 +51,6 @@ class CpVerifyCalibConnections(pipeBase.PipelineTaskConnections,
         doc="Input camera to use for gain lookup.",
         storageClass="Camera",
         dimensions=("instrument",),
-        lookupFunction=lookupStaticCalibration,
         isCalibration=True,
     )
 
