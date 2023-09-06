@@ -13,6 +13,7 @@ tasks:
       connections.exposure: 'verifyBfkIsr'
       doApCorr: false
       doDeblend: false
+      doMeasurePsf: false
   verifyUncorrectedBfkIsr:
     class: lsst.ip.isr.isrTask.IsrTask
     config:
@@ -30,6 +31,7 @@ tasks:
       connections.outputSchema: 'verifyUncorrBfk_schema'
       doApCorr: false
       doDeblend: false
+      doMeasurePsf: false
   verifyBfkChip:
     class: lsst.cp.verify.verifyBfk.CpVerifyBfkTask
     config:
