@@ -38,7 +38,7 @@ class CpVerifyCalibConnections(pipeBase.PipelineTaskConnections,
         deferLoad=True,
     )
 
-    inputCalib = cT.Input(
+    inputCalib = cT.PrerequisiteInput(
         name="calib",
         doc="Input calib to calculate statistics for.",
         storageClass="IsrCalib",
