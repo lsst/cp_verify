@@ -66,7 +66,7 @@ class CpVerifyDefectsConnections(CpVerifyStatsConnections,
 
 
 class CpVerifyDefectsConfig(CpVerifyStatsConfig,
-                            pipelineConnections=CpVerifyStatsConnections):
+                            pipelineConnections=CpVerifyDefectsConnections):
     """Inherits from base CpVerifyStatsConfig.
     """
 
