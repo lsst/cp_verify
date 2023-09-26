@@ -36,14 +36,14 @@ tasks:
       connections.inputExp: 'icExp'
       connections.inputCatalog: 'icSrc'
       connections.uncorrectedCatalog: 'verifyUncorrDefectSrc'
-      connections.outputStats: 'verifyDefectDetStats'
+      connections.outputStats: 'verifyCombinedDefectDetStats'
   verifyDefectExp:
     class: lsst.cp.verify.CpVerifyVisitExpMergeTask
     config:
-      connections.inputStats: 'verifyDefectDetStats'
-      connections.outputStats: 'verifyDefectExpStats'
+      connections.inputStats: 'verifyCombinedDefectDetStats'
+      connections.outputStats: 'verifyCombinedDefectExpStats'
   verifyDefect:
     class: lsst.cp.verify.CpVerifyVisitRunMergeTask
     config:
-      connections.inputStats: 'verifyDefectExpStats'
-      connections.outputStats: 'verifyDefectStats'
+      connections.inputStats: 'verifyCombinedDefectExpStats'
+      connections.outputStats: 'verifyCombinedDefectStats'
