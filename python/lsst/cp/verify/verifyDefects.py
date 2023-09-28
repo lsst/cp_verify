@@ -21,6 +21,7 @@
 import numpy as np
 import scipy.stats
 import lsst.pipe.base.connectionTypes as cT
+from lsst.ip.isr.isrFunctions import countMaskedPixels
 
 from .verifyStats import (CpVerifyStatsConfig, CpVerifyStatsTask,
                           CpVerifyStatsConnections)
@@ -35,6 +36,12 @@ class CpVerifyDefectsConnections(CpVerifyStatsConnections,
     inputExp = cT.Input(
         name="icExp",
         doc="Input exposure to calculate statistics for.",
+        storageClass="ExposureF",
+        dimensions=["instrument", "visit", "detector"],
+    )
+    uncorrectedExp = cT.Input(
+        name="verifyUncorrDefectExp",
+        doc="Uncorrected input exposure to calculate statistics for.",
         storageClass="ExposureF",
         dimensions=["instrument", "visit", "detector"],
     )
@@ -84,6 +91,8 @@ class CpVerifyDefectsConfig(CpVerifyStatsConfig,
                                           'UNMASKED_MAX': 'MAX',
                                           'UNMASKED_STDEV': 'STDEVCLIP',
                                           'UNMASKED_OUTLIERS': 'NCLIPPED', }
+        self.catalogStatKeywords = {'NUMBER_LOW_SNR_OBJECTS': None,
+                                    'NUMBER_COSMIC_RAYS': None}  # noqa F821
 
 
 class CpVerifyDefectsTask(CpVerifyStatsTask):
@@ -94,7 +103,61 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
     ConfigClass = CpVerifyDefectsConfig
     _DefaultName = 'cpVerifyDefects'
 
-    def imageStatistics(self, exposure, statControl):
+    def catalogStatistics(self, exposure, catalog, uncorrectedCatalog, statControl):
+        """Measure the catalog statistics.
+
+        Parameters
+        ----------
+        exposure : `lsst.afw.image.Exposure`
+            The exposure to measure.
+        catalog : `lsst.afw.table.Table`
+            The catalog to measure.
+        uncorrectedCatalog : `lsst.afw.table.Table`
+            The uncorrected catalog to measure.
+        statControl : `lsst.afw.math.StatisticsControl`
+            Statistics control object with parameters defined by
+            the config.
+
+        Returns
+        -------
+        outputStatistics : `dict` [`str`, `dict` [`str`, scalar]]
+            A dictionary indexed by the amplifier name, containing
+            dictionaries of the statistics measured and their values.
+
+        Notes
+        -----
+        Number of cosmic rays test: If there are defects in our data that
+        we didn't properly identify and cover, they might appear similar
+        to cosmic rays because they have sharp edges compared to the point
+        spread function (PSF). When we process the data, if these defects
+        aren't marked in our defect mask, the software might mistakenly think
+        they are cosmic rays and try to remove them. However, if we've already
+        included these defects in the defect mask, the software won't treat
+        them as cosmic rays, so we'll have fewer pixels that are falsely
+        identified and removed as cosmic rays when we compare two sets of
+        data reductions.
+
+        Number of detections test: running with defects would have fewer
+        detections
+        """
+        outputStatistics = {}
+
+        # Cosmic Rays test: Count number of cosmic rays before
+        # and after masking with defects
+        # 'catalog' vs 'uncorrectedCatalog'
+        # nCosmicsBefore = countMaskedPixels(uncorrectedCatalog, ['CR'])
+        # nCosmicsAfter = countMaskedPixels(catalog, ['CR'])
+
+        # outputStatistics['NUM_COSMICS_BEFORE'] = nCosmicsBefore
+        # outputStatistics['NUM_COSMICS_AFTER'] = nCosmicsAfter
+
+        # Number of detections test
+        outputStatistics['NUM_OBJECTS_BEFORE'] = len(uncorrectedCatalog)
+        outputStatistics['NUM_OBJECTS_AFTER'] = len(catalog)
+
+        return outputStatistics
+
+    def imageStatistics(self, exposure, uncorrectedExposure, statControl):
         """Measure additional defect statistics.
 
         This calls the parent class method first, then adds additional
@@ -115,6 +178,15 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             dictionaries of the statistics measured and their values.
         """
         outputStatistics = super().imageStatistics(exposure, statControl)
+
+        # Cosmic Rays test: Count number of cosmic rays before
+        # and after masking with defects
+        # 'catalog' vs 'uncorrectedCatalog'
+        nCosmicsBefore = countMaskedPixels(uncorrectedExposure, ['CR'])
+        nCosmicsAfter = countMaskedPixels(exposure, ['CR'])
+
+        outputStatistics['NUM_COSMICS_BEFORE'] = nCosmicsBefore
+        outputStatistics['NUM_COSMICS_AFTER'] = nCosmicsAfter 
 
         # Is this a useful test?  It saves having to do chi^2 fits,
         # which are going to be biased by the bulk of points.
@@ -169,6 +241,10 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
             # This test is bad, and should be made not bad.
             verify['PROB_TEST'] = bool(stats['STAT_OUTLIERS'] == stats['DEFECT_PIXELS'])
+
+            # CRs and detectiosn tests from DM-38563
+            verify['COSMIC_RAYS'] = bool(stats['NUM_COSMICS_BEFORE'] >= stats['NUM_COSMICS_AFTER'])
+            verify['COSMIC_RAYS'] = bool(stats['NUM_OBJECTS_BEFORE'] >= stats['NUM_OBJECTS_AFTER'])
 
             verify['SUCCESS'] = bool(np.all(list(verify.values())))
             if verify['SUCCESS'] is False:
