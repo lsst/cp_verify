@@ -45,6 +45,12 @@ class CpVerifyStatsConnections(pipeBase.PipelineTaskConnections,
         storageClass="Exposure",
         dimensions=["instrument", "exposure", "detector"],
     )
+    uncorrectedExp = cT.Input(
+        name="uncorrectedExp",
+        doc="Uncorrected input exposure to calculate statistics for.",
+        storageClass="ExposureF",
+        dimensions=["instrument", "visit", "detector"],
+    )
     taskMetadata = cT.Input(
         name="isrTask_metadata",
         doc="Input task metadata to extract statistics from.",
@@ -70,7 +76,6 @@ class CpVerifyStatsConnections(pipeBase.PipelineTaskConnections,
         dimensions=["instrument", ],
         isCalibration=True,
     )
-
     outputStats = cT.Output(
         name="detectorStats",
         doc="Output statistics from cp_verify.",
@@ -87,6 +92,9 @@ class CpVerifyStatsConnections(pipeBase.PipelineTaskConnections,
         if len(config.catalogStatKeywords) < 1:
             self.inputs.discard('inputCatalog')
             self.inputs.discard('uncorrectedCatalog')
+
+        if len(config.uncorrectedImageStatKeywords) < 1:
+            self.inputs.discard('uncorrectedExp')
 
 
 class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
@@ -159,10 +167,16 @@ class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
         doc="Image statistics to run on amplifier segments.",
         default={},
     )
-    unmaskedImageStatKeywords = pexConfig.DictField(
+    imageStatKeywords = pexConfig.DictField(
         keytype=str,
         itemtype=str,
-        doc="Image statistics to run on amplifier segments, ignoring masks.",
+        doc="Image statistics to run on amplifier segments.",
+        default={},
+    )
+    uncorrectedImageStatKeywords = pexConfig.DictField(
+        keytype=str,
+        itemtype=str,
+        doc="Uncorrected image statistics to run on amplifier segments.",
         default={},
     )
     crImageStatKeywords = pexConfig.DictField(
