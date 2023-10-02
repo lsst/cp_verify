@@ -23,16 +23,19 @@ import scipy.stats
 import lsst.pipe.base.connectionTypes as cT
 from lsst.ip.isr.isrFunctions import countMaskedPixels
 
-from .verifyStats import (CpVerifyStatsConfig, CpVerifyStatsTask,
-                          CpVerifyStatsConnections)
+from .verifyStats import (
+    CpVerifyStatsConfig,
+    CpVerifyStatsTask,
+    CpVerifyStatsConnections,
+)
 
 
-__all__ = ['CpVerifyDefectsConfig', 'CpVerifyDefectsTask']
+__all__ = ["CpVerifyDefectsConfig", "CpVerifyDefectsTask"]
 
 
-class CpVerifyDefectsConnections(CpVerifyStatsConnections,
-                                 dimensions={'instrument', 'visit',
-                                             'detector'}):
+class CpVerifyDefectsConnections(
+    CpVerifyStatsConnections, dimensions={"instrument", "visit", "detector"}
+):
     inputExp = cT.Input(
         name="icExp",
         doc="Input exposure to calculate statistics for.",
@@ -40,7 +43,7 @@ class CpVerifyDefectsConnections(CpVerifyStatsConnections,
         dimensions=["instrument", "visit", "detector"],
     )
     uncorrectedExp = cT.Input(
-        name="verifyUncorrDefectExp",
+        name="uncorrectedExp",
         doc="Uncorrected input exposure to calculate statistics for.",
         storageClass="ExposureF",
         dimensions=["instrument", "visit", "detector"],
@@ -61,7 +64,9 @@ class CpVerifyDefectsConnections(CpVerifyStatsConnections,
         name="camera",
         storageClass="Camera",
         doc="Input camera.",
-        dimensions=["instrument", ],
+        dimensions=[
+            "instrument",
+        ],
         isCalibration=True,
     )
     outputStats = cT.Output(
@@ -72,27 +77,34 @@ class CpVerifyDefectsConnections(CpVerifyStatsConnections,
     )
 
 
-class CpVerifyDefectsConfig(CpVerifyStatsConfig,
-                            pipelineConnections=CpVerifyDefectsConnections):
-    """Inherits from base CpVerifyStatsConfig.
-    """
+class CpVerifyDefectsConfig(
+    CpVerifyStatsConfig, pipelineConnections=CpVerifyDefectsConnections
+):
+    """Inherits from base CpVerifyStatsConfig."""
 
     def setDefaults(self):
         super().setDefaults()
-        self.maskNameList = ['BAD']  # noqa F821
+        self.maskNameList = ["BAD"]  # noqa F821
 
-        self.imageStatKeywords = {'DEFECT_PIXELS': 'NMASKED',  # noqa F821
-                                  'OUTLIERS': 'NCLIPPED',
-                                  'MEDIAN': 'MEDIAN',
-                                  'STDEV': 'STDEVCLIP',
-                                  'MIN': 'MIN',
-                                  'MAX': 'MAX', }
-        self.unmaskedImageStatKeywords = {'UNMASKED_MIN': 'MIN',  # noqa F821
-                                          'UNMASKED_MAX': 'MAX',
-                                          'UNMASKED_STDEV': 'STDEVCLIP',
-                                          'UNMASKED_OUTLIERS': 'NCLIPPED', }
-        self.catalogStatKeywords = {'NUMBER_LOW_SNR_OBJECTS': None,
-                                    'NUMBER_COSMIC_RAYS': None}  # noqa F821
+        self.imageStatKeywords = {
+            "DEFECT_PIXELS": "NMASKED",  # noqa F821
+            "OUTLIERS": "NCLIPPED",
+            "MEDIAN": "MEDIAN",
+            "STDEV": "STDEVCLIP",
+            "MIN": "MIN",
+            "MAX": "MAX",
+        }
+        self.unmaskedImageStatKeywords = {
+            "UNMASKED_MIN": "MIN",  # noqa F821
+            "UNMASKED_MAX": "MAX",
+            "UNMASKED_STDEV": "STDEVCLIP",
+            "UNMASKED_OUTLIERS": "NCLIPPED",
+        }
+        self.catalogStatKeywords = {"NUMBER_OBJECTS": None}
+        self.uncorrectedImageStatKeywords = {
+            "NUMBER_COSMIC_RAYS": None,  # noqa F821
+            "NUMBER_DETECTIONS": None,
+        }
 
 
 class CpVerifyDefectsTask(CpVerifyStatsTask):
@@ -100,10 +112,12 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
     This also applies additional image processing statistics.
     """
-    ConfigClass = CpVerifyDefectsConfig
-    _DefaultName = 'cpVerifyDefects'
 
-    def catalogStatistics(self, exposure, catalog, uncorrectedCatalog, statControl):
+    ConfigClass = CpVerifyDefectsConfig
+    _DefaultName = "cpVerifyDefects"
+
+    def catalogStatistics(self, exposure, catalog, uncorrectedCatalog,
+                          statControl):
         """Measure the catalog statistics.
 
         Parameters
@@ -126,34 +140,14 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
         Notes
         -----
-        Number of cosmic rays test: If there are defects in our data that
-        we didn't properly identify and cover, they might appear similar
-        to cosmic rays because they have sharp edges compared to the point
-        spread function (PSF). When we process the data, if these defects
-        aren't marked in our defect mask, the software might mistakenly think
-        they are cosmic rays and try to remove them. However, if we've already
-        included these defects in the defect mask, the software won't treat
-        them as cosmic rays, so we'll have fewer pixels that are falsely
-        identified and removed as cosmic rays when we compare two sets of
-        data reductions.
-
         Number of detections test: running with defects would have fewer
         detections
         """
         outputStatistics = {}
 
-        # Cosmic Rays test: Count number of cosmic rays before
-        # and after masking with defects
-        # 'catalog' vs 'uncorrectedCatalog'
-        # nCosmicsBefore = countMaskedPixels(uncorrectedCatalog, ['CR'])
-        # nCosmicsAfter = countMaskedPixels(catalog, ['CR'])
-
-        # outputStatistics['NUM_COSMICS_BEFORE'] = nCosmicsBefore
-        # outputStatistics['NUM_COSMICS_AFTER'] = nCosmicsAfter
-
         # Number of detections test
-        outputStatistics['NUM_OBJECTS_BEFORE'] = len(uncorrectedCatalog)
-        outputStatistics['NUM_OBJECTS_AFTER'] = len(catalog)
+        outputStatistics["NUM_OBJECTS_BEFORE"] = len(uncorrectedCatalog)
+        outputStatistics["NUM_OBJECTS_AFTER"] = len(catalog)
 
         return outputStatistics
 
@@ -176,17 +170,33 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
         outputStatistics : `dict` [`str`, `dict` [`str`, scalar]]
             A dictionary indexed by the amplifier name, containing
             dictionaries of the statistics measured and their values.
+
+        Notes
+        -----
+        Number of cosmic rays test: If there are defects in our data that
+        we didn't properly identify and cover, they might appear similar
+        to cosmic rays because they have sharp edges compared to the point
+        spread function (PSF). When we process the data, if these defects
+        aren't marked in our defect mask, the software might mistakenly think
+        they are cosmic rays and try to remove them. However, if we've already
+        included these defects in the defect mask, the software won't treat
+        them as cosmic rays, so we'll have fewer pixels that are falsely
+        identified and removed as cosmic rays when we compare two sets of
+        data reductions.
+
+
         """
-        outputStatistics = super().imageStatistics(exposure, statControl)
+        outputStatistics = super().imageStatistics(
+            exposure, uncorrectedExposure, statControl
+        )
 
         # Cosmic Rays test: Count number of cosmic rays before
         # and after masking with defects
-        # 'catalog' vs 'uncorrectedCatalog'
-        nCosmicsBefore = countMaskedPixels(uncorrectedExposure, ['CR'])
-        nCosmicsAfter = countMaskedPixels(exposure, ['CR'])
+        nCosmicsBefore = countMaskedPixels(uncorrectedExposure, ["CR"])
+        nCosmicsAfter = countMaskedPixels(exposure, ["CR"])
 
-        outputStatistics['NUM_COSMICS_BEFORE'] = nCosmicsBefore
-        outputStatistics['NUM_COSMICS_AFTER'] = nCosmicsAfter 
+        outputStatistics["NUM_COSMICS_BEFORE"] = nCosmicsBefore
+        outputStatistics["NUM_COSMICS_AFTER"] = nCosmicsAfter
 
         # Is this a useful test?  It saves having to do chi^2 fits,
         # which are going to be biased by the bulk of points.
@@ -197,12 +207,12 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             normImage = ampExp.getImage()
             normArray = normImage.getArray()
 
-            normArray -= outputStatistics[ampName]['MEDIAN']
-            normArray /= outputStatistics[ampName]['STDEV']
+            normArray -= outputStatistics[ampName]["MEDIAN"]
+            normArray /= outputStatistics[ampName]["STDEV"]
 
             probability = scipy.stats.norm.pdf(normArray)
             outliers = np.where(probability < 1.0 / probability.size, 1.0, 0.0)
-            outputStatistics[ampName]['STAT_OUTLIERS'] = int(np.sum(outliers))
+            outputStatistics[ampName]["STAT_OUTLIERS"] = int(np.sum(outliers))
 
         return outputStatistics
 
@@ -227,29 +237,37 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
         success : `bool`
             A boolean indicating if all tests have passed.
         """
-        ampStats = statisticsDict['AMP']
+        ampStats = statisticsDict["AMP"]
         verifyStats = {}
         success = True
         for ampName, stats in ampStats.items():
             verify = {}
 
             # These are not defined in DMTN-101 yet.
-            verify['OUTLIERS'] = bool(stats['UNMASKED_OUTLIERS'] >= stats['OUTLIERS'])
-            verify['STDEV'] = bool(stats['UNMASKED_STDEV'] >= stats['STDEV'])
-            verify['MIN'] = bool(stats['UNMASKED_MIN'] <= stats['MIN'])
-            verify['MAX'] = bool(stats['UNMASKED_MAX'] >= stats['MAX'])
+            verify["OUTLIERS"] = bool(
+                stats["UNMASKED_OUTLIERS"] >= stats["OUTLIERS"]
+            )
+            verify["STDEV"] = bool(stats["UNMASKED_STDEV"] >= stats["STDEV"])
+            verify["MIN"] = bool(stats["UNMASKED_MIN"] <= stats["MIN"])
+            verify["MAX"] = bool(stats["UNMASKED_MAX"] >= stats["MAX"])
 
             # This test is bad, and should be made not bad.
-            verify['PROB_TEST'] = bool(stats['STAT_OUTLIERS'] == stats['DEFECT_PIXELS'])
+            verify["PROB_TEST"] = bool(
+                stats["STAT_OUTLIERS"] == stats["DEFECT_PIXELS"]
+            )
 
             # CRs and detectiosn tests from DM-38563
-            verify['COSMIC_RAYS'] = bool(stats['NUM_COSMICS_BEFORE'] >= stats['NUM_COSMICS_AFTER'])
-            verify['COSMIC_RAYS'] = bool(stats['NUM_OBJECTS_BEFORE'] >= stats['NUM_OBJECTS_AFTER'])
+            verify["NUMBER_COSMIC_RAYS"] = bool(
+                stats["NUM_COSMICS_BEFORE"] >= stats["NUM_COSMICS_AFTER"]
+            )
+            verify["NUMBER_DETECTIONS"] = bool(
+                stats["NUM_OBJECTS_BEFORE"] >= stats["NUM_OBJECTS_AFTER"]
+            )
 
-            verify['SUCCESS'] = bool(np.all(list(verify.values())))
-            if verify['SUCCESS'] is False:
+            verify["SUCCESS"] = bool(np.all(list(verify.values())))
+            if verify["SUCCESS"] is False:
                 success = False
 
             verifyStats[ampName] = verify
 
-        return {'AMP': verifyStats}, bool(success)
+        return {"AMP": verifyStats}, bool(success)

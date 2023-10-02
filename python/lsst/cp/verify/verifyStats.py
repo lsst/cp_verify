@@ -167,10 +167,10 @@ class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
         doc="Image statistics to run on amplifier segments.",
         default={},
     )
-    imageStatKeywords = pexConfig.DictField(
+    unmaskedImageStatKeywords = pexConfig.DictField(
         keytype=str,
         itemtype=str,
-        doc="Image statistics to run on amplifier segments.",
+        doc="Image statistics to run on amplifier segments, ignoring masks.",
         default={},
     )
     uncorrectedImageStatKeywords = pexConfig.DictField(
@@ -225,7 +225,8 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
         super().__init__(**kwargs)
         self.makeSubtask("repair")
 
-    def run(self, inputExp, camera, taskMetadata=None, inputCatalog=None, uncorrectedCatalog=None):
+    def run(self, inputExp, camera, uncorrectedExp=None, taskMetadata=None,
+            inputCatalog=None, uncorrectedCatalog=None):
         """Calculate quality statistics and verify they meet the requirements
         for a calibration.
 
@@ -234,7 +235,9 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
         inputExp : `lsst.afw.image.Exposure`
             The ISR processed exposure to be measured.
         camera : `lsst.afw.cameraGeom.Camera`
-             The camera geometry for ``inputExp``.
+            The camera geometry for ``inputExp``.
+        uncorrectedExp : `lsst.afw.image.Exposure`
+            The alternate exposure to measure.
         taskMetadata : `lsst.pipe.base.TaskMetadata`, optional
             Task metadata containing additional statistics.
         inputCatalog : `lsst.afw.image.Table`
@@ -348,7 +351,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
         return outputStatistics
 
     # Image measurement methods.
-    def imageStatistics(self, exposure, statControl):
+    def imageStatistics(self, exposure, uncorrectedExposure, statControl):
         """Measure image statistics for a number of simple image
         modifications.
 
@@ -356,6 +359,8 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
         ----------
         exposure : `lsst.afw.image.Exposure`
             Exposure containing the ISR processed data to measure.
+        uncorrectedExposure: `lsst.afw.image.Exposure`
+            Uncorrected exposure containing the ISR processed data to measure.
         statControl : `lsst.afw.math.StatisticsControl`
             Statistics control object with parameters defined by
             the config.
@@ -373,6 +378,11 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             outputStatistics = mergeStatDict(outputStatistics,
                                              self.amplifierStats(exposure,
                                                                  self.config.imageStatKeywords,
+                                                                 statControl))
+        if len(self.config.uncorrectedImageStatKeywords):
+            outputStatistics = mergeStatDict(outputStatistics,
+                                             self.amplifierStats(uncorrectedExposure,
+                                                                 self.config.uncorrectedImageStatKeywords,
                                                                  statControl))
         if len(self.config.unmaskedImageStatKeywords):
             outputStatistics = mergeStatDict(outputStatistics, self.unmaskedImageStats(exposure))
