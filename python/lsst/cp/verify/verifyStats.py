@@ -33,12 +33,14 @@ from lsst.pipe.tasks.repair import RepairTask
 from .utils import mergeStatDict
 
 
-__all__ = ['CpVerifyStatsConfig', 'CpVerifyStatsTask']
+__all__ = ["CpVerifyStatsConfig", "CpVerifyStatsTask"]
 
 
-class CpVerifyStatsConnections(pipeBase.PipelineTaskConnections,
-                               dimensions={"instrument", "exposure", "detector"},
-                               defaultTemplates={}):
+class CpVerifyStatsConnections(
+    pipeBase.PipelineTaskConnections,
+    dimensions={"instrument", "exposure", "detector"},
+    defaultTemplates={},
+):
     inputExp = cT.Input(
         name="postISRCCD",
         doc="Input exposure to calculate statistics for.",
@@ -73,7 +75,9 @@ class CpVerifyStatsConnections(pipeBase.PipelineTaskConnections,
         name="camera",
         storageClass="Camera",
         doc="Input camera.",
-        dimensions=["instrument", ],
+        dimensions=[
+            "instrument",
+        ],
         isCalibration=True,
     )
     outputStats = cT.Output(
@@ -87,24 +91,25 @@ class CpVerifyStatsConnections(pipeBase.PipelineTaskConnections,
         super().__init__(config=config)
 
         if len(config.metadataStatKeywords) < 1:
-            self.inputs.discard('taskMetadata')
+            self.inputs.discard("taskMetadata")
 
         if len(config.catalogStatKeywords) < 1:
-            self.inputs.discard('inputCatalog')
-            self.inputs.discard('uncorrectedCatalog')
+            self.inputs.discard("inputCatalog")
+            self.inputs.discard("uncorrectedCatalog")
 
         if len(config.uncorrectedImageStatKeywords) < 1:
-            self.inputs.discard('uncorrectedExp')
+            self.inputs.discard("uncorrectedExp")
 
 
-class CpVerifyStatsConfig(pipeBase.PipelineTaskConfig,
-                          pipelineConnections=CpVerifyStatsConnections):
-    """Configuration parameters for CpVerifyStatsTask.
-    """
+class CpVerifyStatsConfig(
+    pipeBase.PipelineTaskConfig, pipelineConnections=CpVerifyStatsConnections
+):
+    """Configuration parameters for CpVerifyStatsTask."""
+
     maskNameList = pexConfig.ListField(
         dtype=str,
         doc="Mask list to exclude from statistics calculations.",
-        default=['DETECTED', 'BAD', 'NO_DATA'],
+        default=["DETECTED", "BAD", "NO_DATA"],
     )
     doVignette = pexConfig.Field(
         dtype=bool,
@@ -218,15 +223,23 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
     designed to be subclassed so specific calibrations can apply their
     own validation methods.
     """
+
     ConfigClass = CpVerifyStatsConfig
-    _DefaultName = 'cpVerifyStats'
+    _DefaultName = "cpVerifyStats"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.makeSubtask("repair")
 
-    def run(self, inputExp, camera, uncorrectedExp=None, taskMetadata=None,
-            inputCatalog=None, uncorrectedCatalog=None):
+    def run(
+        self,
+        inputExp,
+        camera,
+        uncorrectedExp=None,
+        taskMetadata=None,
+        inputCatalog=None,
+        uncorrectedCatalog=None,
+    ):
         """Calculate quality statistics and verify they meet the requirements
         for a calibration.
 
@@ -286,36 +299,42 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
 
         if self.config.doVignette:
             polygon = inputExp.getInfo().getValidPolygon()
-            maskVignettedRegion(inputExp, polygon, maskPlane='NO_DATA',
-                                vignetteValue=None, log=self.log)
+            maskVignettedRegion(
+                inputExp, polygon, maskPlane="NO_DATA", vignetteValue=None, log=self.log
+            )
 
         mask = inputExp.getMask()
         maskVal = mask.getPlaneBitMask(self.config.maskNameList)
-        statControl = afwMath.StatisticsControl(self.config.numSigmaClip,
-                                                self.config.clipMaxIter,
-                                                maskVal)
+        statControl = afwMath.StatisticsControl(
+            self.config.numSigmaClip, self.config.clipMaxIter, maskVal
+        )
 
         # This is wrapped below to check for config lengths, as we can
         # make a number of different image stats.
-        outputStats['AMP'] = self.imageStatistics(inputExp, statControl)
+        outputStats["AMP"] = self.imageStatistics(inputExp, uncorrectedExp, statControl)
 
         if len(self.config.metadataStatKeywords):
             # These are also defined on a amp-by-amp basis.
-            outputStats['METADATA'] = self.metadataStatistics(inputExp, taskMetadata)
+            outputStats["METADATA"] = self.metadataStatistics(inputExp, taskMetadata)
         else:
-            outputStats['METADATA'] = {}
+            outputStats["METADATA"] = {}
 
         if len(self.config.catalogStatKeywords):
-            outputStats['CATALOG'] = self.catalogStatistics(inputExp, inputCatalog, uncorrectedCatalog,
-                                                            statControl)
+            outputStats["CATALOG"] = self.catalogStatistics(
+                inputExp, inputCatalog, uncorrectedCatalog, statControl
+            )
         else:
-            outputStats['CATALOG'] = {}
+            outputStats["CATALOG"] = {}
         if len(self.config.detectorStatKeywords):
-            outputStats['DET'] = self.detectorStatistics(outputStats, statControl)
+            outputStats["DET"] = self.detectorStatistics(
+                outputStats, statControl, inputExp, uncorrectedExp
+            )
         else:
-            outputStats['DET'] = {}
+            outputStats["DET"] = {}
 
-        outputStats['VERIFY'], outputStats['SUCCESS'] = self.verify(inputExp, outputStats)
+        outputStats["VERIFY"], outputStats["SUCCESS"] = self.verify(
+            inputExp, outputStats
+        )
 
         return pipeBase.Struct(
             outputStats=outputStats,
@@ -375,25 +394,35 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
         outputStatistics = self._emptyAmpDict(exposure)
 
         if len(self.config.imageStatKeywords):
-            outputStatistics = mergeStatDict(outputStatistics,
-                                             self.amplifierStats(exposure,
-                                                                 self.config.imageStatKeywords,
-                                                                 statControl))
+            outputStatistics = mergeStatDict(
+                outputStatistics,
+                self.amplifierStats(
+                    exposure, self.config.imageStatKeywords, statControl
+                ),
+            )
         if len(self.config.uncorrectedImageStatKeywords):
-            outputStatistics = mergeStatDict(outputStatistics,
-                                             self.amplifierStats(uncorrectedExposure,
-                                                                 self.config.uncorrectedImageStatKeywords,
-                                                                 statControl))
+            outputStatistics = mergeStatDict(
+                outputStatistics,
+                self.amplifierStats(
+                    uncorrectedExposure,
+                    self.config.uncorrectedImageStatKeywords,
+                    statControl,
+                ),
+            )
         if len(self.config.unmaskedImageStatKeywords):
-            outputStatistics = mergeStatDict(outputStatistics, self.unmaskedImageStats(exposure))
+            outputStatistics = mergeStatDict(
+                outputStatistics, self.unmaskedImageStats(exposure)
+            )
 
         if len(self.config.normImageStatKeywords):
-            outputStatistics = mergeStatDict(outputStatistics,
-                                             self.normalizedImageStats(exposure, statControl))
+            outputStatistics = mergeStatDict(
+                outputStatistics, self.normalizedImageStats(exposure, statControl)
+            )
 
         if len(self.config.crImageStatKeywords):
-            outputStatistics = mergeStatDict(outputStatistics,
-                                             self.crImageStats(exposure, statControl))
+            outputStatistics = mergeStatDict(
+                outputStatistics, self.crImageStats(exposure, statControl)
+            )
 
         return outputStatistics
 
@@ -448,7 +477,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
 
         if taskMetadata:
             for key, value in keywordDict.items():
-                if value == 'AMP':
+                if value == "AMP":
                     metadataStats[key] = {}
                     for ampIdx, amp in enumerate(exposure.getDetector()):
                         ampName = amp.getName()
@@ -456,7 +485,9 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
                         metadataStats[key][ampName] = None
                         for name in taskMetadata:
                             if expectedKey in taskMetadata[name]:
-                                metadataStats[key][ampName] = taskMetadata[name][expectedKey]
+                                metadataStats[key][ampName] = taskMetadata[name][
+                                    expectedKey
+                                ]
                 else:
                     # Assume it's detector-wide.
                     expectedKey = key
@@ -497,13 +528,15 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             ampName = amp.getName()
             theseStats = {}
             ampExp = exposure.Factory(exposure, amp.getBBox())
-            stats = afwMath.makeStatistics(ampExp.getMaskedImage(), statisticToRun, statControl)
+            stats = afwMath.makeStatistics(
+                ampExp.getMaskedImage(), statisticToRun, statControl
+            )
 
             for k, v in statAccessor.items():
                 theseStats[k] = stats.getValue(v)
 
             if failAll:
-                theseStats['FORCE_FAILURE'] = failAll
+                theseStats["FORCE_FAILURE"] = failAll
             ampStats[ampName] = theseStats
 
         return ampStats
@@ -523,10 +556,12 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             A dictionary indexed by the amplifier name, containing
             dictionaries of the statistics measured and their values.
         """
-        noMaskStatsControl = afwMath.StatisticsControl(self.config.numSigmaClip,
-                                                       self.config.clipMaxIter,
-                                                       0x0)
-        return self.amplifierStats(exposure, self.config.unmaskedImageStatKeywords, noMaskStatsControl)
+        noMaskStatsControl = afwMath.StatisticsControl(
+            self.config.numSigmaClip, self.config.clipMaxIter, 0x0
+        )
+        return self.amplifierStats(
+            exposure, self.config.unmaskedImageStatKeywords, noMaskStatsControl
+        )
 
     def normalizedImageStats(self, exposure, statControl):
         """Measure amplifier level statistics on the exposure after dividing
@@ -558,7 +593,9 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
         mi = scaledExposure.getMaskedImage()
         mi /= exposureTime
 
-        return self.amplifierStats(scaledExposure, self.config.normImageStatKeywords, statControl)
+        return self.amplifierStats(
+            scaledExposure, self.config.normImageStatKeywords, statControl
+        )
 
     def crImageStats(self, exposure, statControl):
         """Measure amplifier level statistics on the exposure,
@@ -580,15 +617,19 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
 
         """
         crRejectedExp = exposure.clone()
-        psf = measAlg.SingleGaussianPsf(self.config.psfSize,
-                                        self.config.psfSize,
-                                        self.config.psfFwhm/(2*math.sqrt(2*math.log(2))))
+        psf = measAlg.SingleGaussianPsf(
+            self.config.psfSize,
+            self.config.psfSize,
+            self.config.psfFwhm / (2 * math.sqrt(2 * math.log(2))),
+        )
         crRejectedExp.setPsf(psf)
         try:
             self.repair.run(crRejectedExp, keepCRs=False)
             failAll = False
         except pexException.LengthError:
-            self.log.warning("Failure masking cosmic rays (too many found).  Continuing.")
+            self.log.warning(
+                "Failure masking cosmic rays (too many found).  Continuing."
+            )
             failAll = True
 
         if self.config.crGrow > 0:
@@ -598,8 +639,9 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             spans = spans.clippedTo(crRejectedExp.getBBox())
             spans.setMask(crRejectedExp.mask, crMask)
 
-        return self.amplifierStats(crRejectedExp, self.config.crImageStatKeywords,
-                                   statControl, failAll=failAll)
+        return self.amplifierStats(
+            crRejectedExp, self.config.crImageStatKeywords, statControl, failAll=failAll
+        )
 
     # Methods that need to be implemented by the calibration-level subclasses.
     def catalogStatistics(self, exposure, catalog, uncorrectedCatalog, statControl):
@@ -623,9 +665,13 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             A dictionary indexed by the amplifier name, containing
             dictionaries of the statistics measured and their values.
         """
-        raise NotImplementedError("Subclasses must implement catalog statistics method.")
+        raise NotImplementedError(
+            "Subclasses must implement catalog statistics method."
+        )
 
-    def detectorStatistics(self, statisticsDict, statControl):
+    def detectorStatistics(
+        self, statisticsDict, statControl, exposure=None, uncorrectedExposure=None
+    ):
         """Calculate detector level statistics based on the existing
         per-amplifier measurements.
 
@@ -648,7 +694,9 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             This method must be implemented by the calibration-type
             subclass.
         """
-        raise NotImplementedError("Subclasses must implement detector statistics method.")
+        raise NotImplementedError(
+            "Subclasses must implement detector statistics method."
+        )
 
     def verify(self, exposure, statisticsDict):
         """Verify that the measured statistics meet the verification criteria.
