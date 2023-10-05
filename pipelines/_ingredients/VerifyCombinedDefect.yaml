@@ -34,6 +34,7 @@ tasks:
     class: lsst.cp.verify.verifyDefects.CpVerifyDefectsTask
     config:
       connections.inputExp: 'icExp'
+      connections.uncorrectedExp: 'verifyUncorrDefectExp'
       connections.inputCatalog: 'icSrc'
       connections.uncorrectedCatalog: 'verifyUncorrDefectSrc'
       connections.outputStats: 'verifyCombinedDefectDetStats'
