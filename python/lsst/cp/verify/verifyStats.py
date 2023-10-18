@@ -75,9 +75,7 @@ class CpVerifyStatsConnections(
         name="camera",
         storageClass="Camera",
         doc="Input camera.",
-        dimensions=[
-            "instrument",
-        ],
+        dimensions=["instrument", ],
         isCalibration=True,
     )
     outputStats = cT.Output(
@@ -520,9 +518,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             dictionaries of the statistics measured and their values.
         """
         ampStats = {}
-
         statisticToRun, statAccessor = self._configHelper(keywordDict)
-
         # Measure stats on all amplifiers.
         for ampIdx, amp in enumerate(exposure.getDetector()):
             ampName = amp.getName()

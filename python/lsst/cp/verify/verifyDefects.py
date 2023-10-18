@@ -64,9 +64,7 @@ class CpVerifyDefectsConnections(
         name="camera",
         storageClass="Camera",
         doc="Input camera.",
-        dimensions=[
-            "instrument",
-        ],
+        dimensions=["instrument", ],
         isCalibration=True,
     )
     outputStats = cT.Output(
@@ -108,7 +106,9 @@ class CpVerifyDefectsConfig(
             "UNC_MIN": "MIN",
             "UNC_MAX": "MAX",
         }
-        # initialize the dictionaries. They will get replaced.
+        # These config options need to have a key/value pair
+        # to run verification analysis, but the contents of
+        # that pair are not used.
         self.catalogStatKeywords = {"empty": "dictionary"}
         self.detectorStatKeywords = {"empty": "dictionary"}
 
