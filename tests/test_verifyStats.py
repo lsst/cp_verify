@@ -254,8 +254,22 @@ class VerifyDefectsTestCase(lsst.utils.tests.TestCase):
         """
         config = cpVerify.CpVerifyDefectsConfig()
         config.numSigmaClip = 3.0
+        # The catalog objects are `lsst.afw.table.SourceCatalog`
+        # but the task catalog tests only check number of
+        # detections before and after applying defects, so
+        # arrays will do in this case.
+
+        # With defects applied
+        inputCatalogMock = np.arange(1, 100)
+        # Without defects applied
+        uncorrectedCatalogMock = np.arange(1, 200)
+
         task = cpVerify.CpVerifyDefectsTask(config=config)
-        results = task.run(self.inputExp, self.camera)
+
+        # Also use the inputExp as uncorrectedExposure.
+        results = task.run(self.inputExp, self.camera,
+                           uncorrectedExp=self.inputExp, inputCatalog=inputCatalogMock,
+                           uncorrectedCatalog=uncorrectedCatalogMock)
         defectStats = results.outputStats
 
         self.assertEqual(defectStats['AMP']['C:0,0']['DEFECT_PIXELS'], 53)
@@ -268,6 +282,11 @@ class VerifyDefectsTestCase(lsst.utils.tests.TestCase):
 
         self.assertEqual(defectStats['AMP']['C:0,0']['UNMASKED_MIN'], -1.0 * self.defectFlux, 4)
         self.assertEqual(defectStats['AMP']['C:0,0']['UNMASKED_MAX'], self.defectFlux, 4)
+
+        self.assertEqual(defectStats['CATALOG']['NUM_OBJECTS_BEFORE'], 199)
+        self.assertEqual(defectStats['CATALOG']['NUM_OBJECTS_AFTER'], 99)
+        self.assertEqual(defectStats['DET']['NUM_COSMICS_BEFORE'], 0)
+        self.assertEqual(defectStats['DET']['NUM_COSMICS_AFTER'], 0)
 
         self.assertIn(defectStats['SUCCESS'], [True, False])
 
