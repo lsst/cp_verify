@@ -26,6 +26,9 @@ tasks:
       isrStats.doProjectionStatistics: true
       isrStats.doBiasShiftStatistics: true
       isrStats.doAmplifierCorrelationStatistics: true
+      doBinnedExposures: true
+      binFactor1: 8
+      binFactor2: 64
   verifyBiasChip:
     class: lsst.cp.verify.CpVerifyBiasTask
     config:
@@ -61,3 +64,18 @@ tasks:
       hasInputResults: true
       hasMatrixCatalog: true
   analyzeBiasCore: lsst.analysis.tools.tasks.VerifyCalibAnalysisTask
+  mosaicExp1:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExp: 'postIsrBin1'
+      connections.outputExp: 'verifyBiasMosaic1'
+      binning: 8
+  mosaicExp2:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExp: 'postIsrBin2'
+      connections.outputExp: 'verifyBiasMosaic2'
+      binning: 64
+contracts:
+  - verifyBiasApply.binFactor1 == mosaicExp1.binning
+  - verifyBiasApply.binFactor2 == mosaicExp2.binning

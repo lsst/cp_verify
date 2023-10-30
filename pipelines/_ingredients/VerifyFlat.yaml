@@ -10,6 +10,9 @@ tasks:
       doFringe: false
       doCalculateStatistics: true
       isrStats.doCopyCalibDistributionStatistics: true
+      doBinnedExposures: true
+      binFactor1: 8
+      binFactor2: 64
   verifyFlatChip:
     class: lsst.cp.verify.CpVerifyFlatTask
     config:
@@ -36,3 +39,18 @@ tasks:
       connections.outputResults: 'verifyFlatResults'
       hasInputResults: true
       hasMatrixCatalog: false
+  mosaicExp1:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExp: 'postIsrBin1'
+      connections.outputExp: 'verifyFlatMosaic1'
+      binning: 8
+  mosaicExp2:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExp: 'postIsrBin2'
+      connections.outputExp: 'verifyFlatMosaic2'
+      binning: 64
+contracts:
+  - verifyFlatApply.binFactor1 == mosaicExp1.binning
+  - verifyFlatApply.binFactor2 == mosaicExp2.binning
