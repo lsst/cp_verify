@@ -11,6 +11,9 @@ tasks:
       doFlat: false
       doApplyGains: false
       doFringe: false
+      doBinnedExposures: true
+      binFactor1: 8
+      binFactor2: 64
   verifyDarkChip:
     class: lsst.cp.verify.CpVerifyDarkTask
     config:
@@ -27,3 +30,18 @@ tasks:
     config:
       connections.inputStats: 'verifyDarkExpStats'
       connections.outputStats: 'verifyDarkStats'
+  mosaicExp1:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExp: 'postIsrBin1'
+      connections.outputExp: 'verifyDarkMosaic1'
+      binning: 8
+  mosaicExp2:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExp: 'postIsrBin2'
+      connections.outputExp: 'verifyDarkMosaic2'
+      binning: 64
+contracts:
+  - verifyDarkApply.binFactor1 == mosaicExp1.binning
+  - verifyDarkApply.binFactor2 == mosaicExp2.binning

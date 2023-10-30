@@ -18,6 +18,9 @@ tasks:
       doFlat: false
       doApplyGains: false
       doFringe: false
+      doBinnedExposures: true
+      binFactor1: 8
+      binFactor2: 64
   verifyMeasureStats:
     class: lsst.cp.verify.CpVerifyBiasTask
     config:
@@ -36,3 +39,18 @@ tasks:
     config:
       connections.inputStats: 'verifyBiasExpStats'
       connections.outputStats: 'verifyBiasStats'
+  mosaicExp1:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExp: 'postIsrBin1'
+      connections.outputExp: 'verifyBiasMosaic1'
+      binning: 8
+  mosaicExp2:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExp: 'postIsrBin2'
+      connections.outputExp: 'verifyBiasMosaic2'
+      binning: 64
+contracts:
+  - verifyBiasApply.binFactor1 == mosaicExp1.binning
+  - verifyBiasApply.binFactor2 == mosaicExp2.binning
