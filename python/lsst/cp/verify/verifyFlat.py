@@ -47,7 +47,7 @@ class CpVerifyFlatTask(CpVerifyStatsTask):
     ConfigClass = CpVerifyFlatConfig
     _DefaultName = 'cpVerifyFlat'
 
-    def detectorStatistics(self, statisticsDict, statControl):
+    def detectorStatistics(self, statisticsDict, statControl, exposure=None, uncorrectedExposure=None):
         """Calculate detector level statistics based on the existing
         per-amplifier measurements.
 
@@ -58,6 +58,14 @@ class CpVerifyFlatTask(CpVerifyStatsTask):
             should have keys that are statistic names (`str`) with
             values that are some sort of scalar (`int` or `float` are
             the mostly likely types).
+        statControl : `lsst.afw.math.StatControl`
+            Statistics control object with parameters defined by
+            the config.
+        exposure : `lsst.afw.image.Exposure`, optional
+            Exposure containing the ISR-processed data to measure.
+        uncorrectedExposure : `lsst.afw.image.Exposure`, optional
+            uncorrected esposure (no defects) containing the
+            ISR-processed data to measure.
 
         Returns
         -------

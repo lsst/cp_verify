@@ -156,21 +156,19 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
         return outputStatistics
 
-    def detectorStatistics(self, statsDict, statControl, exposure, uncorrectedExposure):
+    def detectorStatistics(self, statisticsDict, statControl, exposure=None, uncorrectedExposure=None):
         """Measure the detector statistics.
 
         Parameters
         ----------
-        statsDict : `dict` [`str`, scalar]
+        statisticsDict : `dict` [`str`, scalar]
             Dictionary with detector tests.
-        exposure : `lsst.afw.image.Exposure`
-            Exposure containing the ISR processed data to measure.
         statControl : `lsst.afw.math.StatControl`
             Statistics control object with parameters defined by
             the config.
-        exposure : `lsst.afw.image.Exposure`
+        exposure : `lsst.afw.image.Exposure`, optional
             Exposure containing the ISR-processed data to measure.
-        uncorrectedExposure : `lsst.afw.image.Exposure`
+        uncorrectedExposure : `lsst.afw.image.Exposure`, optional
             uncorrected esposure (no defects) containing the
             ISR-processed data to measure.
 
