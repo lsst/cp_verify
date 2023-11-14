@@ -138,11 +138,11 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
         for amp in detector:
             ampName = amp.getName()
             calibGain = inputCalib.gain[ampName]
-            outputStatistics[ampName]['PTC_GAIN'] = calibGain
+            outputStatistics[ampName]['PTC_GAIN'] = float(calibGain)
             outputStatistics[ampName]['AMP_GAIN'] = amp.getGain()
-            outputStatistics[ampName]['PTC_NOISE'] = inputCalib.noise[ampName]
+            outputStatistics[ampName]['PTC_NOISE'] = float(inputCalib.noise[ampName])
             outputStatistics[ampName]['AMP_NOISE'] = amp.getReadNoise()
-            outputStatistics[ampName]['PTC_TURNOFF'] = inputCalib.ptcTurnoff[ampName]
+            outputStatistics[ampName]['PTC_TURNOFF'] = float(inputCalib.ptcTurnoff[ampName])
             outputStatistics[ampName]['PTC_FIT_TYPE'] = ptcFitType
             outputStatistics[ampName]['PTC_ROW_MEAN_VARIANCE'] = inputCalib.rowMeanVariance[ampName].tolist()
             outputStatistics[ampName]['PTC_MAX_RAW_MEANS'] = float(np.nanmax(inputCalib.rawMeans[ampName]))
