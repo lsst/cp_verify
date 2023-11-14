@@ -2,3 +2,9 @@ description: cp_verify FLAT calibration verification
 instrument: lsst.obs.lsst.LsstCam
 imports:
   - location: $CP_VERIFY_DIR/pipelines/_ingredients/VerifyFlat.yaml
+tasks:
+  verifyFlatApply:
+    class: lsst.ip.isr.isrTask.IsrTask
+    config:
+      doDefect: false
+      doCrosstalk: false
