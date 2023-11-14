@@ -67,14 +67,14 @@ tasks:
   mosaicExp1:
     class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
     config:
-      connections.inputExp: 'postIsrBin1'
-      connections.outputExp: 'verifyBiasMosaic1'
+      connections.inputExps: 'postIsrBin1'
+      connections.outputData: 'verifyBiasMosaic1'
       binning: 8
   mosaicExp2:
     class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
     config:
-      connections.inputExp: 'postIsrBin2'
-      connections.outputExp: 'verifyBiasMosaic2'
+      connections.inputExps: 'postIsrBin2'
+      connections.outputData: 'verifyBiasMosaic2'
       binning: 64
 contracts:
   - verifyBiasApply.binFactor1 == mosaicExp1.binning
