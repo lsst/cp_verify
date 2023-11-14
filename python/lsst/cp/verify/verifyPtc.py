@@ -136,16 +136,16 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
         outputStatistics = {amp.getName(): {} for amp in detector}
         for amp in detector:
             ampName = amp.getName()
-            outputStatistics[ampName]['PTC_GAIN'] = inputCalib.gain[ampName]
+            outputStatistics[ampName]['PTC_GAIN'] = float(inputCalib.gain[ampName])
             outputStatistics[ampName]['AMP_GAIN'] = amp.getGain()
-            outputStatistics[ampName]['PTC_NOISE'] = inputCalib.noise[ampName]
+            outputStatistics[ampName]['PTC_NOISE'] = float(inputCalib.noise[ampName])
             outputStatistics[ampName]['AMP_NOISE'] = amp.getReadNoise()
-            outputStatistics[ampName]['PTC_TURNOFF'] = inputCalib.ptcTurnoff[ampName]
+            outputStatistics[ampName]['PTC_TURNOFF'] = float(inputCalib.ptcTurnoff[ampName])
             outputStatistics[ampName]['PTC_FIT_TYPE'] = ptcFitType
             if ptcFitType == 'EXPAPPROXIMATION':
-                outputStatistics[ampName]['PTC_BFE_A00'] = inputCalib.ptcFitPars[ampName][0]
+                outputStatistics[ampName]['PTC_BFE_A00'] = float(inputCalib.ptcFitPars[ampName][0])
             if ptcFitType == 'FULLCOVARIANCE':
-                outputStatistics[ampName]['PTC_BFE_A00'] = inputCalib.aMatrix[ampName][0][0]
+                outputStatistics[ampName]['PTC_BFE_A00'] = float(inputCalib.aMatrix[ampName][0][0])
 
         return outputStatistics
 
