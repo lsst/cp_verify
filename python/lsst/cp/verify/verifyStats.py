@@ -78,6 +78,13 @@ class CpVerifyStatsConnections(
         dimensions=["instrument", ],
         isCalibration=True,
     )
+    isrStatistics = cT.Input(
+        name="isrStatistics",
+        storageClass="StructuredDataDict",
+        doc="Pre-calculated statistics from IsrTask.",
+        dimensions=["instrument", "exposure", "detector"],
+    )
+
     outputStats = cT.Output(
         name="detectorStats",
         doc="Output statistics from cp_verify.",
@@ -97,6 +104,9 @@ class CpVerifyStatsConnections(
 
         if len(config.uncorrectedImageStatKeywords) < 1:
             self.inputs.discard("uncorrectedExp")
+
+        if config.useIsrStatistics is not True:
+            self.inputs.discard("isrStatistics")
 
 
 class CpVerifyStatsConfig(
@@ -212,6 +222,11 @@ class CpVerifyStatsConfig(
         doc="Statistics to create for the full detector from the per-amplifier measurements.",
         default={},
     )
+    useIsrStatistics = pexConfig.Field(
+        dtype=bool,
+        doc="Use statistics calculated by IsrTask?",
+        default=False,
+    )
 
 
 class CpVerifyStatsTask(pipeBase.PipelineTask):
@@ -233,6 +248,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
         self,
         inputExp,
         camera,
+        isrStatistics=None,
         uncorrectedExp=None,
         taskMetadata=None,
         inputCatalog=None,
@@ -329,6 +345,9 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             )
         else:
             outputStats["DET"] = {}
+
+        if self.config.useIsrStatistics:
+            outputStats["ISR"] = isrStatistics
 
         outputStats["VERIFY"], outputStats["SUCCESS"] = self.verify(
             inputExp, outputStats
