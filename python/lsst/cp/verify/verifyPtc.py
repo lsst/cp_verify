@@ -21,22 +21,9 @@
 import numpy as np
 import lsst.pex.config as pexConfig
 
-import lsst.pipe.base.connectionTypes as cT
 from .verifyCalib import CpVerifyCalibConfig, CpVerifyCalibTask, CpVerifyCalibConnections
 
-__all__ = ['CpVerifyPtcConnections', 'CpVerifyPtcConfig', 'CpVerifyPtcTask']
-
-
-class CpVerifyPtcConnections(CpVerifyCalibConnections,
-                             dimensions={"instrument", "detector"},
-                             defaultTemplates={}):
-    inputCalib = cT.Input(
-        name="calib",
-        doc="Input calib to calculate statistics for.",
-        storageClass="PhotonTransferCurveDataset",
-        dimensions=["instrument", "detector"],
-        isCalibration=True
-    )
+__all__ = ['CpVerifyPtcConfig', 'CpVerifyPtcTask']
 
 
 class CpVerifyPtcConfig(CpVerifyCalibConfig,
