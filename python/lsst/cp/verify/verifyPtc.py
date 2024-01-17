@@ -177,8 +177,8 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             # The fractional relative difference between the fitted PTC and the
             # nominal amplifier gain and readout noise values should be less
             # than a certain threshold (default: 5%).
-            verify['GAIN'] = bool(diffGain < self.config.gainThreshold)
-            verify['NOISE'] = bool(diffNoise < self.config.noiseThreshold)
+            verify['PTC_GAIN'] = bool(diffGain < self.config.gainThreshold)
+            verify['PTC_NOISE'] = bool(diffNoise < self.config.noiseThreshold)
 
             # DMTN-101: 16.3
             # Check that the measured PTC turnoff is at least greater than the
@@ -200,11 +200,11 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
                 if detVendor == 'ITL':
                     a00Max = self.config.a00MaxITL
                     a00Min = self.config.a00MinITL
-                    verify['BFE_A00'] = bool(a00 > a00Min and a00 < a00Max)
+                    verify['PTC_BFE_A00'] = bool(a00 > a00Min and a00 < a00Max)
                 elif detVendor == 'E2V':
                     a00Max = self.config.a00MaxE2V
                     a00Min = self.config.a00MinE2V
-                    verify['BFE_A00'] = bool(a00 > a00Min and a00 < a00Max)
+                    verify['PTC_BFE_A00'] = bool(a00 > a00Min and a00 < a00Max)
                 else:
                     raise RuntimeError(f"Detector type {detVendor} not one of 'ITL' or 'E2V'")
             # Overall success among all tests for this amp.
@@ -215,7 +215,7 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             verifyStats[ampName] = verify
 
         # Loop over amps to make a detector summary.
-        verifyDetStats = {'GAIN': [], 'NOISE': [], 'PTC_TURNOFF': [], 'BFE_A00': []}
+        verifyDetStats = {'PTC_GAIN': [], 'PTC_NOISE': [], 'PTC_TURNOFF': [], 'PTC_BFE_A00': []}
         for amp in verifyStats:
             for testName in verifyStats[amp]:
                 if testName == 'SUCCESS':
@@ -223,8 +223,8 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
                 verifyDetStats[testName].append(verifyStats[amp][testName])
 
         # If ptc model did not fit for a00 (e.g., POLYNOMIAL)
-        if not len(verifyDetStats['BFE_A00']):
-            verifyDetStats.pop('BFE_A00')
+        if not len(verifyDetStats['PTC_BFE_A00']):
+            verifyDetStats.pop('PTC_BFE_A00')
 
         # VerifyDetStatsFinal has final boolean test over all amps
         verifyDetStatsFinal = {}
