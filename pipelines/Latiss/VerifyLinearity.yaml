@@ -2,3 +2,8 @@ description: cp_verify LINEARITY calibration verification
 instrument: lsst.obs.lsst.Latiss
 imports:
   - location: $CP_VERIFY_DIR/pipelines/_ingredients/VerifyLinearity.yaml
+tasks:
+  verifyLinearitySecondLinearizer:
+    class: lsst.cp.verify.verifyLinearity.CpvLinearitySolveTask
+    config:
+      linearityType: "Spline"

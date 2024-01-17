@@ -21,26 +21,13 @@
 import numpy as np
 import lsst.pex.config as pexConfig
 
-import lsst.pipe.base.connectionTypes as cT
 from .verifyCalib import CpVerifyCalibConfig, CpVerifyCalibTask, CpVerifyCalibConnections
 
-__all__ = ['CpVerifyPtcConnections', 'CpVerifyPtcConfig', 'CpVerifyPtcTask']
-
-
-class CpVerifyPtcConnections(CpVerifyCalibConnections,
-                             dimensions={"instrument", "detector"},
-                             defaultTemplates={}):
-    inputCalib = cT.Input(
-        name="calib",
-        doc="Input calib to calculate statistics for.",
-        storageClass="PhotonTransferCurveDataset",
-        dimensions=["instrument", "detector"],
-        isCalibration=True
-    )
+__all__ = ['CpVerifyPtcConfig', 'CpVerifyPtcTask']
 
 
 class CpVerifyPtcConfig(CpVerifyCalibConfig,
-                        pipelineConnections=CpVerifyPtcConnections):
+                        pipelineConnections=CpVerifyCalibConnections):
     """Inherits from base CpVerifyCalibConfig."""
 
     def setDefaults(self):
@@ -143,10 +130,9 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             outputStatistics[ampName]['PTC_TURNOFF'] = inputCalib.ptcTurnoff[ampName]
             outputStatistics[ampName]['PTC_FIT_TYPE'] = ptcFitType
             if ptcFitType == 'EXPAPPROXIMATION':
-                outputStatistics[ampName]['PTC_BFE_A00'] = inputCalib.ptcFitPars[ampName][0]
+                outputStatistics[ampName]['PTC_BFE_A00'] = float(inputCalib.ptcFitPars[ampName][0])
             if ptcFitType == 'FULLCOVARIANCE':
-                outputStatistics[ampName]['PTC_BFE_A00'] = inputCalib.aMatrix[ampName][0][0]
-
+                outputStatistics[ampName]['PTC_BFE_A00'] = float(inputCalib.aMatrix[ampName][0][0])
         return outputStatistics
 
     def verify(self, calib, statisticsDict, camera=None):

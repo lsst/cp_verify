@@ -137,11 +137,13 @@ class CpVerifyBfkTask(CpVerifyStatsTask):
             outputStatistics['SIZE_DIFF'] = sizeDiff
             return outputStatistics
 
+        xxKey = 'ext_shapeHSM_HsmSourceMoments_xx'
+        yyKey = 'ext_shapeHSM_HsmSourceMoments_yy'
         for source, uncorrectedSource, d in matches:
             # This uses the simple difference in source moments.
             sourceMagnitude = -2.5 * np.log10(source.getPsfInstFlux())
-            sourceSize = source['base_SdssShape_xx'] + source['base_SdssShape_yy']
-            uncorrectedSize = uncorrectedSource['base_SdssShape_xx'] + uncorrectedSource['base_SdssShape_yy']
+            sourceSize = source[xxKey] + source[yyKey]
+            uncorrectedSize = uncorrectedSource[xxKey] + uncorrectedSource[yyKey]
 
             magnitude.append(float(sourceMagnitude))
             sizeDiff.append(float(uncorrectedSize - sourceSize))

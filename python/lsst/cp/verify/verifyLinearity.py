@@ -239,15 +239,6 @@ class CpvLinearitySolveConnections(pipeBase.PipelineTaskConnections,
         dimensions=("instrument", "detector"),
         isCalibration=True,
     )
-    inputPhotodiodeData = cT.PrerequisiteInput(
-        name="photodiode",
-        doc="Photodiode readings data.",
-        storageClass="IsrCalib",
-        dimensions=("instrument", "exposure"),
-        multiple=True,
-        deferLoad=True,
-        minimum=0,
-    )
     inputPhotodiodeCorrection = cT.Input(
         name="cpvPdCorrection",
         doc="Input photodiode correction.",
@@ -269,9 +260,6 @@ class CpvLinearitySolveConnections(pipeBase.PipelineTaskConnections,
 
         if config.applyPhotodiodeCorrection is not True:
             self.inputs.discard("inputPhotodiodeCorrection")
-
-        if config.usePhotodiode is not True:
-            self.inputs.discard("inputPhotodiodeData")
 
 
 class CpvLinearitySolveConfig(cpPipe.LinearitySolveConfig,
