@@ -129,6 +129,8 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             outputStatistics[ampName]['AMP_NOISE'] = amp.getReadNoise()
             outputStatistics[ampName]['PTC_TURNOFF'] = inputCalib.ptcTurnoff[ampName]
             outputStatistics[ampName]['PTC_FIT_TYPE'] = ptcFitType
+            outputStatistics[ampName]['PTC_ROW_MEAN_VARIANCE'] = inputCalib.rowMeanVariance[ampName]
+            outputStatistics[ampName]['PTC_MAX_RAW_MEANS'] = np.max(inputCalib.rawMeans[ampName])
             if ptcFitType == 'EXPAPPROXIMATION':
                 outputStatistics[ampName]['PTC_BFE_A00'] = float(inputCalib.ptcFitPars[ampName][0])
             if ptcFitType == 'FULLCOVARIANCE':
