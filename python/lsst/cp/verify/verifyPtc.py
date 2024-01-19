@@ -123,18 +123,31 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
         outputStatistics = {amp.getName(): {} for amp in detector}
         for amp in detector:
             ampName = amp.getName()
-            outputStatistics[ampName]['PTC_GAIN'] = inputCalib.gain[ampName]
+            calibGain = inputCalib.gain[ampName]
+            outputStatistics[ampName]['PTC_GAIN'] = calibGain
             outputStatistics[ampName]['AMP_GAIN'] = amp.getGain()
             outputStatistics[ampName]['PTC_NOISE'] = inputCalib.noise[ampName]
             outputStatistics[ampName]['AMP_NOISE'] = amp.getReadNoise()
             outputStatistics[ampName]['PTC_TURNOFF'] = inputCalib.ptcTurnoff[ampName]
             outputStatistics[ampName]['PTC_FIT_TYPE'] = ptcFitType
-            outputStatistics[ampName]['PTC_ROW_MEAN_VARIANCE'] = inputCalib.rowMeanVariance[ampName]
-            outputStatistics[ampName]['PTC_MAX_RAW_MEANS'] = np.max(inputCalib.rawMeans[ampName])
+            outputStatistics[ampName]['PTC_ROW_MEAN_VARIANCE'] = inputCalib.rowMeanVariance[ampName].tolist()
+            outputStatistics[ampName]['PTC_MAX_RAW_MEANS'] = float(np.max(inputCalib.rawMeans[ampName]))
             if ptcFitType == 'EXPAPPROXIMATION':
                 outputStatistics[ampName]['PTC_BFE_A00'] = float(inputCalib.ptcFitPars[ampName][0])
             if ptcFitType == 'FULLCOVARIANCE':
                 outputStatistics[ampName]['PTC_BFE_A00'] = float(inputCalib.aMatrix[ampName][0][0])
+
+            # Test from eo_pipe: github.com/lsst-camera-dh/eo-pipe;
+            # ptcPlotTask.py
+            # Slope of [variance of means of rows](electrons^2)
+            # vs [2*signal(electrons)/numCols]
+            numCols = amp.getBBox().width
+            mask = inputCalib.expIdMask[ampName]
+            rowMeanVar = inputCalib.rowMeanVariance[ampName][mask]*calibGain**2
+            signal = inputCalib.rawMeans[ampName][mask]*calibGain
+            slope = sum(rowMeanVar) / sum(2.*signal/numCols)
+            outputStatistics[ampName]['ROW_MEAN_VARIANCE_SLOPE'] = float(slope)
+
         return outputStatistics
 
     def verify(self, calib, statisticsDict, camera=None):
@@ -172,7 +185,9 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
         for amp in detector:
             verify = {}
             ampName = amp.getName()
-            diffGain = (np.abs(calib.gain[ampName] - amp.getGain()) / amp.getGain())*100
+            calibGain = calib.gain[ampName]
+
+            diffGain = (np.abs(calibGain - amp.getGain()) / amp.getGain())*100
             diffNoise = (np.abs(calib.noise[ampName] - amp.getReadNoise()) / amp.getReadNoise())*100
 
             # DMTN-101: 16.1 and 16.2
@@ -186,7 +201,7 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             # Check that the measured PTC turnoff is at least greater than the
             # full-well requirement of 90k e-.
             turnoffCut = self.config.turnoffThreshold
-            verify['PTC_TURNOFF'] = bool(calib.ptcTurnoff[ampName]*calib.gain[ampName] > turnoffCut)
+            verify['PTC_TURNOFF'] = bool(calib.ptcTurnoff[ampName]*calibGain > turnoffCut)
             # DMTN-101: 16.4
             # Check the a00 value (brighter-fatter effect).
             # This is a purely electrostatic parameter that should not change
@@ -209,6 +224,7 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
                     verify['PTC_BFE_A00'] = bool(a00 > a00Min and a00 < a00Max)
                 else:
                     raise RuntimeError(f"Detector type {detVendor} not one of 'ITL' or 'E2V'")
+
             # Overall success among all tests for this amp.
             verify['SUCCESS'] = bool(np.all(list(verify.values())))
             if verify['SUCCESS'] is False:
