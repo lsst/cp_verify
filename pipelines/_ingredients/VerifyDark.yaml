@@ -11,12 +11,15 @@ tasks:
       doFlat: false
       doApplyGains: false
       doFringe: false
+      doCalculateStatistics: true
+      isrStats.doCopyCalibDistributionStatistics: true
   verifyDarkChip:
     class: lsst.cp.verify.CpVerifyDarkTask
     config:
       connections.inputExp: 'verifyDarkProc'
       connections.taskMetadata: 'verifyDarkApply_metadata'
       connections.outputStats: 'verifyDarkDetStats'
+      useIsrStatistics: true
   verifyDarkExp:
     class: lsst.cp.verify.CpVerifyExpMergeTask
     config:
