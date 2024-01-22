@@ -145,7 +145,10 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             mask = inputCalib.expIdMask[ampName]
             rowMeanVar = inputCalib.rowMeanVariance[ampName][mask]*calibGain**2
             signal = inputCalib.rawMeans[ampName][mask]*calibGain
-            slope = sum(rowMeanVar) / sum(2.*signal/numCols)
+            try:
+                slope = sum(rowMeanVar) / sum(2.*signal/numCols)
+            except ZeroDivisionError:
+                slope = np.nan
             outputStatistics[ampName]['ROW_MEAN_VARIANCE_SLOPE'] = float(slope)
 
         return outputStatistics
