@@ -21,7 +21,7 @@
 import numpy as np
 
 from .verifyStats import CpVerifyStatsConfig, CpVerifyStatsTask, CpVerifyStatsConnections
-
+from lsst.afw.cameraGeom import ReadoutCorner
 
 __all__ = ['CpVerifyBiasConfig', 'CpVerifyBiasTask']
 
@@ -44,6 +44,35 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
     """
     ConfigClass = CpVerifyBiasConfig
     _DefaultName = 'cpVerifyBias'
+
+    def imageStatistics(self, exposure, uncorrectedExposure, statControl):
+        # Docstring inherited
+        outputStatistics = super().imageStatistics(exposure, uncorrectedExposure, statControl)
+
+        theseStats = {}
+        # These should be a config item, probably.
+        boxSize = 200
+        statisticToRun = afwMath.stringToStatisticsProperty("MEAN")
+
+        for ampIdx, amp in enumerate(exposure.getDetector()):
+            ampName = amp.getName()
+
+            bbox = amp.getBBox()
+            xmin = bbox.getMaxX() - boxSize if raw_amp.getRawFlipX() else bbox.getMinX()
+            ymin = bbox.getMaxY() - boxSize if raw_amp.getRawFlipY() else bbox.getMinY()
+            llc = lsst.geom.Point2I(xmin, ymin)
+            extent = lsst.geom.Extent2I(boxSize, boxSize)
+            cornerBox = lsst.geom.Box2I(llc, extent)
+            cornerExp = exposure[cornerBox]
+
+            stats = afwMath.makeStatistics(
+                cornerExp.getMaskedImage(), statisticToRun, statControl
+            )
+            theseStats[ampName] = stats.getValue()
+
+        outputStatistics['AMP_CORNER'] = theseStats
+
+        return outputStatistics
 
     def verify(self, exposure, statisticsDict):
         """Verify that the measured statistics meet the verification criteria.
