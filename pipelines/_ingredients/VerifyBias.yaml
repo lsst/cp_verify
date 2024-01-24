@@ -18,6 +18,9 @@ tasks:
       doFlat: false
       doApplyGains: false
       doFringe: false
+      doCalculateStatistics: true
+      isrStats.doCopyCalibDistributionStatistics: true
+      isrStats.doProjectionStatistics: true
   verifyMeasureStats:
     class: lsst.cp.verify.CpVerifyBiasTask
     config:
@@ -26,6 +29,7 @@ tasks:
       connections.outputStats: 'verifyBiasDetStats'
       doVignette: false
       useReadNoise: true
+      useIsrStatistics: true
   verifyExposureStats:
     class: lsst.cp.verify.CpVerifyExpMergeTask
     config:
@@ -36,3 +40,10 @@ tasks:
     config:
       connections.inputStats: 'verifyBiasExpStats'
       connections.outputStats: 'verifyBiasStats'
+  repackResults:
+    class: lsst.cp.verify.CpVerifyRepackBiasTask
+    config:
+      connections.detectorStats: 'verifyBiasDetStats'
+      connections.exposureStats: 'verifyBiasExpStats'
+      connections.runStats: 'verifyBiasStats'
+      connections.outputCatalog: 'verifyBiasResults'

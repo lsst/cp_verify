@@ -8,11 +8,14 @@ tasks:
       # Disable downstream processing.
       doApplyGains: false
       doFringe: false
+      doCalculateStatistics: true
+      isrStats.doCopyCalibDistributionStatistics: true
   verifyFlatChip:
     class: lsst.cp.verify.CpVerifyFlatTask
     config:
       connections.inputExp: 'verifyFlatProc'
       connections.outputStats: 'verifyFlatDetStats'
+      useIsrStatistics: true
   verifyFlatExp:
     class: lsst.cp.verify.CpVerifyExpMergeTask
     config:
@@ -23,3 +26,10 @@ tasks:
     config:
       connections.inputStats: 'verifyFlatExpStats'
       connections.outputStats: 'verifyFlatStats'
+  repackResults:
+    class: lsst.cp.verify.CpVerifyRepackFlatTask
+    config:
+      connections.detectorStats: 'verifyFlatDetStats'
+      connections.exposureStats: 'verifyFlatExpStats'
+      connections.runStats: 'verifyFlatStats'
+      connections.outputCatalog: 'verifyFlatResults'

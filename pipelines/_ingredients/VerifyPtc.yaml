@@ -10,3 +10,9 @@ tasks:
     config:
       connections.inputStats: 'verifyPtcDetStats'
       connections.outputStats: 'verifyPtcStats'
+  repackResults:
+    class: lsst.cp.verify.CpVerifyRepackPtcTask
+    config:
+      connections.detectorStats: 'verifyPtcDetStats'
+      connections.runStats: 'verifyPtcStats'
+      connections.outputCatalog: 'verifyPtcResults'

@@ -23,6 +23,7 @@ from .version import *
 from .verifyStats import *
 from .verifyCalib import *
 from .mergeResults import *
+from .repackStats import *
 
 from .verifyBias import *
 from .verifyDefects import *
