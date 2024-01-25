@@ -133,6 +133,7 @@ class CpVerifyRepackBiasTask(CpVerifyRepackTask):
             instrument = detDims["instrument"]
             exposure = detDims["exposure"]
             detector = detDims["detector"]
+            mjd = detStats["ISR"]["MJD"]
 
             # Get amp stats
             # AMP {ampName} [CR_NOISE MEAN NOISE] value
@@ -140,6 +141,7 @@ class CpVerifyRepackBiasTask(CpVerifyRepackTask):
                 row[ampName] = {
                     "instrument": instrument,
                     "exposure": exposure,
+                    "mjd": mjd,
                     "detector": detector,
                     "amplifier": ampName,
                     "biasMean": stats["MEAN"],
