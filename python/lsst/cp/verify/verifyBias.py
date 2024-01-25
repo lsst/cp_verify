@@ -20,8 +20,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 
+import lsst.afw.math as afwMath
+
+from lsst.geom import Point2I, Extent2I, Box2I
+from lsst.pex.config import Field
 from .verifyStats import CpVerifyStatsConfig, CpVerifyStatsTask, CpVerifyStatsConnections
-from lsst.afw.cameraGeom import ReadoutCorner
 
 __all__ = ['CpVerifyBiasConfig', 'CpVerifyBiasTask']
 
@@ -30,6 +33,12 @@ class CpVerifyBiasConfig(CpVerifyStatsConfig,
                          pipelineConnections=CpVerifyStatsConnections):
     """Inherits from base CpVerifyStatsConfig.
     """
+
+    ampCornerBoxSize = Field(
+        dtype=int,
+        doc="Size of box to use for measure corner signal.",
+        default=200,
+    )
 
     def setDefaults(self):
         super().setDefaults()
@@ -51,18 +60,18 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
 
         theseStats = {}
         # These should be a config item, probably.
-        boxSize = 200
+        boxSize = self.config.ampCornerBoxSize
         statisticToRun = afwMath.stringToStatisticsProperty("MEAN")
 
         for ampIdx, amp in enumerate(exposure.getDetector()):
             ampName = amp.getName()
 
             bbox = amp.getBBox()
-            xmin = bbox.getMaxX() - boxSize if raw_amp.getRawFlipX() else bbox.getMinX()
-            ymin = bbox.getMaxY() - boxSize if raw_amp.getRawFlipY() else bbox.getMinY()
-            llc = lsst.geom.Point2I(xmin, ymin)
-            extent = lsst.geom.Extent2I(boxSize, boxSize)
-            cornerBox = lsst.geom.Box2I(llc, extent)
+            xmin = bbox.getMaxX() - boxSize if amp.getRawFlipX() else bbox.getMinX()
+            ymin = bbox.getMaxY() - boxSize if amp.getRawFlipY() else bbox.getMinY()
+            llc = Point2I(xmin, ymin)
+            extent = Extent2I(boxSize, boxSize)
+            cornerBox = Box2I(llc, extent)
             cornerExp = exposure[cornerBox]
 
             stats = afwMath.makeStatistics(
