@@ -375,6 +375,7 @@ class CpVerifyRepackPtcTask(CpVerifyRepackNoExpTask):
                     "ptcTurnoff": stats["PTC_TURNOFF"],
                     "ptcFitType": stats["PTC_FIT_TYPE"],
                     "ptcBfeA00": stats["PTC_BFE_A00"],
+                    "ptcRowMeanVariance": stats["PTC_ROW_MEAN_VARIANCE"],
                 }
             # Get catalog stats
             # Get detector stats
@@ -384,10 +385,10 @@ class CpVerifyRepackPtcTask(CpVerifyRepackNoExpTask):
             row["detector"] = {
                 "instrument": instrument,
                 "detector": detector,
-                "ptcVerifyGain": stats["GAIN"],
-                "ptcVerifyNoise": stats["NOISE"],
+                "ptcVerifyGain": stats["PTC_GAIN"],
+                "ptcVerifyNoise": stats["PTC_NOISE"],
                 "ptcVerifyTurnoff": stats["PTC_TURNOFF"],
-                "ptcVerifyBfeA00": stats["BFE_A00"],
+                "ptcVerifyBfeA00": stats["PTC_BFE_A00"],
             }
             # Get isr stats
 
