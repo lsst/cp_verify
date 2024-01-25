@@ -165,10 +165,12 @@ class CpVerifyRepackBiasTask(CpVerifyRepackTask):
                 for level in self.config.expectedDistributionLevels:
                     key = f"LSST CALIB {self.stageName.upper()} {ampName} DISTRIBUTION {level}-PCT"
                     row[ampName][f"biasDistribution_{level}"] = stats[key]
-            for ampName, values in detStats["ISR"]["PROJECTION"]["AMP_HPROJECTION"]:
-                row[ampName]["biasSerialProfile"] = values
-            for ampName, values in detStats["ISR"]["PROJECTION"]["AMP_VPROJECTION"]:
-                row[ampName]["biasParallelProfile"] = values
+
+            projStats = detStats["ISR"]["PROJECTION"]
+            for ampName in projStats["AMP_HPROJECTION"].keys():
+                row[ampName]["biasSerialProfile"] = projStats["AMP_HPROJECTION"][ampName]
+            for ampName in projStats["AMP_VPROJECTION"].keys():
+                row[ampName]["biasParallelProfile"] = projStats["AMP_VPROJECTION"][ampName]
 
             # Create output table:
             for ampName, stats in row.items():
