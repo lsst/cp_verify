@@ -58,7 +58,6 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
         # Docstring inherited
         outputStatistics = super().imageStatistics(exposure, uncorrectedExposure, statControl)
 
-        # These should be a config item, probably.
         boxSize = self.config.ampCornerBoxSize
         statisticToRun = afwMath.stringToStatisticsProperty("MEAN")
 
