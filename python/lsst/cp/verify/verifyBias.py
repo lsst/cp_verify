@@ -58,7 +58,6 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
         # Docstring inherited
         outputStatistics = super().imageStatistics(exposure, uncorrectedExposure, statControl)
 
-        theseStats = {}
         # These should be a config item, probably.
         boxSize = self.config.ampCornerBoxSize
         statisticToRun = afwMath.stringToStatisticsProperty("MEAN")
@@ -77,9 +76,7 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
             stats = afwMath.makeStatistics(
                 cornerExp.getMaskedImage(), statisticToRun, statControl
             )
-            theseStats[ampName] = stats.getValue()
-
-        outputStatistics['AMP_CORNER'] = theseStats
+            outputStatistics[ampName]['AMP_CORNER'] = stats.getValue()
 
         return outputStatistics
 
