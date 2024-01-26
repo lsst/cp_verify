@@ -132,6 +132,16 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             outputStatistics[ampName]['PTC_FIT_TYPE'] = ptcFitType
             outputStatistics[ampName]['PTC_ROW_MEAN_VARIANCE'] = inputCalib.rowMeanVariance[ampName].tolist()
             outputStatistics[ampName]['PTC_MAX_RAW_MEANS'] = float(np.max(inputCalib.rawMeans[ampName]))
+            # To plot Covs[ij] vs flux
+            outputStatistics[ampName]['PTC_RAW_MEANS'] = inputCalib.rawMeans[ampName].tolist()
+            outputStatistics[ampName]['PTC_EXP_ID_MASK'] = inputCalib.expIdmask[ampName].tolist()
+            covs = inputCalib.covariances[ampName]
+            outputStatistics[ampName]['PTC_COV_10'] = covs[:, 1, 0].tolist()
+            outputStatistics[ampName]['PTC_COV_01'] = covs[:, 0, 1].tolist()
+            outputStatistics[ampName]['PTC_COV_11'] = covs[:, 1, 1].tolist()
+            outputStatistics[ampName]['PTC_COV_20'] = covs[:, 2, 0].tolist()
+            outputStatistics[ampName]['PTC_COV_02'] = covs[:, 0, 2].tolist()
+
             if ptcFitType == 'EXPAPPROXIMATION':
                 outputStatistics[ampName]['PTC_BFE_A00'] = float(inputCalib.ptcFitPars[ampName][0])
             if ptcFitType == 'FULLCOVARIANCE':
