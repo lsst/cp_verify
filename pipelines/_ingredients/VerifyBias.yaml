@@ -21,6 +21,8 @@ tasks:
       doCalculateStatistics: true
       isrStats.doCopyCalibDistributionStatistics: true
       isrStats.doProjectionStatistics: true
+      isrStats.doBiasShiftStatistics: true
+      isrStats.doAmplifierCorrelationStatistics: true
   verifyMeasureStats:
     class: lsst.cp.verify.CpVerifyBiasTask
     config:

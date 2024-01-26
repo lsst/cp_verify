@@ -154,6 +154,7 @@ class VerifyBiasTestCase(lsst.utils.tests.TestCase):
         """
         config = cpVerify.CpVerifyBiasConfig()
         config.numSigmaClip = 3.0
+        config.ampCornerBoxSize = 15
         task = cpVerify.CpVerifyBiasTask(config=config)
         results = task.run(self.inputExp, self.camera)
         biasStats = results.outputStats
