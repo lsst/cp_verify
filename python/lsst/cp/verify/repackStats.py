@@ -378,6 +378,13 @@ class CpVerifyRepackPtcTask(CpVerifyRepackNoExpTask):
                     "ptcFitType": stats["PTC_FIT_TYPE"],
                     "ptcBfeA00": stats["PTC_BFE_A00"],
                     "ptcRowMeanVariance": stats["PTC_ROW_MEAN_VARIANCE"],
+                    "ptcRawMeans": stats["PTC_RAW_MEANS"],
+                    "ptcExpIdmask": stats["PTC_EXP_ID_MASK"],
+                    "ptcCov10": stats["PTC_COV_10"],
+                    "ptcCov01": stats["PTC_COV_01"],
+                    "ptcCov11": stats["PTC_COV_11"],
+                    "ptcCov20": stats["PTC_COV_20"],
+                    "ptcCov02": stats["PTC_COV_02"],
                 }
             # Get catalog stats
             # Get detector stats
