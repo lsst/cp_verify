@@ -48,3 +48,10 @@ tasks:
     config:
       connections.inputStats: 'verifyCombinedDefectExpStats'
       connections.outputStats: 'verifyCombinedDefectStats'
+  repackDefect:
+    class: lsst.cp.verify.CpVerifyRepackFlatTask
+    config:
+      connections.detectorStats: 'verifyCombinedDefectDetStats'
+      connections.exposureStats: 'verifyCombinedDefectExpStats'
+      connections.runStats: 'verifyCombinedDefectStats'
+      connections.outputCatalog: 'verifyCombinedDefectResults'

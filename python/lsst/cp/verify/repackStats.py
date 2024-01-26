@@ -366,7 +366,43 @@ class CpVerifyRepackFlatTask(CpVerifyRepackTask):
 
 class CpVerifyRepackDefectTask(CpVerifyRepackTask):
     stageName = "defects"
-    pass
+
+    def repackDetStats(self, detectorStats, detectorDims):
+        rowList = []
+        for detStats, detDims in zip(detectorStats, detectorDims):
+            row = {}
+            instrument = detDims["instrument"]
+            detector = detDims["detector"]
+
+            # Get amp stats
+            for ampName, stats in detStats["AMP"].items():
+                row[ampName] = {
+                    "instrument": instrument,
+                    "detector": detector,
+                    "amplifier": ampName,
+                }
+            # Get catalog stats CATALOG
+            # Get metadata stats METADATA
+            # Get verify stats VERIFY
+            # Get isr stats ISR
+            nBadColumns = np.nan
+            for ampName, stats in detStats["ISR"]["CALIBDIST"].items():
+                if ampName == "detector":
+                    nBadColumns = stats[ampName]["LSST CALIB DEFECTS N_BAD_COLUMNS"]
+                else:
+                    key = f"LSST CALIB DEFECTS {ampName} N_HOT"
+                    row[ampName]["hotPixels"] = stats[ampName][key]
+                    key = f"LSST CALIB DEFECTS {ampName} N_COLD"
+                    row[ampName]["coldPixels"] = stats[ampName][key]
+            # Get detector stats DET
+            row["detector"] = {"instrument": instrument,
+                               "detector": detector,
+                               "nBadColumns": nBadColumns,
+                               }
+            for ampName, stats in row.items():
+                rowList.append(stats)
+
+        return rowList
 
 
 class CpVerifyRepackCtiTask(CpVerifyRepackTask):
