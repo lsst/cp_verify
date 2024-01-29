@@ -170,13 +170,41 @@ class CpVerifyRepackBiasTask(CpVerifyRepackTask):
 
             projStats = detStats["ISR"]["PROJECTION"]
             for ampName in projStats["AMP_HPROJECTION"].keys():
-                row[ampName]["biasSerialProfile"] = projStats["AMP_HPROJECTION"][ampName]
+                row[ampName]["biasSerialProfile"] = np.array(projStats["AMP_HPROJECTION"][ampName])
             for ampName in projStats["AMP_VPROJECTION"].keys():
-                row[ampName]["biasParallelProfile"] = projStats["AMP_VPROJECTION"][ampName]
+                row[ampName]["biasParallelProfile"] = np.array(projStats["AMP_VPROJECTION"][ampName])
 
             # Create output table:
             for ampName, stats in row.items():
                 rowList.append(stats)
+
+        # We need all rows of biasParallelProfile and biasParallelProfile
+        # to be the same length for serialization. Therefore, we pad
+        # to the longest length.
+
+        maxSerialLen = 0
+        maxParallelLen = 0
+
+        for row in rowList:
+            if len(row["biasSerialProfile"]) > maxSerialLen:
+                maxSerialLen = len(row["biasSerialProfile"])
+            if len(row["biasParallelProfile"]) > maxParallelLen:
+                maxParallelLen = len(row["biasParallelProfile"])
+
+        for row in rowList:
+            if len(row["biasSerialProfile"]) < maxSerialLen:
+                row["biasSerialProfile"] = np.pad(
+                    row["biasSerialProfile"],
+                    (0, maxSerialLen - len(row["biasSerialProfile"])),
+                    constant_values=np.nan,
+                )
+            if len(row["biasParallelProfile"]) < maxParallelLen:
+                row["biasParallelProfile"] = np.pad(
+                    row["biasParallelProfile"],
+                    (0, maxParallelLen - len(row["biasParallelProfile"])),
+                    constant_values=np.nan,
+                )
+
         return rowList
 
 
