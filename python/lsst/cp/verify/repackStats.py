@@ -389,16 +389,13 @@ class CpVerifyRepackPtcTask(CpVerifyRepackNoExpTask):
             # Get catalog stats
             # Get detector stats
             # Get metadata stats
-            # Get verify stats; no need to loop here.
-            stats = detStats["VERIFY"]
-            row["detector"] = {
-                "instrument": instrument,
-                "detector": detector,
-                "ptcVerifyGain": stats["PTC_GAIN"],
-                "ptcVerifyNoise": stats["PTC_NOISE"],
-                "ptcVerifyTurnoff": stats["PTC_TURNOFF"],
-                "ptcVerifyBfeA00": stats["PTC_BFE_A00"],
-            }
+            # Get verify stats
+            for ampName, stats in detStats["VERIFY"]["AMP"].items():
+                row[ampName]["ptcVerifyGain"] = stats["PTC_GAIN"]
+                row[ampName]["ptcVerifyNoise"] = stats["PTC_NOISE"]
+                row[ampName]["ptcVerifyTurnoff"] = stats["PTC_TURNOFF"]
+                row[ampName]["ptcVerifyBfeA00"] = stats["PTC_BFE_A00"]
+
             # Get isr stats
 
             # Append to output

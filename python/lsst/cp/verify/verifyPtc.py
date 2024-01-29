@@ -245,24 +245,4 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
 
             verifyStats[ampName] = verify
 
-        # Loop over amps to make a detector summary.
-        verifyDetStats = {'PTC_GAIN': [], 'PTC_NOISE': [], 'PTC_TURNOFF': [], 'PTC_BFE_A00': []}
-        for amp in verifyStats:
-            for testName in verifyStats[amp]:
-                if testName == 'SUCCESS':
-                    continue
-                verifyDetStats[testName].append(verifyStats[amp][testName])
-
-        # If ptc model did not fit for a00 (e.g., POLYNOMIAL)
-        if not len(verifyDetStats['PTC_BFE_A00']):
-            verifyDetStats.pop('PTC_BFE_A00')
-
-        # VerifyDetStatsFinal has final boolean test over all amps
-        verifyDetStatsFinal = {}
-        for testName in verifyDetStats:
-            testBool = bool(np.all(list(verifyDetStats[testName])))
-            # Save the tests that failed
-            if not testBool:
-                verifyDetStatsFinal[testName] = bool(np.all(list(verifyDetStats[testName])))
-
-        return verifyDetStatsFinal, bool(success)
+        return {'AMP': verifyStats}, bool(success)
