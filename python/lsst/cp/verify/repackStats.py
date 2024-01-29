@@ -91,8 +91,8 @@ class CpVerifyRepackTask(pipeBase.PipelineTask):
     def runQuantum(self, butlerQC, inputRefs, outputRefs):
         inputs = butlerQC.get(inputRefs)
 
-        inputs["detectorDims"] = [exp.dataId.byName() for exp in inputRefs.detectorStats]
-        inputs["exposureDims"] = [exp.dataId.byName() for exp in inputRefs.exposureStats]
+        inputs["detectorDims"] = [dict(exp.dataId.required) for exp in inputRefs.detectorStats]
+        inputs["exposureDims"] = [dict(exp.dataId.required) for exp in inputRefs.exposureStats]
 
         outputs = self.run(**inputs)
         butlerQC.put(outputs, outputRefs)
@@ -372,7 +372,7 @@ class CpVerifyRepackNoExpTask(CpVerifyRepackTask):
     def runQuantum(self, butlerQC, inputRefs, outputRefs):
         inputs = butlerQC.get(inputRefs)
 
-        inputs["detectorDims"] = [exp.dataId.byName() for exp in inputRefs.detectorStats]
+        inputs["detectorDims"] = [dict(exp.dataId.required) for exp in inputRefs.detectorStats]
         inputs["exposureDims"] = []
         inputs["exposureStats"] = []
 
