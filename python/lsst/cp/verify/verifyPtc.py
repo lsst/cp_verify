@@ -20,6 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 import lsst.pex.config as pexConfig
+from scipy.optimize import least_squares
 
 from .verifyCalib import CpVerifyCalibConfig, CpVerifyCalibTask, CpVerifyCalibConnections
 
@@ -78,6 +79,18 @@ class CpVerifyPtcConfig(CpVerifyCalibConfig,
     )
 
 
+def linearModel(x, m, b):
+    """A linear model.
+    """
+    return m*x + b
+
+
+def modelResidual(p, x, y):
+    """Model residual for fit below.
+    """
+    return y - linearModel(x, *p)
+
+
 class CpVerifyPtcTask(CpVerifyCalibTask):
     """PTC verification sub-class, implementing the verify method.
     """
@@ -133,14 +146,31 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             outputStatistics[ampName]['PTC_ROW_MEAN_VARIANCE'] = inputCalib.rowMeanVariance[ampName].tolist()
             outputStatistics[ampName]['PTC_MAX_RAW_MEANS'] = float(np.max(inputCalib.rawMeans[ampName]))
             # To plot Covs[ij] vs flux
-            outputStatistics[ampName]['PTC_RAW_MEANS'] = inputCalib.rawMeans[ampName].tolist()
-            outputStatistics[ampName]['PTC_EXP_ID_MASK'] = inputCalib.expIdMask[ampName].tolist()
+            rawFlux = inputCalib.rawMeans[ampName].tolist()
+            outputStatistics[ampName]['PTC_RAW_MEANS'] = rawFlux
+            mask = inputCalib.expIdMask[ampName].tolist()
+            outputStatistics[ampName]['PTC_EXP_ID_MASK'] = mask
             covs = inputCalib.covariances[ampName]
             outputStatistics[ampName]['PTC_COV_10'] = covs[:, 1, 0].tolist()
             outputStatistics[ampName]['PTC_COV_01'] = covs[:, 0, 1].tolist()
             outputStatistics[ampName]['PTC_COV_11'] = covs[:, 1, 1].tolist()
             outputStatistics[ampName]['PTC_COV_20'] = covs[:, 2, 0].tolist()
             outputStatistics[ampName]['PTC_COV_02'] = covs[:, 0, 2].tolist()
+            # Calculate and save the slopes and offsets from Covs[ij] vs flux
+            keys = ['PTC_COV_10', 'PTC_COV_01', 'PTC_COV_11', 'PTC_COV_20',
+                    'PTC_COV_02']
+            maskedFlux = rawFlux[mask]
+            for key in keys:
+                maskedCov = outputStatistics[ampName][key][mask]
+                linearFit = least_squares(modelResidual, [1., 0.0],
+                                          args=(np.array(maskedFlux), np.array(maskedCov)),
+                                          loss='cauchy')
+                slopeKey = key + 'FIT_SLOPE'
+                offsetKey = key + 'FIT_OFFSET'
+                successKey = key + 'FIT_SUCCESS'
+                outputStatistics[ampName][slopeKey] = float(linearFit.x[0])
+                outputStatistics[ampName][offsetKey] = float(linearFit.x[1])
+                outputStatistics[ampName][successKey] = linearFit.success
 
             if ptcFitType == 'EXPAPPROXIMATION':
                 outputStatistics[ampName]['PTC_BFE_A00'] = float(inputCalib.ptcFitPars[ampName][0])
