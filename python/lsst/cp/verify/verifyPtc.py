@@ -189,7 +189,7 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
                 slope = sum(rowMeanVar) / sum(2.*signal/numCols)
             except ZeroDivisionError:
                 slope = np.nan
-            outputStatistics[ampName]['ROW_MEAN_VARIANCE_SLOPE'] = float(slope)
+            outputStatistics[ampName]['PTC_ROW_MEAN_VARIANCE_SLOPE'] = float(slope)
 
         return outputStatistics
 
