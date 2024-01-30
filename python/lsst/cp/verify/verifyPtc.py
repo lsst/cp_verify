@@ -159,15 +159,15 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             # Calculate and save the slopes and offsets from Covs[ij] vs flux
             keys = ['PTC_COV_10', 'PTC_COV_01', 'PTC_COV_11', 'PTC_COV_20',
                     'PTC_COV_02']
-            maskedFlux = rawFlux[mask]
+            maskedFlux = np.array(rawFlux)[mask]
             for key in keys:
-                maskedCov = outputStatistics[ampName][key][mask]
+                maskedCov = np.array(outputStatistics[ampName][key])[mask]
                 linearFit = least_squares(modelResidual, [1., 0.0],
                                           args=(np.array(maskedFlux), np.array(maskedCov)),
                                           loss='cauchy')
-                slopeKey = key + 'FIT_SLOPE'
-                offsetKey = key + 'FIT_OFFSET'
-                successKey = key + 'FIT_SUCCESS'
+                slopeKey = key + '_FIT_SLOPE'
+                offsetKey = key + '_FIT_OFFSET'
+                successKey = key + '_FIT_SUCCESS'
                 outputStatistics[ampName][slopeKey] = float(linearFit.x[0])
                 outputStatistics[ampName][offsetKey] = float(linearFit.x[1])
                 outputStatistics[ampName][successKey] = linearFit.success
