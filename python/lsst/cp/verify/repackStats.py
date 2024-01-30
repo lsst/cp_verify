@@ -27,8 +27,10 @@ import lsst.pipe.base.connectionTypes as cT
 import lsst.pex.config as pexConfig
 
 __all__ = [
-    "CpVerifyRepackConnections",
-    "CpVerifyRepackConfig",
+    "CpVerifyRepackInstrumentConnections",
+    "CpVerifyRepackPhysicalFilterConnections",
+    "CpVerifyRepackInstrumentConfig",
+    "CpVerifyRepackPhysicalFilterConfig",
     "CpVerifyRepackBiasTask",
     "CpVerifyRepackDarkTask",
     "CpVerifyRepackFlatTask",
@@ -39,9 +41,12 @@ __all__ = [
 ]
 
 
-class CpVerifyRepackConnections(pipeBase.PipelineTaskConnections,
-                                dimensions={"instrument"},
-                                defaultTemplate={}):
+class CpVerifyRepackInstrumentConnections(pipeBase.PipelineTaskConnections,
+                                          dimensions={"instrument"},
+                                          defaultTemplate={}):
+    """Connections class for calibration statistics with only instrument
+    dimension.
+    """
     detectorStats = cT.Input(
         name="detectorStats",
         doc="Input detector statistics.",
@@ -72,8 +77,8 @@ class CpVerifyRepackConnections(pipeBase.PipelineTaskConnections,
     )
 
 
-class CpVerifyRepackConfig(pipeBase.PipelineTaskConfig,
-                           pipelineConnections=CpVerifyRepackConnections):
+class CpVerifyRepackInstrumentConfig(pipeBase.PipelineTaskConfig,
+                                     pipelineConnections=CpVerifyRepackInstrumentConnections):
 
     expectedDistributionLevels = pexConfig.ListField(
         dtype=float,
@@ -84,8 +89,11 @@ class CpVerifyRepackConfig(pipeBase.PipelineTaskConfig,
 
 class CpVerifyRepackTask(pipeBase.PipelineTask):
     """Repack cpVerify statistics for analysis_tools.
+
+    This version is the base for calibrations with summary
+    dimensions of instrument only.
     """
-    ConfigClass = CpVerifyRepackConfig
+    ConfigClass = CpVerifyRepackInstrumentConfig
     _DefaultName = "cpVerifyRepack"
 
     def runQuantum(self, butlerQC, inputRefs, outputRefs):
@@ -257,7 +265,54 @@ class CpVerifyRepackDarkTask(CpVerifyRepackTask):
         return rowList
 
 
+class CpVerifyRepackPhysicalFilterConnections(pipeBase.PipelineTaskConnections,
+                                              dimensions={"instrument", "physical_filter"},
+                                              defaultTemplate={}):
+    """Connections class for calibration statistics with physical_filter
+    (and instrument) dimensions.
+    """
+    detectorStats = cT.Input(
+        name="detectorStats",
+        doc="Input detector statistics.",
+        storageClass="StructuredDataDict",
+        dimensions={"instrument", "exposure", "detector"},
+        multiple=True,
+    )
+    exposureStats = cT.Input(
+        name="exposureStats",
+        doc="Input exposure statistics.",
+        storageClass="StructuredDataDict",
+        dimensions={"instrument", "exposure"},
+        multiple=True,
+    )
+    runStats = cT.Input(
+        name="runStats",
+        doc="Input Run statistics.",
+        storageClass="StructuredDataDict",
+        dimensions={"instrument"},
+        multiple=True,
+    )
+
+    outputCatalog = cT.Output(
+        name="cpvCatalog",
+        doc="Output merged catalog.",
+        storageClass="ArrowAstropy",
+        dimensions={"instrument", "physical_filter"},
+    )
+
+
+class CpVerifyRepackPhysicalFilterConfig(pipeBase.PipelineTaskConfig,
+                                         pipelineConnections=CpVerifyRepackPhysicalFilterConnections):
+    expectedDistributionLevels = pexConfig.ListField(
+        dtype=float,
+        doc="Percentile levels expected in the calibration header.",
+        default=[0, 5, 16, 50, 84, 95, 100],
+    )
+
+
 class CpVerifyRepackFlatTask(CpVerifyRepackTask):
+    ConfigClass = CpVerifyRepackPhysicalFilterConfig
+
     stageName = "flat"
 
     def repackDetStats(self, detectorStats, detectorDims):
