@@ -78,7 +78,7 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
     def runQuantum(self, butlerQC, inputRefs, outputRefs):
         inputs = butlerQC.get(inputRefs)
 
-        dimensions = [exp.dataId.byName() for exp in inputRefs.inputStats]
+        dimensions = [dict(exp.dataId.required) for exp in inputRefs.inputStats]
         inputs['inputDims'] = dimensions
 
         outputs = self.run(**inputs)
@@ -269,7 +269,7 @@ class CpVerifyRunMergeTask(pipeBase.PipelineTask):
     def runQuantum(self, butlerQC, inputRefs, outputRefs):
         inputs = butlerQC.get(inputRefs)
 
-        dimensions = [exp.dataId.byName() for exp in inputRefs.inputStats]
+        dimensions = [dict(exp.dataId.required) for exp in inputRefs.inputStats]
         inputs['inputDims'] = dimensions
 
         outputs = self.run(**inputs)
@@ -483,7 +483,7 @@ class CpVerifyCalibMergeTask(pipeBase.PipelineTask):
     def runQuantum(self, butlerQC, inputRefs, outputRefs):
         inputs = butlerQC.get(inputRefs)
 
-        dimensions = [exp.dataId.byName() for exp in inputRefs.inputStats]
+        dimensions = [dict(exp.dataId.required) for exp in inputRefs.inputStats]
         inputs['inputDims'] = dimensions
 
         outputs = self.run(**inputs)
