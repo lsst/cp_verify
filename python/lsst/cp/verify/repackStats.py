@@ -182,6 +182,11 @@ class CpVerifyRepackBiasTask(CpVerifyRepackTask):
             for ampName in projStats["AMP_VPROJECTION"].keys():
                 row[ampName]["biasParallelProfile"] = np.array(projStats["AMP_VPROJECTION"][ampName])
 
+            shiftStats = detStats["ISR"]["BIASSHIFT"]
+            for ampName, stats in shiftStats.items():
+                row[ampName]["biasShiftCount"] = len(stats["BIAS_SHIFTS"])
+                row[ampName]["biasShiftNoise"] = stats["LOCAL_NOISE"]
+
             # Create output table:
             for ampName, stats in row.items():
                 rowList.append(stats)
