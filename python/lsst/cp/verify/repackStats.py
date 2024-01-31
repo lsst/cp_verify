@@ -65,7 +65,7 @@ class CpVerifyRepackInstrumentConnections(pipeBase.PipelineTaskConnections,
         name="runStats",
         doc="Input Run statistics.",
         storageClass="StructuredDataDict",
-        dimensions={"instrument"},
+        dimensions={"instrument", },
         multiple=True,
     )
 
@@ -73,8 +73,20 @@ class CpVerifyRepackInstrumentConnections(pipeBase.PipelineTaskConnections,
         name="cpvCatalog",
         doc="Output merged catalog.",
         storageClass="ArrowAstropy",
-        dimensions={"instrument"},
+        dimensions={"instrument", },
     )
+    matrixCatalog = cT.Output(
+        name="cpvMatrix",
+        doc="Output matrix catalog.",
+        storageClass="ArrowAstropy",
+        dimensions={"instrument", },
+    )
+
+    def __init__(self, *, config=None):
+        super().__init__(config=config)
+
+        if not config.hasMatrixCatalog:
+            self.outputs.remove("matrixCatalog")
 
 
 class CpVerifyRepackInstrumentConfig(pipeBase.PipelineTaskConfig,
@@ -84,6 +96,11 @@ class CpVerifyRepackInstrumentConfig(pipeBase.PipelineTaskConfig,
         dtype=float,
         doc="Percentile levels expected in the calibration header.",
         default=[0, 5, 16, 50, 84, 95, 100],
+    )
+    hasMatrixCatalog = pexConfig.Field(
+        dtype=bool,
+        doc="Will a matrix catalog be created?",
+        default=False,
     )
 
 
@@ -108,11 +125,15 @@ class CpVerifyRepackTask(pipeBase.PipelineTask):
     def run(self, detectorStats, detectorDims, exposureStats, exposureDims, runStats):
         """
         """
-        rowList = self.repack(detectorStats, detectorDims, exposureStats, exposureDims, runStats)
-        catalog = Table(rowList)
+        results = self.repack(detectorStats, detectorDims, exposureStats, exposureDims, runStats)
+        catalog = Table(results.rowList)
 
+        matrixCatalog = None
+        if self.config.hasMatrixCatalog:
+            matrixCatalog = Table(results.matrixList)
         return pipeBase.Struct(
             outputCatalog=catalog,
+            matrixCatalog=matrixCatalog,
         )
 
     def repackDetStats(self, detectorStats, detectorDims):
@@ -186,6 +207,7 @@ class CpVerifyRepackBiasTask(CpVerifyRepackTask):
             for ampName, stats in shiftStats.items():
                 row[ampName]["biasShiftCount"] = len(stats["BIAS_SHIFTS"])
                 row[ampName]["biasShiftNoise"] = stats["LOCAL_NOISE"]
+            corrStats = detStats["ISR"]["AMPCORR"]
 
             # Create output table:
             for ampName, stats in row.items():
@@ -218,7 +240,10 @@ class CpVerifyRepackBiasTask(CpVerifyRepackTask):
                     constant_values=np.nan,
                 )
 
-        return rowList
+        return pipeBase.Struct(
+            rowList=rowList,
+            matrixList=corrStats,
+        )
 
 
 class CpVerifyRepackDarkTask(CpVerifyRepackTask):
@@ -267,7 +292,9 @@ class CpVerifyRepackDarkTask(CpVerifyRepackTask):
             for ampName, stats in row.items():
                 rowList.append(stats)
 
-        return rowList
+        return pipeBase.Struct(
+            rowList=rowList,
+        )
 
 
 class CpVerifyRepackPhysicalFilterConnections(pipeBase.PipelineTaskConnections,
@@ -366,7 +393,9 @@ class CpVerifyRepackFlatTask(CpVerifyRepackTask):
             for ampName, stats in row.items():
                 rowList.append(stats)
 
-        return rowList
+        return pipeBase.Struct(
+            rowList=rowList,
+        )
 
 
 class CpVerifyRepackDefectTask(CpVerifyRepackTask):
@@ -453,6 +482,11 @@ class CpVerifyRepackNoExpConfig(pipeBase.PipelineTaskConfig,
         dtype=float,
         doc="Percentile levels expected in the calibration header.",
         default=[0, 5, 16, 50, 84, 95, 100],
+    )
+    hasMatrixCatalog = pexConfig.Field(
+        dtype=bool,
+        doc="Will a matrix catalog be created?",
+        default=False,
     )
 
 
@@ -543,7 +577,9 @@ class CpVerifyRepackPtcTask(CpVerifyRepackNoExpTask):
             for ampName, stats in row.items():
                 rowList.append(stats)
 
-        return rowList
+        return pipeBase.Struct(
+            rowList=rowList,
+        )
 
 
 class CpVerifyRepackLinearityTask(CpVerifyRepackTask):
@@ -589,7 +625,9 @@ class CpVerifyRepackLinearityTask(CpVerifyRepackTask):
             for ampName, stats in row.items():
                 rowList.append(stats)
 
-        return rowList
+        return pipeBase.Struct(
+            rowList=rowList,
+        )
 
 
 class CpVerifyRepackCrosstalkTask(CpVerifyRepackTask):

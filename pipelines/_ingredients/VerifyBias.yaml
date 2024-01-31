@@ -49,3 +49,5 @@ tasks:
       connections.exposureStats: 'verifyBiasExpStats'
       connections.runStats: 'verifyBiasStats'
       connections.outputCatalog: 'verifyBiasResults'
+      connections.matrixCatalog: 'verifyBiasCorrelations'
+      hasMatrixCatalog: true
