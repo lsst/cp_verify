@@ -144,7 +144,7 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             outputStatistics[ampName]['PTC_TURNOFF'] = inputCalib.ptcTurnoff[ampName]
             outputStatistics[ampName]['PTC_FIT_TYPE'] = ptcFitType
             outputStatistics[ampName]['PTC_ROW_MEAN_VARIANCE'] = inputCalib.rowMeanVariance[ampName].tolist()
-            outputStatistics[ampName]['PTC_MAX_RAW_MEANS'] = float(np.max(inputCalib.rawMeans[ampName]))
+            outputStatistics[ampName]['PTC_MAX_RAW_MEANS'] = float(np.nanmax(inputCalib.rawMeans[ampName]))
             # To plot Covs[ij] vs flux
             rawFlux = inputCalib.rawMeans[ampName].tolist()
             outputStatistics[ampName]['PTC_RAW_MEANS'] = rawFlux

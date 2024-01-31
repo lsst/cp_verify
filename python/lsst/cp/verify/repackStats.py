@@ -27,8 +27,10 @@ import lsst.pipe.base.connectionTypes as cT
 import lsst.pex.config as pexConfig
 
 __all__ = [
-    "CpVerifyRepackConnections",
-    "CpVerifyRepackConfig",
+    "CpVerifyRepackInstrumentConnections",
+    "CpVerifyRepackPhysicalFilterConnections",
+    "CpVerifyRepackInstrumentConfig",
+    "CpVerifyRepackPhysicalFilterConfig",
     "CpVerifyRepackBiasTask",
     "CpVerifyRepackDarkTask",
     "CpVerifyRepackFlatTask",
@@ -39,9 +41,12 @@ __all__ = [
 ]
 
 
-class CpVerifyRepackConnections(pipeBase.PipelineTaskConnections,
-                                dimensions={"instrument"},
-                                defaultTemplate={}):
+class CpVerifyRepackInstrumentConnections(pipeBase.PipelineTaskConnections,
+                                          dimensions={"instrument"},
+                                          defaultTemplate={}):
+    """Connections class for calibration statistics with only instrument
+    dimension.
+    """
     detectorStats = cT.Input(
         name="detectorStats",
         doc="Input detector statistics.",
@@ -72,8 +77,8 @@ class CpVerifyRepackConnections(pipeBase.PipelineTaskConnections,
     )
 
 
-class CpVerifyRepackConfig(pipeBase.PipelineTaskConfig,
-                           pipelineConnections=CpVerifyRepackConnections):
+class CpVerifyRepackInstrumentConfig(pipeBase.PipelineTaskConfig,
+                                     pipelineConnections=CpVerifyRepackInstrumentConnections):
 
     expectedDistributionLevels = pexConfig.ListField(
         dtype=float,
@@ -84,15 +89,18 @@ class CpVerifyRepackConfig(pipeBase.PipelineTaskConfig,
 
 class CpVerifyRepackTask(pipeBase.PipelineTask):
     """Repack cpVerify statistics for analysis_tools.
+
+    This version is the base for calibrations with summary
+    dimensions of instrument only.
     """
-    ConfigClass = CpVerifyRepackConfig
+    ConfigClass = CpVerifyRepackInstrumentConfig
     _DefaultName = "cpVerifyRepack"
 
     def runQuantum(self, butlerQC, inputRefs, outputRefs):
         inputs = butlerQC.get(inputRefs)
 
-        inputs["detectorDims"] = [exp.dataId.byName() for exp in inputRefs.detectorStats]
-        inputs["exposureDims"] = [exp.dataId.byName() for exp in inputRefs.exposureStats]
+        inputs["detectorDims"] = [dict(exp.dataId.required) for exp in inputRefs.detectorStats]
+        inputs["exposureDims"] = [dict(exp.dataId.required) for exp in inputRefs.exposureStats]
 
         outputs = self.run(**inputs)
         butlerQC.put(outputs, outputRefs)
@@ -170,13 +178,41 @@ class CpVerifyRepackBiasTask(CpVerifyRepackTask):
 
             projStats = detStats["ISR"]["PROJECTION"]
             for ampName in projStats["AMP_HPROJECTION"].keys():
-                row[ampName]["biasSerialProfile"] = projStats["AMP_HPROJECTION"][ampName]
+                row[ampName]["biasSerialProfile"] = np.array(projStats["AMP_HPROJECTION"][ampName])
             for ampName in projStats["AMP_VPROJECTION"].keys():
-                row[ampName]["biasParallelProfile"] = projStats["AMP_VPROJECTION"][ampName]
+                row[ampName]["biasParallelProfile"] = np.array(projStats["AMP_VPROJECTION"][ampName])
 
             # Create output table:
             for ampName, stats in row.items():
                 rowList.append(stats)
+
+        # We need all rows of biasParallelProfile and biasParallelProfile
+        # to be the same length for serialization. Therefore, we pad
+        # to the longest length.
+
+        maxSerialLen = 0
+        maxParallelLen = 0
+
+        for row in rowList:
+            if len(row["biasSerialProfile"]) > maxSerialLen:
+                maxSerialLen = len(row["biasSerialProfile"])
+            if len(row["biasParallelProfile"]) > maxParallelLen:
+                maxParallelLen = len(row["biasParallelProfile"])
+
+        for row in rowList:
+            if len(row["biasSerialProfile"]) < maxSerialLen:
+                row["biasSerialProfile"] = np.pad(
+                    row["biasSerialProfile"],
+                    (0, maxSerialLen - len(row["biasSerialProfile"])),
+                    constant_values=np.nan,
+                )
+            if len(row["biasParallelProfile"]) < maxParallelLen:
+                row["biasParallelProfile"] = np.pad(
+                    row["biasParallelProfile"],
+                    (0, maxParallelLen - len(row["biasParallelProfile"])),
+                    constant_values=np.nan,
+                )
+
         return rowList
 
 
@@ -229,7 +265,54 @@ class CpVerifyRepackDarkTask(CpVerifyRepackTask):
         return rowList
 
 
+class CpVerifyRepackPhysicalFilterConnections(pipeBase.PipelineTaskConnections,
+                                              dimensions={"instrument", "physical_filter"},
+                                              defaultTemplate={}):
+    """Connections class for calibration statistics with physical_filter
+    (and instrument) dimensions.
+    """
+    detectorStats = cT.Input(
+        name="detectorStats",
+        doc="Input detector statistics.",
+        storageClass="StructuredDataDict",
+        dimensions={"instrument", "exposure", "detector"},
+        multiple=True,
+    )
+    exposureStats = cT.Input(
+        name="exposureStats",
+        doc="Input exposure statistics.",
+        storageClass="StructuredDataDict",
+        dimensions={"instrument", "exposure"},
+        multiple=True,
+    )
+    runStats = cT.Input(
+        name="runStats",
+        doc="Input Run statistics.",
+        storageClass="StructuredDataDict",
+        dimensions={"instrument"},
+        multiple=True,
+    )
+
+    outputCatalog = cT.Output(
+        name="cpvCatalog",
+        doc="Output merged catalog.",
+        storageClass="ArrowAstropy",
+        dimensions={"instrument", "physical_filter"},
+    )
+
+
+class CpVerifyRepackPhysicalFilterConfig(pipeBase.PipelineTaskConfig,
+                                         pipelineConnections=CpVerifyRepackPhysicalFilterConnections):
+    expectedDistributionLevels = pexConfig.ListField(
+        dtype=float,
+        doc="Percentile levels expected in the calibration header.",
+        default=[0, 5, 16, 50, 84, 95, 100],
+    )
+
+
 class CpVerifyRepackFlatTask(CpVerifyRepackTask):
+    ConfigClass = CpVerifyRepackPhysicalFilterConfig
+
     stageName = "flat"
 
     def repackDetStats(self, detectorStats, detectorDims):
@@ -344,7 +427,7 @@ class CpVerifyRepackNoExpTask(CpVerifyRepackTask):
     def runQuantum(self, butlerQC, inputRefs, outputRefs):
         inputs = butlerQC.get(inputRefs)
 
-        inputs["detectorDims"] = [exp.dataId.byName() for exp in inputRefs.detectorStats]
+        inputs["detectorDims"] = [dict(exp.dataId.required) for exp in inputRefs.detectorStats]
         inputs["exposureDims"] = []
         inputs["exposureStats"] = []
 

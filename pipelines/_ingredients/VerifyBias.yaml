@@ -42,7 +42,7 @@ tasks:
     config:
       connections.inputStats: 'verifyBiasExpStats'
       connections.outputStats: 'verifyBiasStats'
-  repackResults:
+  repackBiasResults:
     class: lsst.cp.verify.CpVerifyRepackBiasTask
     config:
       connections.detectorStats: 'verifyBiasDetStats'

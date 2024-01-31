@@ -30,7 +30,7 @@ tasks:
     config:
       connections.inputStats: 'verifyDarkExpStats'
       connections.outputStats: 'verifyDarkStats'
-  repackResults:
+  repackDarkResults:
     class: lsst.cp.verify.CpVerifyRepackDarkTask
     config:
       connections.detectorStats: 'verifyDarkDetStats'
