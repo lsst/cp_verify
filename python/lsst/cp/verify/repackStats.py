@@ -378,20 +378,41 @@ class CpVerifyRepackPtcTask(CpVerifyRepackNoExpTask):
                     "ptcFitType": stats["PTC_FIT_TYPE"],
                     "ptcBfeA00": stats["PTC_BFE_A00"],
                     "ptcRowMeanVariance": stats["PTC_ROW_MEAN_VARIANCE"],
+                    "ptcRowMeanVarianceSlope": stats["PTC_ROW_MEAN_VARIANCE_SLOPE"],
+                    "ptcMaxRawMeans": stats["PTC_MAX_RAW_MEANS"],
+                    "ptcRawMeans": stats["PTC_RAW_MEANS"],
+                    "ptcExpIdmask": stats["PTC_EXP_ID_MASK"],
+                    "ptcCov10": stats["PTC_COV_10"],
+                    "ptcCov10FitSlope": stats["PTC_COV_10_FIT_SLOPE"],
+                    "ptcCov10FitOffset": stats["PTC_COV_10_FIT_OFFSET"],
+                    "ptcCov10FitSuccess": stats["PTC_COV_10_FIT_SUCCESS"],
+                    "ptcCov01": stats["PTC_COV_01"],
+                    "ptcCov01FitSlope": stats["PTC_COV_01_FIT_SLOPE"],
+                    "ptcCov01FitOffset": stats["PTC_COV_01_FIT_OFFSET"],
+                    "ptcCov01FitSuccess": stats["PTC_COV_01_FIT_SUCCESS"],
+                    "ptcCov11": stats["PTC_COV_11"],
+                    "ptcCov11FitSlope": stats["PTC_COV_11_FIT_SLOPE"],
+                    "ptcCov11FitOffset": stats["PTC_COV_11_FIT_OFFSET"],
+                    "ptcCov11FitSuccess": stats["PTC_COV_11_FIT_SUCCESS"],
+                    "ptcCov20": stats["PTC_COV_20"],
+                    "ptcCov20FitSlope": stats["PTC_COV_20_FIT_SLOPE"],
+                    "ptcCov20FitOffset": stats["PTC_COV_20_FIT_OFFSET"],
+                    "ptcCov20FitSuccess": stats["PTC_COV_20_FIT_SUCCESS"],
+                    "ptcCov02": stats["PTC_COV_02"],
+                    "ptcCov02FitSlope": stats["PTC_COV_02_FIT_SLOPE"],
+                    "ptcCov02FitOffset": stats["PTC_COV_02_FIT_OFFSET"],
+                    "ptcCov02FitSuccess": stats["PTC_COV_02_FIT_SUCCESS"],
                 }
             # Get catalog stats
             # Get detector stats
             # Get metadata stats
-            # Get verify stats; no need to loop here.
-            stats = detStats["VERIFY"]
-            row["detector"] = {
-                "instrument": instrument,
-                "detector": detector,
-                "ptcVerifyGain": stats["PTC_GAIN"],
-                "ptcVerifyNoise": stats["PTC_NOISE"],
-                "ptcVerifyTurnoff": stats["PTC_TURNOFF"],
-                "ptcVerifyBfeA00": stats["PTC_BFE_A00"],
-            }
+            # Get verify stats
+            for ampName, stats in detStats["VERIFY"]["AMP"].items():
+                row[ampName]["ptcVerifyGain"] = stats["PTC_GAIN"]
+                row[ampName]["ptcVerifyNoise"] = stats["PTC_NOISE"]
+                row[ampName]["ptcVerifyTurnoff"] = stats["PTC_TURNOFF"]
+                row[ampName]["ptcVerifyBfeA00"] = stats["PTC_BFE_A00"]
+
             # Get isr stats
 
             # Append to output
