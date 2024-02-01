@@ -34,3 +34,10 @@ tasks:
     config:
       connections.inputStats: 'verifyLinearityDetStats'
       connections.outputStats: 'verifyLinearityStats'
+  repackResults:
+    class: lsst.cp.verify.CpVerifyRepackLinearityTask
+    config:
+      connections.detectorStats: 'verifyLinearityDetStats'
+      connections.runStats: 'verifyLinearityStats'
+      connections.outputCatalog: 'verifyLinearityResults'
+

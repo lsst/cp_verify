@@ -37,6 +37,7 @@ __all__ = [
     "CpVerifyRepackDefectTask",
     "CpVerifyRepackPtcTask",
     "CpVerifyRepackBfkTask",
+    "CpVerifyRepackLinearityTask",
     "CpVerifyRepackCtiTask",
 ]
 
@@ -505,7 +506,7 @@ class CpVerifyRepackPtcTask(CpVerifyRepackNoExpTask):
         return rowList
 
 
-class CpVerifyRepackLinearityTask(CpVerifyRepackTask):
+class CpVerifyRepackLinearityTask(CpVerifyRepackNoExpTask):
     stageName = "linearity"
 
     def repackDetStats(self, detectorStats, detectorDims):
@@ -519,7 +520,11 @@ class CpVerifyRepackLinearityTask(CpVerifyRepackTask):
 
             # Get amp stats
             for ampName, stats in detStats["AMP"].items():
-                centers, values = np.split(stats["LINEARITY_COEFFS"], 2)
+                if stats["LINEARITY_TYPE"] == "Spline":
+                    centers, values = np.split(stats["LINEARITY_COEFFS"], 2)
+                else:
+                    centers = []
+                    values = []
                 row[ampName] = {
                     "instrument": instrument,
                     "detector": detector,
@@ -527,10 +532,11 @@ class CpVerifyRepackLinearityTask(CpVerifyRepackTask):
                     "fitParams": stats["FIT_PARAMS"],
                     "fitParamsErr": stats["FIT_PARAMS_ERR"],
                     "fitResiduals": stats["FIT_RESIDUALS"],
+                    "linearFit": stats["LINEAR_FIT"],
+                    "linearityCoefficients": stats["LINEARITY_COEFFS"],
+                    "linearityType": stats["LINEARITY_TYPE"],
                     "splineCenters": centers,
                     "splineValues": values,
-                    "linearityType": stats["LINEARITY_TYPE"],
-                    "linearFit": stats["LINEAR_FIT"],
                 }
             # Get catalog stats
             # Get detector stats
