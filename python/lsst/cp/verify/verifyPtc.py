@@ -240,6 +240,17 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             verify['PTC_GAIN'] = bool(diffGain < self.config.gainThreshold)
             verify['PTC_NOISE'] = bool(diffNoise < self.config.noiseThreshold)
 
+            # Check that the noises measured in cpPtcExtract do not evolve
+            # as a function of flux.
+            # We check that the reduced chi squared statistic between the
+            # noises and the mean of the noises less than 1.25 sigmas
+            mask = calib.expIdMask[ampName]
+            noiseList = calib.noiseList[ampName][mask]
+            expectedNoiseList = np.zeros_like(noiseList) + np.mean(noiseList)
+            chiSquared = np.sum((noiseList - expectedNoiseList)**2 / np.std(noiseList))
+            reducedChiSquared = chiSquared / len(noiseList)
+            verify['NOISE_SIGNAL_INDEPENDENCE'] = bool(reducedChiSquared < 1.25)
+
             # DMTN-101: 16.3
             # Check that the measured PTC turnoff is at least greater than the
             # full-well requirement of 90k e-.
