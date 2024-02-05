@@ -22,6 +22,8 @@ tasks:
       doDefect: true
       doSaturationInterpolation: false
       growSaturationFootprintSize: 0
+      doCalculateStatistics: true
+      isrStats.doCopyCalibDistributionStatistics: true
   verifyMeasureStats:
     class: lsst.cp.verify.CpVerifyDefectsTask
     config:
@@ -29,6 +31,7 @@ tasks:
       connections.outputStats: 'verifyDefectDetStats'
       doVignette: false
       useReadNoise: false
+      useIsrStatistics: true
   verifyExposureStats:
     class: lsst.cp.verify.CpVerifyExpMergeTask
     config:
@@ -39,3 +42,9 @@ tasks:
     config:
       connections.inputStats: 'verifyDefectExpStats'
       connections.outputStats: 'verifyDefectStats'
+  repackResults:
+    class: lsst.cp.verify.CpVerifyRepackDefectsTask
+    config:
+      connections.detectorStats: 'verifyDefectDetStats'
+      connections.exposureStats: 'verifyDefectExpStats'
+      connections.runStats: 'verifyDefectStats'
