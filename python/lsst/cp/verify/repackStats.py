@@ -340,6 +340,11 @@ class CpVerifyRepackPhysicalFilterConfig(pipeBase.PipelineTaskConfig,
         doc="Percentile levels expected in the calibration header.",
         default=[0, 5, 16, 50, 84, 95, 100],
     )
+    hasMatrixCatalog = pexConfig.Field(
+        dtype=bool,
+        doc="Will a matrix catalog be created?",
+        default=False,
+    )
 
 
 class CpVerifyRepackFlatTask(CpVerifyRepackTask):
