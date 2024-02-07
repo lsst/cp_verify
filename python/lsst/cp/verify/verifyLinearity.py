@@ -18,17 +18,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import numpy as np
 
-__all__ = ['CpVerifyLinearityConnections', 'CpVerifyLinearityConfig', 'CpVerifyLinearityTask']
+from astropy.table import Table
 
 import lsst.cp.pipe as cpPipe
 import lsst.pipe.base as pipeBase
-
-import numpy as np
 import lsst.pex.config as pexConfig
-
 import lsst.pipe.base.connectionTypes as cT
 from .verifyCalib import CpVerifyCalibConfig, CpVerifyCalibTask, CpVerifyCalibConnections
+
+__all__ = ['CpVerifyLinearityConnections', 'CpVerifyLinearityConfig', 'CpVerifyLinearityTask']
 
 
 class CpVerifyLinearityConnections(CpVerifyCalibConnections,
@@ -72,6 +72,8 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
     """
     ConfigClass = CpVerifyLinearityConfig
     _DefaultName = 'cpVerifyLinearity'
+
+    stageName = "linearity"
 
     def detectorStatistics(self, inputCalib, camera=None):
         """Calculate detector level statistics from the calibration.
@@ -210,6 +212,65 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
             if not testBool:
                 verifyDetStatsFinal[testName] = bool(np.all(list(verifyDetStats[testName])))
         return verifyDetStatsFinal, bool(success)
+
+    def repackStats(self, detStats, detDims):
+        """Repack hierarchical results into flat table.
+
+        Parameters
+        ----------
+        detStats : `dict` [`str`, `dict`]
+            A nested set of dictionaries containing relevant
+            statistics.
+        detDims : `dict` [`str`, `str`]
+            The dimensions of this set of statistics.
+
+        Returns
+        -------
+        outputResults : `astropy.Table`, optional
+            The repacked flat table.
+        outputMatrix : `astropy.Table`, optional
+            The repackaed matrix data, in a flat table.
+        """
+        rowList = []
+
+        row = {}
+
+        instrument = detDims["instrument"]
+        detector = detDims["detector"]
+
+        # Get amp stats
+        for ampName, stats in detStats["AMP"].items():
+            centers, values = np.split(stats["LINEARITY_COEFFS"], 2)
+            row[ampName] = {
+                "instrument": instrument,
+                "detector": detector,
+                "amplifier": ampName,
+                "fitParams": stats["FIT_PARAMS"],
+                "fitParamsErr": stats["FIT_PARAMS_ERR"],
+                "fitResiduals": stats["FIT_RESIDUALS"],
+                "splineCenters": centers,
+                "splineValues": values,
+                "linearityType": stats["LINEARITY_TYPE"],
+                "linearFit": stats["LINEAR_FIT"],
+            }
+        # Get catalog stats
+        # Get detector stats
+        # Get metadata stats
+        # Get verify stats; no need to loop here.
+        stats = detStats["VERIFY"]
+        row["detector"] = {
+            "instrument": instrument,
+            "detector": detector,
+            "linearityMaxResidualError": stats["MAX_RESIDUAL_ERROR"],
+        }
+        # Get isr stats
+
+        # Append to output
+        for ampName, stats in row.items():
+            rowList.append(stats)
+
+        return Table(rowList), None
+
 
 # Subclass the linearity classess so that the linearizer
 # is a regular Input instead of a PrerequisiteInput

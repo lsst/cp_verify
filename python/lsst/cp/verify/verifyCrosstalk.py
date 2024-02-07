@@ -20,6 +20,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 
+from astropy.table import Table
+
 import lsst.pipe.base.connectionTypes as cT
 from .verifyCalib import CpVerifyCalibConfig, CpVerifyCalibTask, CpVerifyCalibConnections
 
@@ -126,3 +128,29 @@ class CpVerifyCrosstalkTask(CpVerifyCalibTask):
             success = False
 
         return verifyStats, success
+
+    def repackStats(self, detStats, detDims):
+        """Repack hierarchical results into flat table.
+
+        Parameters
+        ----------
+        detStats : `dict` [`str`, `dict`]
+            A nested set of dictionaries containing relevant
+            statistics.
+        detDims : `dict` [`str`, `str`]
+            The dimensions of this set of statistics.
+
+        Returns
+        -------
+        outputResults : `astropy.Table`, optional
+            The repacked flat table.
+        outputMatrix : `astropy.Table`, optional
+            The repackaed matrix data, in a flat table.
+
+        Raises
+        ------
+        NotImplementedError :
+            This method must be implemented by the calibration-type
+            subclass.
+        """
+        return Table(), None

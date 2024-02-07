@@ -20,6 +20,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 import scipy.stats
+
+from astropy.table import Table
+
 import lsst.pipe.base.connectionTypes as cT
 from lsst.ip.isr.isrFunctions import countMaskedPixels
 
@@ -331,3 +334,61 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             "DET": verifyStatsDet,
             "CATALOG": verifyStatsCat,
         }, bool(success)
+
+    def repackStats(self, detStats, detDims):
+        """Repack hierarchical results into flat table.
+
+        Parameters
+        ----------
+        detStats : `dict` [`str`, `dict`]
+            A nested set of dictionaries containing relevant
+            statistics.
+        detDims : `dict` [`str`, `str`]
+            The dimensions of this set of statistics.
+
+        Returns
+        -------
+        outputResults : `astropy.Table`, optional
+            The repacked flat table.
+        outputMatrix : `astropy.Table`, optional
+            The repackaed matrix data, in a flat table.
+        """
+        rowList = []
+        row = {}
+        instrument = detDims["instrument"]
+        detector = detDims["detector"]
+        mjd = detStats["ISR"]["MJD"] if "ISR" in detStats else 0.0
+
+        # Get amp stats
+        for ampName, stats in detStats["AMP"].items():
+            row[ampName] = {
+                "instrument": instrument,
+                "detector": detector,
+                "amplifier": ampName,
+                "mjd": mjd,
+            }
+        # Get catalog stats CATALOG
+        # Get metadata stats METADATA
+        # Get verify stats VERIFY
+        # Get isr stats ISR
+        nBadColumns = np.nan
+        if "ISR" in detStats:
+            for ampName, stats in detStats["ISR"]["CALIBDIST"].items():
+                if ampName == "detector":
+                    nBadColumns = stats[ampName]["LSST CALIB DEFECTS N_BAD_COLUMNS"]
+                else:
+                    key = f"LSST CALIB DEFECTS {ampName} N_HOT"
+                    row[ampName]["hotPixels"] = stats[ampName][key]
+                    key = f"LSST CALIB DEFECTS {ampName} N_COLD"
+                    row[ampName]["coldPixels"] = stats[ampName][key]
+
+        # Get detector stats DET
+        row["detector"] = {
+            "instrument": instrument,
+            "detector": detector,
+            "nBadColumns": nBadColumns,
+        }
+        for ampName, stats in row.items():
+            rowList.append(stats)
+
+        return Table(rowList), None

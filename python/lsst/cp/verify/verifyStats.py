@@ -91,6 +91,18 @@ class CpVerifyStatsConnections(
         storageClass="StructuredDataDict",
         dimensions=["instrument", "exposure", "detector"],
     )
+    outputResults = cT.Output(
+        name="detectorResults",
+        doc="Output results from cp_verify.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure", "detector"],
+    )
+    outputMatrix = cT.Output(
+        name="calibMatrix",
+        doc="Output matrix catalog from cp_verify.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "detector"],
+    )
 
     def __init__(self, *, config=None):
         super().__init__(config=config)
@@ -107,6 +119,9 @@ class CpVerifyStatsConnections(
 
         if config.useIsrStatistics is not True:
             self.inputs.discard("isrStatistics")
+
+        if not config.hasMatrixCatalog:
+            self.outputs.remove("outputMatrix")
 
 
 class CpVerifyStatsConfig(
@@ -171,6 +186,17 @@ class CpVerifyStatsConfig(
         dtype=int,
         doc="Max number of clipping iterations to apply.",
         default=3,
+    )
+
+    expectedDistributionLevels = pexConfig.ListField(
+        dtype=float,
+        doc="Percentile levels expected in the calibration header.",
+        default=[0, 5, 16, 50, 84, 94, 100],
+    )
+    hasMatrixCatalog = pexConfig.Field(
+        dtype=bool,
+        doc="Will a matrix catalog be created?",
+        default=False,
     )
 
     # Keywords and statistics to measure from different sources.
@@ -240,14 +266,24 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
     ConfigClass = CpVerifyStatsConfig
     _DefaultName = "cpVerifyStats"
 
+    stageName = "unknown"
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.makeSubtask("repair")
+
+    def runQuantum(self, butlerQC, inputRefs, outputRefs):
+        inputs = butlerQC.get(inputRefs)
+        inputs["detectorDims"] = dict(inputRefs.inputExp.dataId.required)
+
+        outputs = self.run(**inputs)
+        butlerQC.put(outputs, outputRefs)
 
     def run(
         self,
         inputExp,
         camera,
+        detectorDims,
         isrStatistics=None,
         uncorrectedExp=None,
         taskMetadata=None,
@@ -263,6 +299,8 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             The ISR processed exposure to be measured.
         camera : `lsst.afw.cameraGeom.Camera`
             The camera geometry for ``inputExp``.
+        detectorDims : `dict` [`str`, `str`]
+            Dictionary of dimensions.
         uncorrectedExp : `lsst.afw.image.Exposure`
             The alternate exposure to measure.
         taskMetadata : `lsst.pipe.base.TaskMetadata`, optional
@@ -278,6 +316,10 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             Result struct with components:
             - ``outputStats`` : `dict`
                 The output measured statistics.
+            - ``outputResults`` : `astropy.Table`
+                The output measured statistics, in a flat table.
+            - ``outputMatrix`` : `astropy.Table`
+                The output measured matrix properties, in a flat table.
 
         Notes
         -----
@@ -307,7 +349,6 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             Amp2:
             Amp3:
         SUCCESS: boolean
-
         """
         outputStats = {}
 
@@ -353,8 +394,12 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             inputExp, outputStats
         )
 
+        outputResults, outputMatrix = self.repackStats(outputStats, detectorDims)
+
         return pipeBase.Struct(
             outputStats=outputStats,
+            outputResults=outputResults,
+            outputMatrix=outputMatrix,
         )
 
     @staticmethod
@@ -749,3 +794,29 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             subclass.
         """
         raise NotImplementedError("Subclasses must implement verification criteria.")
+
+    def repackStats(self, statisticsDict, detectorDims):
+        """Repack hierarchical results into flat table.
+
+        Parameters
+        ----------
+        statisticsDict : `dict` [`str`, `dict`]
+            A nested set of dictionaries containing relevant
+            statistics.
+        detectorDims : `dict` [`str`, `str`]
+            Dictionary of input dimensions.
+
+        Returns
+        -------
+        outputResults : `astropy.Table`, optional
+            The repacked flat table.
+        outputMatrix : `astropy.Table`, optional
+            The repackaed matrix data, in a flat table.
+
+        Raises
+        ------
+        NotImplementedError :
+            This method must be implemented by the calibration-type
+            subclass.
+        """
+        raise NotImplementedError("Subclasses must implement repacking methods.")

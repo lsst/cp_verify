@@ -20,6 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 
+from astropy.table import Table
 from .verifyStats import CpVerifyStatsConfig, CpVerifyStatsTask, CpVerifyStatsConnections
 
 
@@ -44,6 +45,8 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
     """
     ConfigClass = CpVerifyDarkConfig
     _DefaultName = 'cpVerifyDark'
+
+    stageName = "dark"
 
     def verify(self, exposure, statisticsDict):
         """Verify that the measured statistics meet the verification criteria.
@@ -124,3 +127,77 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
             verifyStats[ampName] = verify
 
         return {'AMP': verifyStats}, bool(success)
+
+    def repackStats(self, detStats, detDims):
+        """Repack hierarchical results into flat table.
+
+        Parameters
+        ----------
+        detStats : `dict` [`str`, `dict`]
+            A nested set of dictionaries containing relevant
+            statistics.
+        detDims : `dict` [`str`, `str`]
+            The dimensions of this set of statistics.
+
+        Returns
+        -------
+        outputResults : `astropy.Table`, optional
+            The repacked flat table.
+        outputMatrix : `astropy.Table`, optional
+            The repackaed matrix data, in a flat table.
+
+        Raises
+        ------
+        NotImplementedError :
+            This method must be implemented by the calibration-type
+            subclass.
+        """
+        rowList = []
+
+        row = {}
+        instrument = detDims["instrument"]
+        exposure = detDims["exposure"]
+        detector = detDims["detector"]
+        mjd = 0.0
+        if self.config.useIsrStatistics:
+            mjd = detStats["ISR"]["MJD"] if "ISR" in detStats else 0.0
+
+        # Get amp stats
+        # AMP {ampName} [CR_NOISE MEAN NOISE] value
+        for ampName, stats in detStats["AMP"].items():
+            row[ampName] = {
+                "instrument": instrument,
+                "exposure": exposure,
+                "detector": detector,
+                "amplifier": ampName,
+                "mjd": mjd,
+                "darkMean": stats["MEAN"],
+                "darkNoise": stats["NOISE"],
+                "darkCrNoise": stats["CR_NOISE"]
+            }
+        # Get catalog stats
+        # Get detector stats
+        # Get metadata stats
+        if "METADATA" in detStats:
+            for ampName, value in detStats["METADATA"]["RESIDUAL STDEV"].items():
+                row[ampName]["darkReadNoise"] = value
+
+        # Get verify stats
+        for ampName, stats in detStats["VERIFY"]["AMP"].items():
+            row[ampName]["darkVerifyMean"] = stats["MEAN"]
+            row[ampName]["darkVerifyNoise"] = stats["NOISE"]
+            row[ampName]["darkVerifyCrNoise"] = stats["CR_NOISE"]
+            row[ampName]["darkVerifyReadNoiseConsistent"] = stats["READ_NOISE_CONSISTENT"]
+
+        # Get isr stats
+        if self.config.useIsrStatistics:
+            for ampName, stats in detStats["ISR"]["CALIBDIST"].items():
+                for level in self.config.expectedDistributionLevels:
+                    key = f"LSST CALIB {self.stageName.upper()} {ampName} DISTRIBUTION {level}-PCT"
+                    row[ampName][f"darkDistribution_{level}"] = stats[key]
+
+        # Append to output
+        for ampName, stats in row.items():
+            rowList.append(stats)
+
+        return Table(rowList), None

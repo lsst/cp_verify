@@ -60,6 +60,24 @@ class CpVerifyCalibConnections(pipeBase.PipelineTaskConnections,
         storageClass="StructuredDataDict",
         dimensions=["instrument", "detector"],
     )
+    outputResults = cT.Output(
+        name="calibResults",
+        doc="Output results table from cp_verify.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "detector"],
+    )
+    outputMatrix = cT.Output(
+        name="calibMatrix",
+        doc="Output matrix catalog from cp_verify.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "detector"],
+    )
+
+    def __init__(self, *, config=None):
+        super().__init__(config=config)
+
+        if not config.hasMatrixCatalog:
+            self.outputs.remove("outputMatrix")
 
 
 class CpVerifyCalibConfig(pipeBase.PipelineTaskConfig,
@@ -83,6 +101,17 @@ class CpVerifyCalibConfig(pipeBase.PipelineTaskConfig,
         default=3,
     )
 
+    expectedDistributionLevels = pexConfig.ListField(
+        dtype=float,
+        doc="Percentile levels expected in the calibration header.",
+        default=[0, 5, 16, 50, 84, 94, 100],
+    )
+    hasMatrixCatalog = pexConfig.Field(
+        dtype=bool,
+        doc="Will a matrix catalog be created?",
+        default=False,
+    )
+
     # Keywords and statistics to measure from different sources.
     calibStatKeywords = pexConfig.DictField(
         keytype=str,
@@ -103,7 +132,16 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
     ConfigClass = CpVerifyCalibConfig
     _DefaultName = 'cpVerifyCalib'
 
-    def run(self, inputCalib, camera=None, exposure=None):
+    stageName = "unknown"
+
+    def runQuantum(self, butlerQC, inputRefs, outputRefs):
+        inputs = butlerQC.get(inputRefs)
+        inputs["detectorDims"] = dict(inputRefs.inputCalib.dataId.required)
+
+        outputs = self.run(**inputs)
+        butlerQC.put(outputs, outputRefs)
+
+    def run(self, inputCalib, detectorDims, camera=None, exposure=None):
         """Calculate quality statistics and verify they meet the requirements
         for a calibration.
 
@@ -111,6 +149,8 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         ----------
         inputCalib : `lsst.ip.isr.IsrCalib`
             The calibration to be measured.
+        detectorDims : `dict` [`str`, `str`]
+            Dictionary of dimensions.
         camera : `lsst.afw.cameraGeom.Camera`, optional
             Input camera.
         exposure : `lsst.afw.image.Exposure`, optional
@@ -123,6 +163,10 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             Result struct with components:
             - ``outputStats`` : `dict`
                 The output measured statistics.
+            - ``outputResults`` : `astropy.Table`
+                The output measured statistics, in a flat table.
+            - ``outputMatrix`` : `astropy.Table`
+                The output measured matrix properties, in a flat table.
 
         Notes
         -----
@@ -145,9 +189,12 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         outputStats['AMP'] = self.amplifierStatistics(inputCalib, camera=camera)
         outputStats['DET'] = self.detectorStatistics(inputCalib, camera=camera)
         outputStats['VERIFY'], outputStats['SUCCESS'] = self.verify(inputCalib, outputStats, camera=camera)
+        outputResults, outputMatrix = self.repackStats(outputStats, detectorDims)
 
         return pipeBase.Struct(
             outputStats=outputStats,
+            outputResults=outputResults,
+            outputMatrix=outputMatrix,
         )
 
     # Methods that need to be implemented by the calibration-level subclasses.
@@ -236,3 +283,27 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             subclass.
         """
         raise NotImplementedError("Subclasses must implement verification criteria.")
+
+    def repackStats(self, statisticsDict):
+        """Repack hierarchical results into flat table.
+
+        Parameters
+        ----------
+        statisticsDict : `dict` [`str`, `dict`]
+            A nested set of dictionaries containing relevant
+            statistics.
+
+        Returns
+        -------
+        outputResults : `astropy.Table`, optional
+            The repacked flat table.
+        outputMatrix : `astropy.Table`, optional
+            The repackaed matrix data, in a flat table.
+
+        Raises
+        ------
+        NotImplementedError :
+            This method must be implemented by the calibration-type
+            subclass.
+        """
+        raise NotImplementedError("Subclasses must implement repacking methods.")

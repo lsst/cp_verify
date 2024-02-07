@@ -19,8 +19,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
-import lsst.pex.config as pexConfig
+from astropy.table import Table
 from scipy.optimize import least_squares
+
+import lsst.pex.config as pexConfig
 
 from .verifyCalib import CpVerifyCalibConfig, CpVerifyCalibTask, CpVerifyCalibConnections
 
@@ -96,6 +98,8 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
     """
     ConfigClass = CpVerifyPtcConfig
     _DefaultName = 'cpVerifyPtc'
+
+    stageName = "ptc"
 
     def detectorStatistics(self, inputCalib, camera=None):
         """Calculate detector level statistics from the calibration.
@@ -287,3 +291,85 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             verifyStats[ampName] = verify
 
         return {'AMP': verifyStats}, bool(success)
+
+    def repackStats(self, detStats, detDims):
+        """Repack hierarchical results into flat table.
+
+        Parameters
+        ----------
+        detStats : `dict` [`str`, `dict`]
+            A nested set of dictionaries containing relevant
+            statistics.
+        detDims : `dict` [`str`, `str`]
+            The dimensions of this set of statistics.
+
+        Returns
+        -------
+        outputResults : `astropy.Table`, optional
+            The repacked flat table.
+        outputMatrix : `astropy.Table`, optional
+            The repackaed matrix data, in a flat table.
+        """
+        rowList = []
+
+        row = {}
+
+        instrument = detDims["instrument"]
+        detector = detDims["detector"]
+
+        # Get amp stats
+        for ampName, stats in detStats["AMP"].items():
+            row[ampName] = {
+                "instrument": instrument,
+                "detector": detector,
+                "amplifier": ampName,
+                "ampGain": stats["AMP_GAIN"],
+                "ampNoise": stats["AMP_NOISE"],
+                "ptcGain": stats["PTC_GAIN"],
+                "ptcNoise": stats["PTC_NOISE"],
+                "ptcTurnoff": stats["PTC_TURNOFF"],
+                "ptcFitType": stats["PTC_FIT_TYPE"],
+                "ptcBfeA00": stats["PTC_BFE_A00"],
+                "ptcRowMeanVariance": stats["PTC_ROW_MEAN_VARIANCE"],
+                "ptcRowMeanVarianceSlope": stats["PTC_ROW_MEAN_VARIANCE_SLOPE"],
+                "ptcMaxRawMeans": stats["PTC_MAX_RAW_MEANS"],
+                "ptcRawMeans": stats["PTC_RAW_MEANS"],
+                "ptcExpIdmask": stats["PTC_EXP_ID_MASK"],
+                "ptcCov10": stats["PTC_COV_10"],
+                "ptcCov10FitSlope": stats["PTC_COV_10_FIT_SLOPE"],
+                "ptcCov10FitOffset": stats["PTC_COV_10_FIT_OFFSET"],
+                "ptcCov10FitSuccess": stats["PTC_COV_10_FIT_SUCCESS"],
+                "ptcCov01": stats["PTC_COV_01"],
+                "ptcCov01FitSlope": stats["PTC_COV_01_FIT_SLOPE"],
+                "ptcCov01FitOffset": stats["PTC_COV_01_FIT_OFFSET"],
+                "ptcCov01FitSuccess": stats["PTC_COV_01_FIT_SUCCESS"],
+                "ptcCov11": stats["PTC_COV_11"],
+                "ptcCov11FitSlope": stats["PTC_COV_11_FIT_SLOPE"],
+                "ptcCov11FitOffset": stats["PTC_COV_11_FIT_OFFSET"],
+                "ptcCov11FitSuccess": stats["PTC_COV_11_FIT_SUCCESS"],
+                "ptcCov20": stats["PTC_COV_20"],
+                "ptcCov20FitSlope": stats["PTC_COV_20_FIT_SLOPE"],
+                "ptcCov20FitOffset": stats["PTC_COV_20_FIT_OFFSET"],
+                "ptcCov20FitSuccess": stats["PTC_COV_20_FIT_SUCCESS"],
+                "ptcCov02": stats["PTC_COV_02"],
+                "ptcCov02FitSlope": stats["PTC_COV_02_FIT_SLOPE"],
+                "ptcCov02FitOffset": stats["PTC_COV_02_FIT_OFFSET"],
+                "ptcCov02FitSuccess": stats["PTC_COV_02_FIT_SUCCESS"],
+            }
+        # Get catalog stats
+        # Get detector stats
+        # Get metadata stats
+        # Get verify stats
+        for ampName, stats in detStats["VERIFY"]["AMP"].items():
+            row[ampName]["ptcVerifyGain"] = stats["PTC_GAIN"]
+            row[ampName]["ptcVerifyNoise"] = stats["PTC_NOISE"]
+            row[ampName]["ptcVerifyTurnoff"] = stats["PTC_TURNOFF"]
+            row[ampName]["ptcVerifyBfeA00"] = stats["PTC_BFE_A00"]
+
+        # Get isr stats
+
+        # Append to output
+        for ampName, stats in row.items():
+            rowList.append(stats)
+
+        return Table(rowList), None

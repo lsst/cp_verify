@@ -41,10 +41,14 @@ class VerifyCrosstalkTestCase(lsst.utils.tests.TestCase):
         crosstalk.coeffErr = np.array([[0.0, 1e-5], [1e-5, 0.0]])
         crosstalk.coeffNum = np.array([[0, 100], [100, 0]])
         crosstalk.coeffValid = np.array([[False, True], [True, False]], dtype=bool)
+        dims = {
+            'instrument': 'FakeCam',
+            'detector': 'FakeDet',
+        }
 
         config = cpVerify.CpVerifyCrosstalkConfig()
         task = cpVerify.CpVerifyCrosstalkTask(config=config)
-        results = task.run(crosstalk)
+        results = task.run(crosstalk, dims)
         crosstalkStats = results.outputStats
 
         self.assertEqual(crosstalkStats['DET']['N_AMP'], crosstalk.nAmp)
@@ -62,10 +66,14 @@ class VerifyCrosstalkTestCase(lsst.utils.tests.TestCase):
         crosstalk.coeffErr = np.array([[0.0, 1e-5], [1e-5, 0.0]]),
         crosstalk.coeffNum = np.array([[0, 100], [100, 0]]),
         crosstalk.coeffValid = np.array([[False, False], [False, False]], dtype=bool)
+        dims = {
+            'instrument': 'FakeCam',
+            'detector': 'FakeDet',
+        }
 
         config = cpVerify.CpVerifyCrosstalkConfig()
         task = cpVerify.CpVerifyCrosstalkTask(config=config)
-        results = task.run(crosstalk)
+        results = task.run(crosstalk, dims)
         crosstalkStats = results.outputStats
 
         self.assertEqual(crosstalkStats['DET']['N_AMP'], crosstalk.nAmp)

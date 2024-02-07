@@ -22,6 +22,8 @@ import numpy as np
 
 import lsst.afw.math as afwMath
 
+from astropy.table import Table
+
 from lsst.geom import Point2I, Extent2I, Box2I
 from lsst.pex.config import Field
 from .verifyStats import CpVerifyStatsConfig, CpVerifyStatsTask, CpVerifyStatsConnections
@@ -53,6 +55,8 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
     """
     ConfigClass = CpVerifyBiasConfig
     _DefaultName = 'cpVerifyBias'
+
+    stageName = "bias"
 
     def imageStatistics(self, exposure, uncorrectedExposure, statControl):
         # Docstring inherited
@@ -158,3 +162,110 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
             verifyStats[ampName] = verify
 
         return {'AMP': verifyStats}, bool(success)
+
+    def repackStats(self, detStats, detDims):
+        """Repack hierarchical results into flat table.
+
+        Parameters
+        ----------
+        detStats : `dict` [`str`, `dict`]
+            A nested set of dictionaries containing relevant
+            statistics.
+        detDims : `dict` [`str`, `str`]
+            The dimensions of this set of statistics.
+
+        Returns
+        -------
+        outputResults : `astropy.Table`, optional
+            The repacked flat table.
+        outputMatrix : `astropy.Table`, optional
+            The repackaed matrix data, in a flat table.
+
+        Raises
+        ------
+        NotImplementedError :
+            This method must be implemented by the calibration-type
+            subclass.
+        """
+        rowList = []
+
+        row = {}
+        instrument = detDims["instrument"]
+        exposure = detDims["exposure"]
+        detector = detDims["detector"]
+        mjd = detStats["ISR"]["MJD"] if "ISR" in detStats else 0.0
+
+        # Get amp stats
+        # AMP {ampName} [CR_NOISE MEAN NOISE] value
+        for ampName, stats in detStats["AMP"].items():
+            row[ampName] = {
+                "instrument": instrument,
+                "exposure": exposure,
+                "mjd": mjd,
+                "detector": detector,
+                "amplifier": ampName,
+                "biasMean": stats["MEAN"],
+                "biasNoise": stats["NOISE"],
+                "biasCrNoise": stats["CR_NOISE"]
+            }
+
+        # Get catalog stats  CATALOG
+        # Get detector stats DET
+        # Get metadata stats
+        # METADATA (RESIDUAL STDEV) {ampName} value
+        if "METADATA" in detStats:
+            if "RESIDUAL STDEV" in detStats["METADATA"]:
+                for ampName, value in detStats["METADATA"]["RESIDUAL STDEV"].items():
+                    row[ampName]["biasReadNoise"] = value
+
+        # Get verify stats
+        for ampName, stats in detStats["VERIFY"]["AMP"].items():
+            row[ampName]["biasVerifyMean"] = stats["MEAN"]
+            row[ampName]["biasVerifyNoise"] = stats["NOISE"]
+            row[ampName]["biasVerifyCrNoise"] = stats["CR_NOISE"]
+            row[ampName]["biasVerifyReadNoiseConsistent"] = stats.get("READ_NOISE_CONSISTENT", False)
+
+        # Get isr stats
+        if "ISR" in detStats:
+            for ampName, stats in detStats["ISR"]["CALIBDIST"].items():
+                for level in self.config.expectedDistributionLevels:
+                    key = f"LSST CALIB {self.stageName.upper()} {ampName} DISTRIBUTION {level}-PCT"
+                    row[ampName][f"biasDistribution_{level}"] = stats[key]
+
+            projStats = detStats["ISR"]["PROJECTION"]
+            for ampName in projStats["AMP_HPROJECTION"].keys():
+                row[ampName]["biasSerialProfile"] = np.array(projStats["AMP_HPROJECTION"][ampName])
+            for ampName in projStats["AMP_VPROJECTION"].keys():
+                row[ampName]["biasParallelProfile"] = np.array(projStats["AMP_VPROJECTION"][ampName])
+
+        # Create output table:
+        for ampName, stats in row.items():
+            rowList.append(stats)
+        return Table(rowList), None
+
+        # # We need all rows of biasParallelProfile and biasParallelProfile
+        # # to be the same length for serialization. Therefore, we pad
+        # # to the longest length.
+
+        # maxSerialLen = 0
+        # maxParallelLen = 0
+
+        # for row in rowList:
+        #     if len(row["biasSerialProfile"]) > maxSerialLen:
+        #         maxSerialLen = len(row["biasSerialProfile"])
+        #     if len(row["biasParallelProfile"]) > maxParallelLen:
+        #         maxParallelLen = len(row["biasParallelProfile"])
+
+        # for row in rowList:
+        #     if len(row["biasSerialProfile"]) < maxSerialLen:
+        #         row["biasSerialProfile"] = np.pad(
+        #             row["biasSerialProfile"],
+        #             (0, maxSerialLen - len(row["biasSerialProfile"])),
+        #             constant_values=np.nan,
+        #         )
+        #     if len(row["biasParallelProfile"]) < maxParallelLen:
+        #         row["biasParallelProfile"] = np.pad(
+        #             row["biasParallelProfile"],
+        #             (0, maxParallelLen - len(row["biasParallelProfile"])),
+        #             constant_values=np.nan,
+        #         )

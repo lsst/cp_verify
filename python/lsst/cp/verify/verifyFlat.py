@@ -19,6 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
+
+from astropy.table import Table
+
 import lsst.afw.math as afwMath
 from .verifyStats import CpVerifyStatsConfig, CpVerifyStatsTask, CpVerifyStatsConnections
 from .mergeResults import CpVerifyExpMergeConfig, CpVerifyExpMergeTask
@@ -46,6 +49,8 @@ class CpVerifyFlatTask(CpVerifyStatsTask):
     """
     ConfigClass = CpVerifyFlatConfig
     _DefaultName = 'cpVerifyFlat'
+
+    stageName = "flat"
 
     def detectorStatistics(self, statisticsDict, statControl, exposure=None, uncorrectedExposure=None):
         """Calculate detector level statistics based on the existing
@@ -134,6 +139,74 @@ class CpVerifyFlatTask(CpVerifyStatsTask):
             success = False
 
         return {'AMP': verifyStats, 'DET': verifyDet}, bool(success)
+
+    def repackStats(self, detStats, detDims):
+        """Repack hierarchical results into flat table.
+
+        Parameters
+        ----------
+        detStats : `dict` [`str`, `dict`]
+            A nested set of dictionaries containing relevant
+            statistics.
+        detDims : `dict` [`str`, `str`]
+            The dimensions of this set of statistics.
+
+        Returns
+        -------
+        outputResults : `astropy.Table`, optional
+            The repacked flat table.
+        outputMatrix : `astropy.Table`, optional
+            The repackaed matrix data, in a flat table.
+        """
+        rowList = []
+
+        row = {}
+        instrument = detDims["instrument"]
+        exposure = detDims["exposure"]
+        detector = detDims["detector"]
+        mjd = detStats["ISR"]["MJD"]
+
+        # Get amp stats
+        # AMP {ampName} [MEAN NOISE] value
+        for ampName, stats in detStats["AMP"].items():
+            row[ampName] = {
+                "instrument": instrument,
+                "exposure": exposure,
+                "detector": detector,
+                "amplifier": ampName,
+                "mjd": mjd,
+                "flatMean": stats["MEAN"],
+                "flatNoise": stats["NOISE"],
+            }
+        # Get catalog stats CATALOG
+
+        # Get metadata stats
+        # METADATA (RESIDUAL STDEV) {ampName} value
+
+        # Get verify stats
+        for ampName, stats in detStats["VERIFY"]["AMP"].items():
+            row[ampName]["flatVerifyNoise"] = stats["NOISE"]
+
+        # Get isr stats
+        for ampName, stats in detStats["ISR"]["CALIBDIST"].items():
+            for level in self.config.expectedDistributionLevels:
+                key = f"LSST CALIB {self.stageName.upper()} {ampName} DISTRIBUTION {level}-PCT"
+                row[ampName][f"flatDistribution_{level}"] = stats[key]
+        # Get detector stats
+        # DET
+        row["detector"] = {
+            "instrument": instrument,
+            "exposure": exposure,
+            "detector": detector,
+            "flatDetMean": detStats["DET"]["MEAN"],
+            "flatDetScatter": detStats["DET"]["SCATTER"],
+        }
+
+        # Append to output
+        for ampName, stats in row.items():
+            rowList.append(stats)
+
+        return Table(rowList), None
 
 
 class CpVerifyFlatExpMergeConfig(CpVerifyExpMergeConfig):
