@@ -167,23 +167,6 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
                 The output measured statistics, in a flat table.
             - ``outputMatrix`` : `astropy.Table`
                 The output measured matrix properties, in a flat table.
-
-        Notes
-        -----
-        The outputStats should have a yaml representation of the form
-        (with STAT and TEST being the appropriate statistic and test
-        names)
-
-        DET:
-          STAT: value
-          STAT2: value
-        AMP:
-          STAT: value
-          STAT2: value
-        VERIFY:
-          TEST: boolean
-        SUCCESS: boolean
-
         """
         outputStats = {}
         outputStats['AMP'] = self.amplifierStatistics(inputCalib, camera=camera)
@@ -198,32 +181,6 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         )
 
     # Methods that need to be implemented by the calibration-level subclasses.
-    def detectorStatistics(self, inputCalib, camera=None, exposure=None):
-        """Calculate detector level statistics from the calibration.
-
-        Parameters
-        ----------
-        inputCalib : `lsst.ip.isr.IsrCalib`
-            The calibration to verify.
-
-        Returns
-        -------
-        outputStatistics : `dict` [`str`, scalar]
-            A dictionary of the statistics measured and their values.
-        camera : `lsst.afw.cameraGeom.Camera`, optional
-            Input camera.
-        exposure : `lsst.afw.image.Exposure`, optional
-            Dummy exposure to identify a particular calibration
-            dataset.
-
-        Raises
-        ------
-        NotImplementedError :
-            This method must be implemented by the calibration-type
-            subclass.
-        """
-        raise NotImplementedError("Subclasses must implement detector statistics method.")
-
     def amplifierStatistics(self, inputCalib, camera=None, exposure=None):
         """Calculate amplifier level statistics from the calibration.
 
@@ -249,6 +206,32 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             subclass.
         """
         raise NotImplementedError("Subclasses must implement amplifier statistics method.")
+
+    def detectorStatistics(self, inputCalib, camera=None, exposure=None):
+        """Calculate detector level statistics from the calibration.
+
+        Parameters
+        ----------
+        inputCalib : `lsst.ip.isr.IsrCalib`
+            The calibration to verify.
+
+        Returns
+        -------
+        outputStatistics : `dict` [`str`, scalar]
+            A dictionary of the statistics measured and their values.
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            Input camera.
+        exposure : `lsst.afw.image.Exposure`, optional
+            Dummy exposure to identify a particular calibration
+            dataset.
+
+        Raises
+        ------
+        NotImplementedError :
+            This method must be implemented by the calibration-type
+            subclass.
+        """
+        raise NotImplementedError("Subclasses must implement detector statistics method.")
 
     def verify(self, inputCalib, statisticsDict, camera=None, exposure=None):
         """Verify that the measured calibration meet the verification criteria.

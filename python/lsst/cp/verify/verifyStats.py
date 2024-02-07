@@ -320,38 +320,10 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
                 The output measured statistics, in a flat table.
             - ``outputMatrix`` : `astropy.Table`
                 The output measured matrix properties, in a flat table.
-
-        Notes
-        -----
-        The outputStats should have a yaml representation of the form
-
-        AMP:
-          Amp1:
-            STAT: value
-            STAT2: value2
-          Amp2:
-          Amp3:
-        DET:
-          STAT: value
-          STAT2: value
-        CATALOG:
-          STAT: value
-          STAT2: value
-        VERIFY:
-          DET:
-            TEST: boolean
-          CATALOG:
-            TEST: boolean
-          AMP:
-            Amp1:
-              TEST: boolean
-              TEST2: boolean
-            Amp2:
-            Amp3:
-        SUCCESS: boolean
         """
         outputStats = {}
 
+        # Image manipulation prior to measurements.
         if self.config.doVignette:
             polygon = inputExp.getInfo().getValidPolygon()
             maskVignettedRegion(
@@ -380,6 +352,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             )
         else:
             outputStats["CATALOG"] = {}
+
         if len(self.config.detectorStatKeywords):
             outputStats["DET"] = self.detectorStatistics(
                 outputStats, statControl, inputExp, uncorrectedExp
@@ -389,6 +362,8 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
 
         if self.config.useIsrStatistics:
             outputStats["ISR"] = isrStatistics
+        else:
+            outputStats["ISR"] = {}
 
         outputStats["VERIFY"], outputStats["SUCCESS"] = self.verify(
             inputExp, outputStats
