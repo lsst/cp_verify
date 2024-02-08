@@ -362,8 +362,6 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
 
         if self.config.useIsrStatistics:
             outputStats["ISR"] = isrStatistics
-        else:
-            outputStats["ISR"] = {}
 
         outputStats["VERIFY"], outputStats["SUCCESS"] = self.verify(
             inputExp, outputStats

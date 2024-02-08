@@ -18,6 +18,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import numpy as np
+from astropy.table import vstack, Column
+
 import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
 import lsst.pex.config as pexConfig
@@ -40,6 +43,20 @@ class CpVerifyExpMergeConnections(pipeBase.PipelineTaskConnections,
         dimensions=["instrument", "exposure", "detector"],
         multiple=True,
     )
+    inputResults = cT.Input(
+        name="detectorResults",
+        doc="Input results to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure", "detector"],
+        multiple=True,
+    )
+    inputMatrix = cT.Input(
+        name="detectorMatrix",
+        doc="Input matrix to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure", "detector"],
+        multiple=True,
+    )
     camera = cT.PrerequisiteInput(
         name="camera",
         storageClass="Camera",
@@ -52,6 +69,18 @@ class CpVerifyExpMergeConnections(pipeBase.PipelineTaskConnections,
         name="exposureStats",
         doc="Output statistics.",
         storageClass="StructuredDataDict",
+        dimensions=["instrument", "exposure"],
+    )
+    outputResults = cT.Output(
+        name="exposureResults",
+        doc="Output results.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure"],
+    )
+    outputMatrix = cT.Output(
+        name="exposureMatrix",
+        doc="Output matrix.",
+        storageClass="ArrowAstropy",
         dimensions=["instrument", "exposure"],
     )
 
@@ -84,7 +113,7 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
         outputs = self.run(**inputs)
         butlerQC.put(outputs, outputRefs)
 
-    def run(self, inputStats, camera, inputDims):
+    def run(self, inputStats, camera, inputDims=None, inputResults=None, inputMatrix=None,):
         """Merge statistics.
 
         Parameters
@@ -174,8 +203,12 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
 
         outputStats['SUCCESS'] = success & exposureSuccess
 
+        outputResults = mergeTable(inputResults, outputStats)
+        outputMatrix = mergeTable(inputMatrix, outputStats)
         return pipeBase.Struct(
             outputStats=outputStats,
+            outputResults=outputResults,
+            outputMatrix=outputMatrix,
         )
 
     def exposureStatistics(self, statisticsDict):
@@ -572,3 +605,48 @@ class CpVerifyCalibMergeTask(pipeBase.PipelineTask):
 
         """
         raise NotImplementedError("Subclasses must implement verification criteria.")
+
+
+def mergeTable(inputResults, newStats):
+    """Merge input tables, padding columns as needed.
+
+    Parameters
+    ----------
+    inputResults : `list` [`astropy.table.Table`]
+        Input tables to merge.
+    newStats : `astropy.table.Table`
+        Additional table to merge.
+
+    Returns
+    -------
+    merged : `astropy.table.Table`
+        "Outer-join" merged table.
+    """
+    if inputResults is None:
+        return None
+
+    testTable = inputResults[0]  # This has the default set of columns.
+    defaults = {key: -1 for key in testTable.columns}
+
+    # Identify vector columns:
+    for column in defaults.keys():
+        if len(testTable[column].shape) > 1:
+            defaults[column] = max(defaults[column],
+                                   *[table[column].shape[1] for table in inputResults])
+
+    # Pad vectors shorter than this:
+    for column, length in defaults.items():
+        if length > -1:  # is a vector
+            for table in inputResults:
+                tableLength = table[column].shape[1]
+                if tableLength < length:  # this table is short
+                    newColumn = []
+                    for row in table[column]:
+                        newColumn.append(np.pad(row,
+                                                (0, length-tableLength),
+                                                constant_values=np.nan))
+                    table[column] = Column(newColumn, name=column, unit=table[column].unit)
+    if newStats:
+        return vstack(vstack(inputResults), newStats)
+    else:
+        return vstack(inputResults)

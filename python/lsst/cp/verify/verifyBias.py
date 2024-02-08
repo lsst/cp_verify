@@ -193,7 +193,7 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
         instrument = detDims["instrument"]
         exposure = detDims["exposure"]
         detector = detDims["detector"]
-        mjd = detStats["ISR"]["MJD"] if "ISR" in detStats else 0.0
+        mjd = detStats["ISR"]["MJD"] if "ISR" in detStats and "MJD" in detStats["ISR"] else 0.0
 
         # Get amp stats
         # AMP {ampName} [CR_NOISE MEAN NOISE] value

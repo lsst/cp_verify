@@ -357,7 +357,7 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
         row = {}
         instrument = detDims["instrument"]
         detector = detDims["detector"]
-        mjd = detStats["ISR"]["MJD"] if "ISR" in detStats else 0.0
+        mjd = detStats["ISR"]["MJD"] if "ISR" in detStats and "MJD" in detStats["ISR"] else 0.0
 
         # Get amp stats
         for ampName, stats in detStats["AMP"].items():
