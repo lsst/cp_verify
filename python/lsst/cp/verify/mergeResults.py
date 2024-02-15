@@ -18,6 +18,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import numpy as np
+from astropy.table import vstack, Column
+
 import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
 import lsst.pex.config as pexConfig
@@ -40,6 +43,20 @@ class CpVerifyExpMergeConnections(pipeBase.PipelineTaskConnections,
         dimensions=["instrument", "exposure", "detector"],
         multiple=True,
     )
+    inputResults = cT.Input(
+        name="detectorResults",
+        doc="Input results to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure", "detector"],
+        multiple=True,
+    )
+    inputMatrix = cT.Input(
+        name="detectorMatrix",
+        doc="Input matrix to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure", "detector"],
+        multiple=True,
+    )
     camera = cT.PrerequisiteInput(
         name="camera",
         storageClass="Camera",
@@ -54,6 +71,25 @@ class CpVerifyExpMergeConnections(pipeBase.PipelineTaskConnections,
         storageClass="StructuredDataDict",
         dimensions=["instrument", "exposure"],
     )
+    outputResults = cT.Output(
+        name="exposureResults",
+        doc="Output results.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure"],
+    )
+    outputMatrix = cT.Output(
+        name="exposureMatrix",
+        doc="Output matrix.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure"],
+    )
+
+    def __init__(self, *, config=None):
+        super().__init__(config=config)
+
+        if not self.config.hasMatrixCatalog:
+            self.inputs.remove("inputMatrix")
+            self.outputs.remove("outputMatrix")
 
 
 class CpVerifyExpMergeConfig(pipeBase.PipelineTaskConfig,
@@ -66,6 +102,11 @@ class CpVerifyExpMergeConfig(pipeBase.PipelineTaskConfig,
         doc="Dictionary of statistics to run on the set of detector values. The key should be the test "
         "name to record in the output, and the value should be the `lsst.afw.math` statistic name string.",
         default={},
+    )
+    hasMatrixCatalog = pexConfig.Field(
+        dtype=bool,
+        doc="Is there matrix catalog to merge?",
+        default=False,
     )
 
 
@@ -84,7 +125,7 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
         outputs = self.run(**inputs)
         butlerQC.put(outputs, outputRefs)
 
-    def run(self, inputStats, camera, inputDims):
+    def run(self, inputStats, camera, inputDims=None, inputResults=None, inputMatrix=None,):
         """Merge statistics.
 
         Parameters
@@ -105,8 +146,7 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
 
         Returns
         -------
-        outputStats : `dict`
-            Merged full exposure statistics.
+        outputStats
 
         See Also
         --------
@@ -174,8 +214,12 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
 
         outputStats['SUCCESS'] = success & exposureSuccess
 
+        outputResults = mergeTable(inputResults, outputStats)
+        outputMatrix = mergeTable(inputMatrix, outputStats)
         return pipeBase.Struct(
             outputStats=outputStats,
+            outputResults=outputResults,
+            outputMatrix=outputMatrix,
         )
 
     def exposureStatistics(self, statisticsDict):
@@ -238,6 +282,20 @@ class CpVerifyRunMergeConnections(pipeBase.PipelineTaskConnections,
         dimensions=["instrument", "exposure"],
         multiple=True,
     )
+    inputResults = cT.Input(
+        name="exposureResults",
+        doc="Input results table to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure"],
+        multiple=True,
+    )
+    inputMatrix = cT.Input(
+        name="exposureMatrix",
+        doc="Input matrix table to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure"],
+        multiple=True,
+    )
 
     outputStats = cT.Output(
         name="runStats",
@@ -245,6 +303,25 @@ class CpVerifyRunMergeConnections(pipeBase.PipelineTaskConnections,
         storageClass="StructuredDataDict",
         dimensions=["instrument"],
     )
+    outputResults = cT.Output(
+        name="runResults",
+        doc="Output merged results table.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", ],
+    )
+    outputMatrix = cT.Output(
+        name="runMatrix",
+        doc="Output merged matrix table.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", ],
+    )
+
+    def __init__(self, *, config=None):
+        super().__init__(config=config)
+
+        if not self.config.hasMatrixCatalog:
+            self.inputs.remove("inputMatrix")
+            self.outputs.remove("outputMatrix")
 
 
 class CpVerifyRunMergeConfig(pipeBase.PipelineTaskConfig,
@@ -257,6 +334,11 @@ class CpVerifyRunMergeConfig(pipeBase.PipelineTaskConfig,
         doc="Dictionary of statistics to run on the set of exposure values. The key should be the test "
         "name to record in the output, and the value should be the `lsst.afw.math` statistic name string.",
         default={},
+    )
+    hasMatrixCatalog = pexConfig.Field(
+        dtype=bool,
+        doc="Is there matrix catalog to merge?",
+        default=False,
     )
 
 
@@ -275,7 +357,7 @@ class CpVerifyRunMergeTask(pipeBase.PipelineTask):
         outputs = self.run(**inputs)
         butlerQC.put(outputs, outputRefs)
 
-    def run(self, inputStats, inputDims):
+    def run(self, inputStats, inputDims, inputResults=None, inputMatrix=None):
         """Merge statistics.
 
         Parameters
@@ -289,10 +371,15 @@ class CpVerifyRunMergeTask(pipeBase.PipelineTask):
             ``"exposure"``
                 exposure id value (`int`)
 
+        inputResults : `list` [`astropy.table.Table`]
+            List of input tables of results to merge.
+        inputMatrix : `list` [`astropy.table.Table`]
+            List of input matrix tables to merge.
+
         Returns
         -------
-        outputStats : `dict`
-            Merged full exposure statistics.
+        outputStats : 
+
 
         Notes
         -----
@@ -336,8 +423,12 @@ class CpVerifyRunMergeTask(pipeBase.PipelineTask):
 
         outputStats['SUCCESS'] = success & runSuccess
 
+        outputResults = mergeTable(inputResults, outputStats)
+        outputMatrix = mergeTable(inputMatrix, outputStats)
         return pipeBase.Struct(
             outputStats=outputStats,
+            outputResults=outputResults,
+            outputMatrix=outputMatrix,
         )
 
     def verify(self, statisticsDictionary):
@@ -386,6 +477,20 @@ class CpVerifyVisitExpMergeConnections(pipeBase.PipelineTaskConnections,
         dimensions=["instrument", ],
         isCalibration=True,
     )
+    inputResults = cT.Input(
+        name="detectorResults",
+        doc="Input results to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "visit", "detector"],
+        multiple=True,
+    )
+    inputMatrix = cT.Input(
+        name="detectorMatrix",
+        doc="Input matrix to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "visit", "detector"],
+        multiple=True,
+    )
 
     outputStats = cT.Output(
         name="exposureStats",
@@ -393,6 +498,26 @@ class CpVerifyVisitExpMergeConnections(pipeBase.PipelineTaskConnections,
         storageClass="StructuredDataDict",
         dimensions=["instrument", "visit"],
     )
+    outputResults = cT.Output(
+        name="exposureResults",
+        doc="Output results.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure"],
+    )
+    outputMatrix = cT.Output(
+        name="exposureMatrix",
+        doc="Output matrix.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure"],
+    )
+
+    def __init__(self, *, config=None):
+        super().__init__(config=config)
+
+        if not self.config.hasMatrixCatalog:
+            self.inputs.remove("inputMatrix")
+            self.outputs.remove("outputMatrix")
+
 
 
 class CpVerifyVisitExpMergeConfig(CpVerifyExpMergeConfig,
@@ -419,6 +544,20 @@ class CpVerifyVisitRunMergeConnections(pipeBase.PipelineTaskConnections,
         dimensions=["instrument", "visit"],
         multiple=True,
     )
+    inputResults = cT.Input(
+        name="exposureResults",
+        doc="Input results table to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "visit"],
+        multiple=True,
+    )
+    inputMatrix = cT.Input(
+        name="exposureMatrix",
+        doc="Input matrix table to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "visit"],
+        multiple=True,
+    )
 
     outputStats = cT.Output(
         name="runStats",
@@ -426,6 +565,25 @@ class CpVerifyVisitRunMergeConnections(pipeBase.PipelineTaskConnections,
         storageClass="StructuredDataDict",
         dimensions=["instrument"],
     )
+    outputResults = cT.Output(
+        name="runResults",
+        doc="Output merged results table.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", ],
+    )
+    outputMatrix = cT.Output(
+        name="runMatrix",
+        doc="Output merged matrix table.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", ],
+    )
+
+    def __init__(self, *, config=None):
+        super().__init__(config=config)
+
+        if not self.config.hasMatrixCatalog:
+            self.inputs.remove("inputMatrix")
+            self.outputs.remove("outputMatrix")
 
 
 class CpVerifyVisitRunMergeConfig(CpVerifyRunMergeConfig,
@@ -452,6 +610,19 @@ class CpVerifyCalibMergeConnections(pipeBase.PipelineTaskConnections,
         dimensions=["instrument", "detector"],
         multiple=True,
     )
+    inputResults = cT.Input(
+        name="exposureResults",
+        doc="Input results table to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure"],
+        multiple=True,
+    )
+    inputMatrix = cT.Input(
+        name="exposureMatrix",
+        doc="Input matrix table to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure"],
+        multiple=True,
 
     outputStats = cT.Output(
         name="exposureStats",
@@ -459,6 +630,25 @@ class CpVerifyCalibMergeConnections(pipeBase.PipelineTaskConnections,
         storageClass="StructuredDataDict",
         dimensions=["instrument"],
     )
+    outputResults = cT.Output(
+        name="runResults",
+        doc="Output merged results table.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", ],
+    )
+    outputMatrix = cT.Output(
+        name="runMatrix",
+        doc="Output merged matrix table.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", ],
+    )
+
+    def __init__(self, *, config=None):
+        super().__init__(config=config)
+
+        if not self.config.hasMatrixCatalog:
+            self.inputs.remove("inputMatrix")
+            self.outputs.remove("outputMatrix")
 
 
 class CpVerifyCalibMergeConfig(pipeBase.PipelineTaskConfig,
@@ -472,6 +662,12 @@ class CpVerifyCalibMergeConfig(pipeBase.PipelineTaskConfig,
         "name to record in the output, and the value should be the `lsst.afw.math` statistic name string.",
         default={},
     )
+    hasMatrixCatalog = pexConfig.Field(
+        dtype=bool,
+        doc="Is there matrix catalog to merge?",
+        default=False,
+    )
+
 
 
 class CpVerifyCalibMergeTask(pipeBase.PipelineTask):
@@ -489,7 +685,7 @@ class CpVerifyCalibMergeTask(pipeBase.PipelineTask):
         outputs = self.run(**inputs)
         butlerQC.put(outputs, outputRefs)
 
-    def run(self, inputStats, inputDims):
+    def run(self, inputStats, inputDims, inputResults=None, inputMatrix=None):
         """Merge statistics.
 
         Parameters
@@ -505,8 +701,8 @@ class CpVerifyCalibMergeTask(pipeBase.PipelineTask):
 
         Returns
         -------
-        outputStats : `dict`
-            Merged full exposure statistics.
+        outputStats
+
 
         Notes
         -----
@@ -572,3 +768,48 @@ class CpVerifyCalibMergeTask(pipeBase.PipelineTask):
 
         """
         raise NotImplementedError("Subclasses must implement verification criteria.")
+
+
+def mergeTable(inputResults, newStats):
+    """Merge input tables, padding columns as needed.
+
+    Parameters
+    ----------
+    inputResults : `list` [`astropy.table.Table`]
+        Input tables to merge.
+    newStats : `astropy.table.Table`
+        Additional table to merge.
+
+    Returns
+    -------
+    merged : `astropy.table.Table`
+        "Outer-join" merged table.
+    """
+    if inputResults is None:
+        return None
+
+    testTable = inputResults[0]  # This has the default set of columns.
+    defaults = {key: -1 for key in testTable.columns}
+
+    # Identify vector columns:
+    for column in defaults.keys():
+        if len(testTable[column].shape) > 1:
+            defaults[column] = max(defaults[column],
+                                   *[table[column].shape[1] for table in inputResults])
+
+    # Pad vectors shorter than this:
+    for column, length in defaults.items():
+        if length > -1:  # is a vector
+            for table in inputResults:
+                tableLength = table[column].shape[1]
+                if tableLength < length:  # this table is short
+                    newColumn = []
+                    for row in table[column]:
+                        newColumn.append(np.pad(row,
+                                                (0, length-tableLength),
+                                                constant_values=np.nan))
+                    table[column] = Column(newColumn, name=column, unit=table[column].unit)
+    if newStats:
+        return vstack(vstack(inputResults), newStats)
+    else:
+        return vstack(inputResults)
