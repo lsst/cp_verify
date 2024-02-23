@@ -96,7 +96,7 @@ class CpVerifyExpMergeConfig(pipeBase.PipelineTaskConfig,
                              pipelineConnections=CpVerifyExpMergeConnections):
     """Configuration parameters for exposure stats merging.
     """
-    exposureStatKeywords = pexConfig.DictField(
+    statKeywords = pexConfig.DictField(
         keytype=str,
         itemtype=str,
         doc="Dictionary of statistics to run on the set of detector values. The key should be the test "
@@ -107,6 +107,11 @@ class CpVerifyExpMergeConfig(pipeBase.PipelineTaskConfig,
         dtype=bool,
         doc="Is there matrix catalog to merge?",
         default=False,
+    )
+    thisDimension = pexConfig.Field(
+        dtype=str,
+        doc="Dimension name for this input.",
+        default="detector",
     )
 
 
@@ -125,24 +130,11 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
         outputs = self.run(**inputs)
         butlerQC.put(outputs, outputRefs)
 
-    def run(self, inputStats, camera, inputDims=None, inputResults=None, inputMatrix=None,):
+    def run(self, inputStats, inputDims, camera, inputResults=None, inputMatrix=None,):
         """Merge statistics.
 
         Parameters
         ----------
-        inputStats : `list` [`dict`]
-            Measured statistics for a detector (from
-            CpVerifyStatsTask).
-        camera : `lsst.afw.cameraGeom.Camera`
-            The camera geometry for this exposure.
-        inputDims : `list` [`dict`]
-            List of dictionaries of input data dimensions/values.
-            Each list entry should contain:
-
-            ``"exposure"``
-                exposure id value (`int`)
-            ``"detector"``
-                detector id value (`int`)
 
         Returns
         -------
@@ -151,78 +143,145 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
         See Also
         --------
         lsst.cp.verify.CpVerifyStatsTask
-
-        Notes
-        -----
-        The outputStats should have a yaml representation of the form:
-
-        DET:
-          DetName1:
-            FAILURES:
-              - TEST_NAME
-            STAT: value
-            STAT2: value2
-          DetName2:
-        VERIFY:
-           TEST: boolean
-           TEST2: boolean
-        SUCCESS: boolean
         """
-        outputStats = {}
+        outputStats = {}   # This contains failure information
         success = True
 
-        mergedStats = {}
-        for detStats, dimensions in zip(inputStats, inputDims):
-            detId = dimensions['detector']
-            detName = camera[detId].getName()
+        mergedStats = {}   # This contains the merged set of subcomponent stats.
+        for inStats, dimensions in zip(inputStats, inputDims):
+            thisId = dimensions[self.config.thisDimension]
+            thisName = thisId
+
+            if self.config.thisDimension == 'detector':
+                thisName = camera[thisId].getName()
+
             calcStats = {}
 
-            mergedStats[detName] = detStats
+            mergedStats[thisName] = inStats
 
-            if detStats['SUCCESS'] is True:
+            if inStats['SUCCESS'] is True:
                 calcStats['SUCCESS'] = True
             else:
                 calcStats['SUCCESS'] = False
                 calcStats['FAILURES'] = list()
                 success = False
-                # See if the detector failed
-                if 'DET' in detStats['VERIFY']:
-                    detSuccess = detStats['VERIFY']['DET'].pop('SUCCESS', False)
-                    if not detSuccess:
-                        for testName, testResult in detStats['VERIFY']['DET'].items():
+
+                # See if we have verify information to check:
+                if 'VERIFY' in inStats:
+                    # See if an exposure failed
+                    if 'EXP' in inStats['VERIFY'] and len(inStats['VERIFY']['EXP']) > 0:
+                        expSuccess = inStats['VERIFY']['EXP'].pop('SUCCESS', False)
+                        if not expSuccess:
+                            for testName, testResult in inStats['VERIFY']['EXP'].items():
+                                if testResult is False:
+                                    calcStats['FAILURES'].append(testName)
+
+                    # See if a detector failed
+                    if 'DET' in inStats['VERIFY'] and len(inStats['VERIFY']['DET']) > 0:
+                        detSuccess = inStats['VERIFY']['DET'].pop('SUCCESS', False)
+                        if not detSuccess:
+                            for testName, testResult in inStats['VERIFY']['DET'].items():
+                                if testResult is False:
+                                    calcStats['FAILURES'].append(testName)
+
+                    # See if an amplifier failed
+                    if 'AMP' in inStats['VERIFY'] and len(inStats['VERIFY']['AMP']) > 0:
+                        for ampName, ampStats in inStats['VERIFY']['AMP'].items():
+                            ampSuccess = ampStats.pop('SUCCESS')
+                            if not ampSuccess:
+                                for testName, testResult in ampStats.items():
+                                    if testResult is False:
+                                        calcStats['FAILURES'].append(ampName + " " + testName)
+
+                    # See if a catalog failed
+                    if 'CATALOG' in inStats['VERIFY'] and len(inStats['VERIFY']['CATALOG']) > 0:
+                        for testName, testResult in inStats['VERIFY']['CATALOG'].items():
                             if testResult is False:
                                 calcStats['FAILURES'].append(testName)
-                # See if the catalog failed
-                if 'CATALOG' in detStats['VERIFY']:
-                    for testName, testResult in detStats['VERIFY']['CATALOG'].items():
-                        if testResult is False:
-                            calcStats['FAILURES'].append(testName)
-                # See if an amplifier failed
-                for ampName, ampStats in detStats['VERIFY']['AMP'].items():
-                    ampSuccess = ampStats.pop('SUCCESS')
-                    if not ampSuccess:
-                        for testName, testResult in ampStats.items():
-                            if testResult is False:
-                                calcStats['FAILURES'].append(ampName + " " + testName)
+                else:
+                    # No VERIFY info?  This must be partially accumulated.
+                    # But we know there are failures somewhere.
+                    # Drop any "SUCCESS" keys
+                    _ = inStats.pop("SUCCESS", False)
+                    for statKey, statDict in inStats.items():
+                        if 'SUCCESS' in statDict and not statDict['SUCCESS']:
+                            for failure in statDict['FAILURES']:
+                                calcStats['FAILURES'].append(statKey + " " + failure)
 
-            outputStats[detName] = calcStats
+            outputStats[thisName] = calcStats
 
-        exposureSuccess = True
-        if len(self.config.exposureStatKeywords):
-            outputStats['EXP'] = self.exposureStatistics(mergedStats)
-            outputStats['VERIFY'], exposureSuccess = self.verify(mergedStats, outputStats)
+        if self.config.thisDimension == 'detector':
+            outKey = 'EXP'
+        else:
+            outKey = 'RUN'
 
-        outputStats['SUCCESS'] = success & exposureSuccess
+        groupSuccess = True
+        if len(self.config.statKeywords):
+            outputStats[outKey] = self.calcStatistics(mergedStats)
+            outputStats['VERIFY'], groupSuccess = self.verify(mergedStats, outputStats)
 
-        outputResults = mergeTable(inputResults, outputStats)
-        outputMatrix = mergeTable(inputMatrix, outputStats)
+        outputStats['SUCCESS'] = success & groupSuccess
+
+        additionalResults = None
+        if outKey in outputStats:
+            # This is the only new information generated here.
+            additionalResults = self.pack(outputStats[outKey])
+
+        outputResults = self.mergeTable(inputResults, additionalResults)
+        outputMatrix = self.mergeTable(inputMatrix)
         return pipeBase.Struct(
             outputStats=outputStats,
             outputResults=outputResults,
             outputMatrix=outputMatrix,
         )
 
-    def exposureStatistics(self, statisticsDict):
+    @staticmethod
+    def mergeTable(inputResults, newStats=None):
+        """Merge input tables, padding columns as needed.
+
+        Parameters
+        ----------
+        inputResults : `list` [`astropy.table.Table`]
+            Input tables to merge.
+        newStats : `astropy.table.Table`
+            Additional table to merge.
+
+        Returns
+        -------
+        merged : `astropy.table.Table`
+            "Outer-join" merged table.
+        """
+        if inputResults is None:
+            return None
+
+        testTable = inputResults[0]  # This has the default set of columns.
+        defaults = {key: -1 for key in testTable.columns}
+
+        # Identify vector columns:
+        for column in defaults.keys():
+            if len(testTable[column].shape) > 1:
+                defaults[column] = max(defaults[column],
+                                       *[table[column].shape[1] for table in inputResults])
+
+        # Pad vectors shorter than this:
+        for column, length in defaults.items():
+            if length > -1:  # is a vector
+                for table in inputResults:
+                    tableLength = table[column].shape[1]
+                    if tableLength < length:  # this table is short
+                        newColumn = []
+                        for row in table[column]:
+                            newColumn.append(np.pad(row,
+                                                    (0, length-tableLength),
+                                                    constant_values=np.nan))
+                            table[column] = Column(newColumn, name=column, unit=table[column].unit)
+
+        if newStats:
+            return vstack(vstack(inputResults), newStats)
+        else:
+            return vstack(inputResults)
+
+    def calcStatistics(self, statisticsDict):
         """Calculate exposure level statistics based on the existing
         per-amplifier and per-detector measurements.
 
@@ -296,6 +355,13 @@ class CpVerifyRunMergeConnections(pipeBase.PipelineTaskConnections,
         dimensions=["instrument", "exposure"],
         multiple=True,
     )
+    camera = cT.PrerequisiteInput(
+        name="camera",
+        storageClass="Camera",
+        doc="Input camera.",
+        dimensions=["instrument", ],
+        isCalibration=True,
+    )
 
     outputStats = cT.Output(
         name="runStats",
@@ -324,140 +390,24 @@ class CpVerifyRunMergeConnections(pipeBase.PipelineTaskConnections,
             self.outputs.remove("outputMatrix")
 
 
-class CpVerifyRunMergeConfig(pipeBase.PipelineTaskConfig,
+class CpVerifyRunMergeConfig(CpVerifyExpMergeConfig,
                              pipelineConnections=CpVerifyRunMergeConnections):
     """Configuration paramters for exposure stats merging.
     """
-    runStatKeywords = pexConfig.DictField(
-        keytype=str,
-        itemtype=str,
-        doc="Dictionary of statistics to run on the set of exposure values. The key should be the test "
-        "name to record in the output, and the value should be the `lsst.afw.math` statistic name string.",
-        default={},
-    )
-    hasMatrixCatalog = pexConfig.Field(
-        dtype=bool,
-        doc="Is there matrix catalog to merge?",
-        default=False,
+    thisDimension = pexConfig.Field(
+        dtype=str,
+        doc="Dimension name for this input.",
+        default="exposure",
     )
 
 
-class CpVerifyRunMergeTask(pipeBase.PipelineTask):
+class CpVerifyRunMergeTask(CpVerifyExpMergeTask):
     """Merge statistics from detectors together.
     """
     ConfigClass = CpVerifyRunMergeConfig
     _DefaultName = 'cpVerifyRunMerge'
 
-    def runQuantum(self, butlerQC, inputRefs, outputRefs):
-        inputs = butlerQC.get(inputRefs)
-
-        dimensions = [dict(exp.dataId.required) for exp in inputRefs.inputStats]
-        inputs['inputDims'] = dimensions
-
-        outputs = self.run(**inputs)
-        butlerQC.put(outputs, outputRefs)
-
-    def run(self, inputStats, inputDims, inputResults=None, inputMatrix=None):
-        """Merge statistics.
-
-        Parameters
-        ----------
-        inputStats : `list` [`dict`]
-            Measured statistics for a detector.
-        inputDims : `list` [`dict`]
-            List of dictionaries of input data dimensions/values.
-            Each list entry should contain:
-
-            ``"exposure"``
-                exposure id value (`int`)
-
-        inputResults : `list` [`astropy.table.Table`]
-            List of input tables of results to merge.
-        inputMatrix : `list` [`astropy.table.Table`]
-            List of input matrix tables to merge.
-
-        Returns
-        -------
-        outputStats : 
-
-
-        Notes
-        -----
-        The outputStats should have a yaml representation as follows.
-
-        VERIFY:
-          ExposureId1:
-            VERIFY_TEST1: boolean
-            VERIFY_TEST2: boolean
-          ExposureId2:
-            [...]
-          TEST_VALUE: boolean
-          TEST_VALUE2: boolean
-        """
-        outputStats = {}
-        success = True
-        for expStats, dimensions in zip(inputStats, inputDims):
-            expId = dimensions.get('exposure', dimensions.get('visit', None))
-            if expId is None:
-                raise RuntimeError("Could not identify the exposure from %s", dimensions)
-
-            calcStats = {}
-
-            expSuccess = expStats.pop('SUCCESS')
-            if expSuccess:
-                calcStats['SUCCESS'] = True
-            else:
-                calcStats['FAILURES'] = list()
-                success = False
-                for detName, detStats in expStats.items():
-                    detSuccess = detStats.pop('SUCCESS')
-                    if not detSuccess:
-                        for testName in expStats[detName]['FAILURES']:
-                            calcStats['FAILURES'].append(detName + " " + testName)
-
-            outputStats[expId] = calcStats
-
-        runSuccess = True
-        if len(self.config.runStatKeywords):
-            outputStats['VERIFY'], runSuccess = self.verify(outputStats)
-
-        outputStats['SUCCESS'] = success & runSuccess
-
-        outputResults = mergeTable(inputResults, outputStats)
-        outputMatrix = mergeTable(inputMatrix, outputStats)
-        return pipeBase.Struct(
-            outputStats=outputStats,
-            outputResults=outputResults,
-            outputMatrix=outputMatrix,
-        )
-
-    def verify(self, statisticsDictionary):
-        """Verify if the measured statistics meet the verification criteria.
-
-        Parameters
-        ----------
-        statisticsDictionary : `dict` [`str`, `dict`],
-            Dictionary of measured statistics.  The inner dictionary
-            should have keys that are statistic names (`str`) with
-            values that are some sort of scalar (`int` or `float` are
-            the mostly likely types).
-
-        Returns
-        -------
-        outputStatistics : `dict` [`str`, `dict` [`str`, `bool`]]
-            A dictionary indexed by the amplifier name, containing
-            dictionaries of the verification criteria.
-        success : `bool`
-            A boolean indicating if all tests have passed.
-
-        Raises
-        ------
-        NotImplementedError :
-            This method must be implemented by the calibration-type
-            subclass.
-
-        """
-        raise NotImplementedError("Subclasses must implement verification criteria.")
+    pass
 
 
 class CpVerifyVisitExpMergeConnections(pipeBase.PipelineTaskConnections,
@@ -517,7 +467,6 @@ class CpVerifyVisitExpMergeConnections(pipeBase.PipelineTaskConnections,
         if not self.config.hasMatrixCatalog:
             self.inputs.remove("inputMatrix")
             self.outputs.remove("outputMatrix")
-
 
 
 class CpVerifyVisitExpMergeConfig(CpVerifyExpMergeConfig,
@@ -623,6 +572,7 @@ class CpVerifyCalibMergeConnections(pipeBase.PipelineTaskConnections,
         storageClass="ArrowAstropy",
         dimensions=["instrument", "exposure"],
         multiple=True,
+    )
 
     outputStats = cT.Output(
         name="exposureStats",
@@ -651,165 +601,17 @@ class CpVerifyCalibMergeConnections(pipeBase.PipelineTaskConnections,
             self.outputs.remove("outputMatrix")
 
 
-class CpVerifyCalibMergeConfig(pipeBase.PipelineTaskConfig,
+class CpVerifyCalibMergeConfig(CpVerifyRunMergeConfig,
                                pipelineConnections=CpVerifyCalibMergeConnections):
     """Configuration paramters for exposure stats merging.
     """
-    runStatKeywords = pexConfig.DictField(
-        keytype=str,
-        itemtype=str,
-        doc="Dictionary of statistics to run on the set of exposure values. The key should be the test "
-        "name to record in the output, and the value should be the `lsst.afw.math` statistic name string.",
-        default={},
-    )
-    hasMatrixCatalog = pexConfig.Field(
-        dtype=bool,
-        doc="Is there matrix catalog to merge?",
-        default=False,
-    )
+    pass
 
 
-
-class CpVerifyCalibMergeTask(pipeBase.PipelineTask):
+class CpVerifyCalibMergeTask(CpVerifyRunMergeTask):
     """Merge statistics from detectors together.
     """
     ConfigClass = CpVerifyCalibMergeConfig
     _DefaultName = 'cpVerifyCalibMerge'
 
-    def runQuantum(self, butlerQC, inputRefs, outputRefs):
-        inputs = butlerQC.get(inputRefs)
-
-        dimensions = [dict(exp.dataId.required) for exp in inputRefs.inputStats]
-        inputs['inputDims'] = dimensions
-
-        outputs = self.run(**inputs)
-        butlerQC.put(outputs, outputRefs)
-
-    def run(self, inputStats, inputDims, inputResults=None, inputMatrix=None):
-        """Merge statistics.
-
-        Parameters
-        ----------
-        inputStats : `list` [`dict`]
-            Measured statistics for a detector.
-        inputDims : `list` [`dict`]
-            List of dictionaries of input data dimensions/values.
-            Each list entry should contain:
-
-            ``"detector"``
-                detector id value (`int`)
-
-        Returns
-        -------
-        outputStats
-
-
-        Notes
-        -----
-        The outputStats should have a yaml representation as follows.
-
-        Detector detId:
-          FAILURES:
-          - Detector detId TEST_NAME
-        SUCCESS: boolean
-        """
-        outputStats = {}
-        success = True
-        for detStats, dimensions in zip(inputStats, inputDims):
-            detId = dimensions['detector']
-            detName = f"Detector {detId}"
-            calcStats = {}
-
-            detSuccess = detStats.pop('SUCCESS')
-            if detSuccess:
-                calcStats['SUCCESS'] = True
-            else:
-                calcStats['FAILURES'] = list()
-                success = False
-                for testName in detStats['VERIFY']:
-                    calcStats['FAILURES'].append(detName + " " + testName)
-
-            outputStats[detName] = calcStats
-
-        runSuccess = True
-        if len(self.config.runStatKeywords):
-            outputStats['VERIFY'], runSuccess = self.verify(outputStats)
-
-        outputStats['SUCCESS'] = success & runSuccess
-
-        return pipeBase.Struct(
-            outputStats=outputStats,
-        )
-
-    def verify(self, statisticsDictionary):
-        """Verify if the measured statistics meet the verification criteria.
-
-        Parameters
-        ----------
-        statisticsDictionary : `dict` [`str`, `dict`],
-            Dictionary of measured statistics.  The inner dictionary
-            should have keys that are statistic names (`str`) with
-            values that are some sort of scalar (`int` or `float` are
-            the mostly likely types).
-
-        Returns
-        -------
-        outputStatistics : `dict` [`str`, `dict` [`str`, `bool`]]
-            A dictionary indexed by the amplifier name, containing
-            dictionaries of the verification criteria.
-        success : `bool`
-            A boolean indicating if all tests have passed.
-
-        Raises
-        ------
-        NotImplementedError :
-            This method must be implemented by the calibration-type
-            subclass.
-
-        """
-        raise NotImplementedError("Subclasses must implement verification criteria.")
-
-
-def mergeTable(inputResults, newStats):
-    """Merge input tables, padding columns as needed.
-
-    Parameters
-    ----------
-    inputResults : `list` [`astropy.table.Table`]
-        Input tables to merge.
-    newStats : `astropy.table.Table`
-        Additional table to merge.
-
-    Returns
-    -------
-    merged : `astropy.table.Table`
-        "Outer-join" merged table.
-    """
-    if inputResults is None:
-        return None
-
-    testTable = inputResults[0]  # This has the default set of columns.
-    defaults = {key: -1 for key in testTable.columns}
-
-    # Identify vector columns:
-    for column in defaults.keys():
-        if len(testTable[column].shape) > 1:
-            defaults[column] = max(defaults[column],
-                                   *[table[column].shape[1] for table in inputResults])
-
-    # Pad vectors shorter than this:
-    for column, length in defaults.items():
-        if length > -1:  # is a vector
-            for table in inputResults:
-                tableLength = table[column].shape[1]
-                if tableLength < length:  # this table is short
-                    newColumn = []
-                    for row in table[column]:
-                        newColumn.append(np.pad(row,
-                                                (0, length-tableLength),
-                                                constant_values=np.nan))
-                    table[column] = Column(newColumn, name=column, unit=table[column].unit)
-    if newStats:
-        return vstack(vstack(inputResults), newStats)
-    else:
-        return vstack(inputResults)
+    pass
