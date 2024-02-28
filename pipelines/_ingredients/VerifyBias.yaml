@@ -9,7 +9,6 @@ tasks:
       doBias: true
       doVariance: true
       doLinearize: false
-      doCrosstalk: false
       doDefect: true
       doNanMasking: true
       doInterpolate: true
