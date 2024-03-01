@@ -295,7 +295,12 @@ def plotFailures(runStats, camera, scaleFactor=8):
     for exposure, stats in runStats.items():
         failures = stats.get('FAILURES', [])
         for failure in failures:
-            detector, amp, test = failure.split(" ")
+            failureFields = failure.split(" ")
+            if len(failureFields) == 3:
+                detector, amp, test = failureFields
+            elif len(failureFields) == 2:
+                detector, test = failureFields
+                amp = 'NO_AMP'
             failedTests[test][detector][amp].append(exposure)
 
     numTests = len(failedTests.keys())
