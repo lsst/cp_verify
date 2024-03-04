@@ -44,7 +44,7 @@ class VerifyCrosstalkTestCase(lsst.utils.tests.TestCase):
 
         config = cpVerify.CpVerifyCrosstalkConfig()
         task = cpVerify.CpVerifyCrosstalkTask(config=config)
-        results = task.run(crosstalk)
+        results = task.run(crosstalk, dimensions={'instrument': 'fakeCam', 'detector': 'det00'})
         crosstalkStats = results.outputStats
 
         self.assertEqual(crosstalkStats['DET']['N_AMP'], crosstalk.nAmp)
@@ -65,7 +65,8 @@ class VerifyCrosstalkTestCase(lsst.utils.tests.TestCase):
 
         config = cpVerify.CpVerifyCrosstalkConfig()
         task = cpVerify.CpVerifyCrosstalkTask(config=config)
-        results = task.run(crosstalk)
+        results = task.run(crosstalk, dimensions={'instrument': 'fakeCam', 'detector': 'det00'})
+
         crosstalkStats = results.outputStats
 
         self.assertEqual(crosstalkStats['DET']['N_AMP'], crosstalk.nAmp)
