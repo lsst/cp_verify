@@ -37,15 +37,15 @@ tasks:
     config:
       connections.inputStats: 'verifyBiasDetStats'
       connections.outputStats: 'verifyBiasExpStats'
+      connections.outputResults: 'verifyBiasExpResults'
+      hasInputResults: true
+      hasMatrixCatalog: false
   verifyRunStats:
     class: lsst.cp.verify.CpVerifyRunMergeTask
     config:
       connections.inputStats: 'verifyBiasExpStats'
+      connections.inputResults: 'verifyBiasExpResults'
       connections.outputStats: 'verifyBiasStats'
-  repackBiasResults:
-    class: lsst.cp.verify.CpVerifyRepackBiasTask
-    config:
-      connections.detectorStats: 'verifyBiasDetStats'
-      connections.exposureStats: 'verifyBiasExpStats'
-      connections.runStats: 'verifyBiasStats'
-      connections.outputCatalog: 'verifyBiasResults'
+      connections.outputResults: 'verifyBiasResults'
+      hasInputResults: true
+      hasMatrixCatalog: false

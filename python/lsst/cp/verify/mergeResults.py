@@ -90,6 +90,8 @@ class CpVerifyExpMergeConnections(pipeBase.PipelineTaskConnections,
         if not self.config.hasMatrixCatalog:
             self.inputs.remove("inputMatrix")
             self.outputs.remove("outputMatrix")
+        if not self.config.hasInputResults:
+            self.inputs.remove("inputResults")
 
 
 class CpVerifyExpMergeConfig(pipeBase.PipelineTaskConfig,
@@ -108,6 +110,12 @@ class CpVerifyExpMergeConfig(pipeBase.PipelineTaskConfig,
         doc="Is there matrix catalog to merge?",
         default=False,
     )
+    hasInputResults = pexConfig.Field(
+        dtype=bool,
+        doc="Are there results tables to merge?",
+        default=False,
+    )
+
     thisDimension = pexConfig.Field(
         dtype=str,
         doc="Dimension name for this input.",

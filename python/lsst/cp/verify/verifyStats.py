@@ -20,6 +20,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import math
 
+from astropy.table import Table
+
 import lsst.afw.geom as afwGeom
 import lsst.afw.math as afwMath
 import lsst.pex.config as pexConfig
@@ -91,6 +93,18 @@ class CpVerifyStatsConnections(
         storageClass="StructuredDataDict",
         dimensions=["instrument", "exposure", "detector"],
     )
+    outputResults = cT.Output(
+        name="detectorResults",
+        doc="Output results from cp_verify.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure", "detector"],
+    )
+    outputMatrix = cT.Output(
+        name="detectorMatrix",
+        doc="Output matrix results from cp_verify.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure", "detector"],
+    )
 
     def __init__(self, *, config=None):
         super().__init__(config=config)
@@ -107,6 +121,9 @@ class CpVerifyStatsConnections(
 
         if config.useIsrStatistics is not True:
             self.inputs.discard("isrStatistics")
+
+        if not config.hasMatrixCatalog:
+            self.outputs.discard("outputMatrix")
 
 
 class CpVerifyStatsConfig(
@@ -227,6 +244,11 @@ class CpVerifyStatsConfig(
         doc="Use statistics calculated by IsrTask?",
         default=False,
     )
+    hasMatrixCatalog = pexConfig.Field(
+        dtype=bool,
+        doc="Will a matrix table of results be made?",
+        default=False,
+    )
 
 
 class CpVerifyStatsTask(pipeBase.PipelineTask):
@@ -240,9 +262,18 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
     ConfigClass = CpVerifyStatsConfig
     _DefaultName = "cpVerifyStats"
 
+    stageName = 'noStage'
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.makeSubtask("repair")
+
+    def runQuantum(self, butlerQC, inputRefs, outputRefs):
+        inputs = butlerQC.get(inputRefs)
+        inputs["dimensions"] = [dict(exp.dataId.required) for exp in inputRefs.inputExp]
+
+        outputs = self.run(**inputs)
+        butlerQC.put(outputs, outputRefs)
 
     def run(
         self,
@@ -253,6 +284,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
         taskMetadata=None,
         inputCatalog=None,
         uncorrectedCatalog=None,
+        dimensions=None,
     ):
         """Calculate quality statistics and verify they meet the requirements
         for a calibration.
@@ -271,6 +303,8 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             The source catalog to measure.
         uncorrectedCatalog : `lsst.afw.image.Table`
             The alternate source catalog to measure.
+        dimensions : `dict`
+            Dictionary of input dictionary.
 
         Returns
         -------
@@ -278,36 +312,6 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             Result struct with components:
             - ``outputStats`` : `dict`
                 The output measured statistics.
-
-        Notes
-        -----
-        The outputStats should have a yaml representation of the form
-
-        AMP:
-          Amp1:
-            STAT: value
-            STAT2: value2
-          Amp2:
-          Amp3:
-        DET:
-          STAT: value
-          STAT2: value
-        CATALOG:
-          STAT: value
-          STAT2: value
-        VERIFY:
-          DET:
-            TEST: boolean
-          CATALOG:
-            TEST: boolean
-          AMP:
-            Amp1:
-              TEST: boolean
-              TEST2: boolean
-            Amp2:
-            Amp3:
-        SUCCESS: boolean
-
         """
         outputStats = {}
 
@@ -353,8 +357,16 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             inputExp, outputStats
         )
 
+        outputResults, outputMatrix = self.repackStats(outputStats, dimensions)
+        if outputResults is not None:
+            outputResults = Table(outputResults)
+        if outputMatrix is not None:
+            outputMatrix = Table(outputMatrix)
+
         return pipeBase.Struct(
             outputStats=outputStats,
+            outputResults=outputResults,
+            outputMatrix=outputMatrix,
         )
 
     @staticmethod
@@ -749,3 +761,46 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             subclass.
         """
         raise NotImplementedError("Subclasses must implement verification criteria.")
+
+    def repackStats(self, statisticsDict, dimensions):
+        """Repack information into flat tables.
+
+        This method should be redefined in subclasses.
+
+        Parameters
+        ----------
+        statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
+
+        Returns
+        -------
+        outputResults : `list` [`dict`]
+            A list of rows to add to the output table.
+        outputMatrix : `list` [`dict`]
+            A list of rows to add to the output matrix.
+        """
+        rowList = []
+
+        if self.config.useIsrStatistics:
+            mjd = statisticsDict["ISR"]["MJD"]
+        else:
+            mjd = None
+
+        rowBase = {
+            "instrument": dimensions["instrument"],
+            "exposure": dimensions["exposure"],
+            "detector": dimensions["detector"],
+            "mjd": mjd,
+        }
+
+        # AMP results:
+        for ampName, stats in statisticsDict["AMP"].items():
+            row = rowBase
+            row["amplifier"] = ampName
+            for key, value in stats.items():
+                row[f"{self.stageName}_{key}"] = value
+
+        return rowList, None
