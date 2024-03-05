@@ -29,6 +29,7 @@ tasks:
       connections.inputExp: 'verifyBiasProc'
       connections.taskMetadata: 'verifyBiasApply_metadata'
       connections.outputStats: 'verifyBiasDetStats'
+      connections.outputResults: 'verifyBiasDetResults'
       doVignette: false
       useReadNoise: true
       useIsrStatistics: true
@@ -36,6 +37,7 @@ tasks:
     class: lsst.cp.verify.CpVerifyExpMergeTask
     config:
       connections.inputStats: 'verifyBiasDetStats'
+      connections.inputResults: 'verifyBiasDetResults'
       connections.outputStats: 'verifyBiasExpStats'
       connections.outputResults: 'verifyBiasExpResults'
       hasInputResults: true

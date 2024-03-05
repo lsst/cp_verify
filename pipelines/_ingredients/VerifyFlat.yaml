@@ -15,21 +15,19 @@ tasks:
     config:
       connections.inputExp: 'verifyFlatProc'
       connections.outputStats: 'verifyFlatDetStats'
+      connections.outputResults: 'verifyFlatDetResults'
       useIsrStatistics: true
   verifyFlatExp:
     class: lsst.cp.verify.CpVerifyExpMergeTask
     config:
       connections.inputStats: 'verifyFlatDetStats'
+      connections.inputResults: 'verifyFlatDetResults'
       connections.outputStats: 'verifyFlatExpStats'
+      connections.outputResults: 'verifyFlatExpResults'
   verifyFlat:
     class: lsst.cp.verify.CpVerifyRunMergeTask
     config:
       connections.inputStats: 'verifyFlatExpStats'
+      connections.inputResults: 'verifyFlatExpResults'
       connections.outputStats: 'verifyFlatStats'
-  repackFlatResults:
-    class: lsst.cp.verify.CpVerifyRepackFlatTask
-    config:
-      connections.detectorStats: 'verifyFlatDetStats'
-      connections.exposureStats: 'verifyFlatExpStats'
-      connections.runStats: 'verifyFlatStats'
-      connections.outputCatalog: 'verifyFlatResults'
+      connections.outputResults: 'verifyFlatResults'
