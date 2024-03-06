@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
-from astropy.table import vstack, Column
+from astropy.table import vstack, Column, Table
 
 import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
@@ -260,7 +260,7 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
             "Outer-join" merged table.
         """
         if inputResults is None:
-            return None
+            return Table()
 
         testTable = inputResults[0]  # This has the default set of columns.
         defaults = {key: -1 for key in testTable.columns}

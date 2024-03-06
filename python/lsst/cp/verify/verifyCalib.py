@@ -138,7 +138,7 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
 
     def runQuantum(self, butlerQC, inputRefs, outputRefs):
         inputs = butlerQC.get(inputRefs)
-        inputs["dimensions"] = [dict(exp.dataId.required) for exp in inputRefs.inputCalib]
+        inputs["dimensions"] = dict(inputRefs.inputCalib.dataId.required)
 
         outputs = self.run(**inputs)
         butlerQC.put(outputs, outputRefs)

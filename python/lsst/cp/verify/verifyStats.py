@@ -270,7 +270,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
 
     def runQuantum(self, butlerQC, inputRefs, outputRefs):
         inputs = butlerQC.get(inputRefs)
-        inputs["dimensions"] = [dict(exp.dataId.required) for exp in inputRefs.inputExp]
+        inputs["dimensions"] = dict(inputRefs.inputExp.dataId.required)
 
         outputs = self.run(**inputs)
         butlerQC.put(outputs, outputRefs)
@@ -358,15 +358,11 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
         )
 
         outputResults, outputMatrix = self.repackStats(outputStats, dimensions)
-        if outputResults is not None:
-            outputResults = Table(outputResults)
-        if outputMatrix is not None:
-            outputMatrix = Table(outputMatrix)
 
         return pipeBase.Struct(
             outputStats=outputStats,
-            outputResults=outputResults,
-            outputMatrix=outputMatrix,
+            outputResults=Table(outputResults),
+            outputMatrix=Table(outputMatrix),
         )
 
     @staticmethod
@@ -802,5 +798,6 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             row["amplifier"] = ampName
             for key, value in stats.items():
                 row[f"{self.stageName}_{key}"] = value
+            rowList.append(row)
 
         return rowList, None

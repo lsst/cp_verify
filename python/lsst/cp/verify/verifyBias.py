@@ -158,3 +158,46 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
             verifyStats[ampName] = verify
 
         return {'AMP': verifyStats}, bool(success)
+
+    def repackStats(self, statisticsDict, dimensions):
+        """Repack information into flat tables.
+
+        This method should be redefined in subclasses.
+
+        Parameters
+        ----------
+        statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
+
+        Returns
+        -------
+        outputResults : `list` [`dict`]
+            A list of rows to add to the output table.
+        outputMatrix : `list` [`dict`]
+            A list of rows to add to the output matrix.
+        """
+        rowList = []
+
+        if self.config.useIsrStatistics:
+            mjd = statisticsDict["ISR"]["MJD"]
+        else:
+            mjd = None
+
+        rowBase = {
+            "instrument": dimensions["instrument"],
+            "exposure": dimensions["exposure"],
+            "detector": dimensions["detector"],
+            "mjd": mjd,
+        }
+
+        # AMP results:
+        for ampName, stats in statisticsDict["AMP"].items():
+            row = rowBase
+            row["amplifier"] = ampName
+            for key, value in stats.items():
+                row[f"{self.stageName}_{key}"] = value
+
+        return rowList, None

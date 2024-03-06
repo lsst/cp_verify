@@ -32,6 +32,6 @@ tasks:
     class: lsst.cp.verify.CpVerifyRunMergeTask
     config:
       connections.inputStats: 'verifyDarkExpStats'
-      connection.inputResults: 'verifyDarkExpResults'
+      connections.inputResults: 'verifyDarkExpResults'
       connections.outputStats: 'verifyDarkStats'
-      connections.outputStats: 'verifyDarkResults'
+      connections.outputResults: 'verifyDarkResults'
