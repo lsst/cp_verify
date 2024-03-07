@@ -12,7 +12,6 @@ tasks:
       doBias: true
       doVariance: false
       doLinearize: false
-      doCrosstalk: false
       doBrighterFatter: false
       doDark: false
       doStrayLight: false
