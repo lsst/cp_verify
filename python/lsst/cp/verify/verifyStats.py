@@ -239,6 +239,12 @@ class CpVerifyStatsConfig(
         doc="Statistics to create for the full detector from the per-amplifier measurements.",
         default={},
     )
+
+    stageName = pexConfig.Field(
+        dtype=str,
+        doc="Stage name to use for table columns.",
+        default="noStage",
+    )
     useIsrStatistics = pexConfig.Field(
         dtype=bool,
         doc="Use statistics calculated by IsrTask?",
@@ -248,6 +254,11 @@ class CpVerifyStatsConfig(
         dtype=bool,
         doc="Will a matrix table of results be made?",
         default=False,
+    )
+    expectedDistributionLevels = pexConfig.ListField(
+        dtype=float,
+        doc="Percentile levels expected in the calibration header.",
+        default=[0, 5, 16, 50, 84, 95, 100],
     )
 
 
@@ -262,16 +273,17 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
     ConfigClass = CpVerifyStatsConfig
     _DefaultName = "cpVerifyStats"
 
-    stageName = 'noStage'
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.makeSubtask("repair")
 
     def runQuantum(self, butlerQC, inputRefs, outputRefs):
         inputs = butlerQC.get(inputRefs)
-        inputs["dimensions"] = dict(inputRefs.inputExp.dataId.required)
 
+        # Pass the full dataId, as we want to retain filter info.
+        inputs["dimensions"] = dict(inputRefs.inputExp.dataId.mapping)
+        print("CZW", inputs["dimensions"], dict(inputRefs.inputExp.dataId.mapping))
+        # import pdb; pdb.set_trace()
         outputs = self.run(**inputs)
         butlerQC.put(outputs, outputRefs)
 
@@ -778,26 +790,35 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
         outputMatrix : `list` [`dict`]
             A list of rows to add to the output matrix.
         """
+        rows = {}
         rowList = []
+        matrixRowList = None
 
         if self.config.useIsrStatistics:
             mjd = statisticsDict["ISR"]["MJD"]
         else:
-            mjd = None
+            mjd = np.nan
 
         rowBase = {
             "instrument": dimensions["instrument"],
-            "exposure": dimensions["exposure"],
             "detector": dimensions["detector"],
             "mjd": mjd,
         }
 
         # AMP results:
         for ampName, stats in statisticsDict["AMP"].items():
-            row = rowBase
-            row["amplifier"] = ampName
+            rows[ampName] = rowBase
+            rows[ampName]["amplifier"] = ampName
             for key, value in stats.items():
-                row[f"{self.stageName}_{key}"] = value
-            rowList.append(row)
+                rows[ampName][f"{self.config.stageName}_{key}"] = value
 
-        return rowList, None
+        # VERIFY results
+        for ampName, stats in statisticsDict["VERIFY"]["AMP"].items():
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
+
+        # pack final list
+        for ampName, stats in rows.items():
+            rowList.append(stats)
+
+        return rowList, matrixRowList

@@ -42,6 +42,7 @@ class CpVerifyBiasConfig(CpVerifyStatsConfig,
 
     def setDefaults(self):
         super().setDefaults()
+        self.stageName = 'bias'
         self.imageStatKeywords = {'MEAN': 'MEAN',  # noqa F841
                                   'NOISE': 'STDEVCLIP', }
         self.crImageStatKeywords = {'CR_NOISE': 'STDEV', }  # noqa F841
@@ -179,12 +180,14 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
         outputMatrix : `list` [`dict`]
             A list of rows to add to the output matrix.
         """
+        rows = {}
         rowList = []
+        matrixRowList = None
 
         if self.config.useIsrStatistics:
             mjd = statisticsDict["ISR"]["MJD"]
         else:
-            mjd = None
+            mjd = np.nan
 
         rowBase = {
             "instrument": dimensions["instrument"],
@@ -195,9 +198,64 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
 
         # AMP results:
         for ampName, stats in statisticsDict["AMP"].items():
-            row = rowBase
-            row["amplifier"] = ampName
+            rows[ampName] = rowBase
+            rows[ampName]["amplifier"] = ampName
             for key, value in stats.items():
-                row[f"{self.stageName}_{key}"] = value
+                rows[ampName][f"{self.config.stageName}_{key}"] = value
 
-        return rowList, None
+        # VERIFY results
+        for ampName, stats in statisticsDict["VERIFY"]["AMP"].items():
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
+
+        # METADATA results
+        for ampName, value in statisticsDict["METADATA"]["RESIDUAL STDEV"].items():
+            rows[ampName][f"{self.config.stageName}_READ_NOISE"] = value
+
+        # ISR results
+        if self.config.useIsrStatistics:
+            matrixRowList = statisticsDict["ISR"]["AMPCORR"]
+
+            for ampName, stats in statisticsDict["ISR"]["BIASSHIFT"].items():
+                rows[ampName][f"{self.config.stageName}_BIAS_SHIFT_COUNT"] = len(stats['BIAS_SHIFTS'])
+                rows[ampName][F"{self.config.stageName}_BIAS_SHIFT_NOISE"] = stats['LOCAL_NOISE']
+            for ampName, stats in statisticsDict["ISR"]["CALIBDIST"].items():
+                for level in self.config.expectedDistributionLevels:
+                    key = f"LSST CALIB {self.config.stageName.upper()} {ampName} DISTRIBUTION {level}-PCT"
+                    rows[ampName][f"{self.config.stageName}_BIAS_DIST_{level}_PCT"] = stats[key]
+
+            # We need all rows of biasParallelProfile and biasParallelProfile
+            # to be the same length for serialization. Therefore, we pad
+            # to the longest length.
+            projStats = statisticsDict["ISR"]["PROJECTION"]
+            maxLen = 0
+            key = "AMP_HPROJECTION"
+            for ampName in projStats[key].keys():
+                rows[ampName][f"{self.config.stageName}_SERIAL_PROF"] = np.array(projStats[key][ampName])
+                if (myLen := len(rows[ampName][f"{self.config.stageName}_SERIAL_PROF"])) > maxLen:
+                    maxLen = myLen
+            for ampName in rows.keys():
+                if (myLen := len(rows[ampName][f"{self.config.stageName}_SERIAL_PROF"])) < maxLen:
+                    rows[ampName][f"{self.config.stageName}_SERIAL_PROF"] = np.pad(
+                        rows[ampName][f"{self.config.stageName}_SERIAL_PROF"],
+                        (0, maxLen - myLen),
+                        constant_values=np.nan)
+
+            maxLen = 0
+            key = "AMP_VPROJECTION"
+            for ampName in projStats[key].keys():
+                rows[ampName][f"{self.config.stageName}_PARALLEL_PROF"] = np.array(projStats[key][ampName])
+                if (myLen := len(rows[ampName][f"{self.config.stageName}_PARALLEL_PROF"])) > maxLen:
+                    maxLen = myLen
+            for ampName in rows.keys():
+                if (myLen := len(rows[ampName][f"{self.config.stageName}_PARALLEL_PROF"])) < maxLen:
+                    rows[ampName][f"{self.config.stageName}_PARALLEL_PROF"] = np.pad(
+                        rows[ampName][f"{self.config.stageName}_PARALLEL_PROF"],
+                        (0, maxLen - myLen),
+                        constant_values=np.nan)
+
+        # pack final list
+        for ampName, stats in rows.items():
+            rowList.append(stats)
+
+        return rowList, matrixRowList

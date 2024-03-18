@@ -138,7 +138,7 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
         outputs = self.run(**inputs)
         butlerQC.put(outputs, outputRefs)
 
-    def run(self, inputStats, inputDims, camera, inputResults=None, inputMatrix=None,):
+    def run(self, inputStats, inputDims, camera=None, inputResults=None, inputMatrix=None,):
         """Merge statistics.
 
         Parameters
@@ -428,13 +428,6 @@ class CpVerifyVisitExpMergeConnections(pipeBase.PipelineTaskConnections,
         dimensions=["instrument", "visit", "detector"],
         multiple=True,
     )
-    camera = cT.PrerequisiteInput(
-        name="camera",
-        storageClass="Camera",
-        doc="Input camera.",
-        dimensions=["instrument", ],
-        isCalibration=True,
-    )
     inputResults = cT.Input(
         name="detectorResults",
         doc="Input results to merge.",
@@ -448,6 +441,13 @@ class CpVerifyVisitExpMergeConnections(pipeBase.PipelineTaskConnections,
         storageClass="ArrowAstropy",
         dimensions=["instrument", "visit", "detector"],
         multiple=True,
+    )
+    camera = cT.PrerequisiteInput(
+        name="camera",
+        storageClass="Camera",
+        doc="Input camera.",
+        dimensions=["instrument", ],
+        isCalibration=True,
     )
 
     outputStats = cT.Output(
@@ -515,6 +515,13 @@ class CpVerifyVisitRunMergeConnections(pipeBase.PipelineTaskConnections,
         dimensions=["instrument", "visit"],
         multiple=True,
     )
+    camera = cT.PrerequisiteInput(
+        name="camera",
+        storageClass="Camera",
+        doc="Input camera.",
+        dimensions=["instrument", ],
+        isCalibration=True,
+    )
 
     outputStats = cT.Output(
         name="runStats",
@@ -571,15 +578,22 @@ class CpVerifyCalibMergeConnections(pipeBase.PipelineTaskConnections,
         name="exposureResults",
         doc="Input results table to merge.",
         storageClass="ArrowAstropy",
-        dimensions=["instrument", "exposure"],
+        dimensions=["instrument", "detector"],
         multiple=True,
     )
     inputMatrix = cT.Input(
         name="exposureMatrix",
         doc="Input matrix table to merge.",
         storageClass="ArrowAstropy",
-        dimensions=["instrument", "exposure"],
+        dimensions=["instrument", "detector"],
         multiple=True,
+    )
+    camera = cT.PrerequisiteInput(
+        name="camera",
+        storageClass="Camera",
+        doc="Input camera.",
+        dimensions=["instrument", ],
+        isCalibration=True,
     )
 
     outputStats = cT.Output(

@@ -28,6 +28,8 @@ tasks:
       connections.inputResults: 'verifyDarkDetResults'
       connections.outputStats: 'verifyDarkExpStats'
       connections.outputResults: 'verifyDarkExpResults'
+      hasInputResults: true
+      hasMatrixCatalog: false
   verifyDark:
     class: lsst.cp.verify.CpVerifyRunMergeTask
     config:
@@ -35,3 +37,5 @@ tasks:
       connections.inputResults: 'verifyDarkExpResults'
       connections.outputStats: 'verifyDarkStats'
       connections.outputResults: 'verifyDarkResults'
+      hasInputResults: true
+      hasMatrixCatalog: false

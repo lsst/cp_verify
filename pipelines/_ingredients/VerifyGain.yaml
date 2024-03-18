@@ -13,3 +13,4 @@ tasks:
       connections.inputResults: 'verifyGainDetResults'
       connections.outputStats: 'verifyGainStats'
       connections.outputResults: 'verifyGainResults'
+      hasInputResults: true

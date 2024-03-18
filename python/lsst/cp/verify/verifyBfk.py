@@ -80,6 +80,7 @@ class CpVerifyBfkConfig(CpVerifyStatsConfig,
 
     def setDefaults(self):
         super().setDefaults()
+        self.stageName = 'bfk'
         self.catalogStatKeywords = {'BRIGHT_SLOPE': None,
                                     'NUM_MATCHES': None,
                                    }  # noqa F841
@@ -241,3 +242,29 @@ class CpVerifyBfkTask(CpVerifyStatsTask):
         if catalogVerify['NUM_MATCHES'] and not catalogVerify['BRIGHT_SLOPE']:
             success = False
         return {'AMP': verifyStats, 'CATALOG': catalogVerify}, bool(success)
+
+    def repackStats(self, statisticsDict, dimensions):
+        rows = {}
+        rowList = []
+        matrixRowList = None
+
+        rowBase = {
+            "instrument": dimensions["instrument"],
+            "detector": dimensions["detector"],
+        }
+
+        # CAT results
+        verifyDict = statisticsDict["VERIFY"]["VERIFY"]["CATALOG"]
+        for ampName, stats in statisticsDict["CAT"].items():
+            rows[ampName] = rowBase
+            rows[ampName]["amplifier"] = ampName
+            for key, value in stats.items():
+                rows["ampName"][f"{self.config.stageName}_{key}"] = value
+                rows["ampName"][f"{self.config.stageName}_VERIFY_{key}"] = value
+
+        # pack final list
+        for ampName, stats in rows.items():
+            rowList.append(stats)
+
+        return rowList, matrixRowList
+

@@ -52,9 +52,6 @@ class CpVerifyGainConfig(CpVerifyCalibConfig,
                          pipelineConnections=CpVerifyGainConnections):
     """Inherits from base CpVerifyCalibConfig."""
 
-    def setDefaults(self):
-        super().setDefaults()
-
     gainThreshold = pexConfig.Field(
         dtype=float,
         doc="Maximum percentage difference between gain from flat pairs and nominal amplifier gain.",
@@ -67,6 +64,10 @@ class CpVerifyGainConfig(CpVerifyCalibConfig,
             "amplifier readout noise.",
         default=5.0,
     )
+
+    def setDefaults(self):
+        super().setDefaults()
+        self.stageName = 'gain'
 
 
 class CpVerifyGainTask(CpVerifyCalibTask):
@@ -221,3 +222,4 @@ class CpVerifyGainTask(CpVerifyCalibTask):
                 verifyDetStatsFinal[testName] = bool(np.all(list(verifyDetStats[testName])))
 
         return verifyDetStatsFinal, bool(success)
+

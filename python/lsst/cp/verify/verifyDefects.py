@@ -82,6 +82,8 @@ class CpVerifyDefectsConfig(
 
     def setDefaults(self):
         super().setDefaults()
+        self.stageName = 'defects'
+
         self.maskNameList = ["BAD"]  # noqa F821
 
         self.imageStatKeywords = {
@@ -331,3 +333,47 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             "DET": verifyStatsDet,
             "CATALOG": verifyStatsCat,
         }, bool(success)
+
+    def repackStats(self, statisticsDict, dimensions):
+        rows = {}
+        rowList = []
+        matrixRowList = None
+
+        if self.config.userIsrStatistics:
+            mjd = statisticsDict["ISR"]["MJD"]
+        else:
+            mjd = np.nan
+
+        rowBase = {
+            "instrument": dimensions["instrument"],
+            "exposure": dimensions["exposure"],
+            "detector": dimensions["detector"],
+            "mjd": mjd,
+        }
+
+        # AMP results
+        for ampName, stats in statisticsDict["AMP"].items():
+            rows[ampName] = rowBase
+            rows[ampName]["amplifier"] = ampName
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_{key}"] = value
+
+        # ISR results
+        nBadColumns = np.nan
+        for ampName, stats in detStats["ISR"]["CALIBDIST"].items():
+            if ampName == "detector":
+                nBadColumsn = stats[ampName]["LSST CALIB DEFECTS N_BAD_COLUMNS"]
+            else:
+                key = f"LSST CALIB DEFECTS {ampName} N_HOT"
+                row[ampName][f"{self.config.stageName}_N_HOT"] = stats[ampName][key]
+                key = f"LSST CALIB DEFECTS {ampName} N_COLD"
+                row[ampName][f"{self.config.stageName}_N_COLD"] = stats[ampName][key]
+
+        # DET results
+        row["detector"] = rowBase
+        row["detector"][f"{self.config.stageName}_N_BAD_COLUMNS"] = nBadColumns
+
+        for ampName, stats in row.items():
+            rowList.append(stats)
+
+        return rowList, matrixRowList

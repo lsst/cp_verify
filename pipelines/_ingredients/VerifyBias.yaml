@@ -23,31 +23,37 @@ tasks:
       isrStats.doProjectionStatistics: true
       isrStats.doBiasShiftStatistics: true
       isrStats.doAmplifierCorrelationStatistics: true
-  verifyMeasureStats:
+  verifyBiasChip:
     class: lsst.cp.verify.CpVerifyBiasTask
     config:
       connections.inputExp: 'verifyBiasProc'
       connections.taskMetadata: 'verifyBiasApply_metadata'
       connections.outputStats: 'verifyBiasDetStats'
       connections.outputResults: 'verifyBiasDetResults'
+      connections.outputMatrix: 'verifyBiasDetMatrix'
       doVignette: false
       useReadNoise: true
       useIsrStatistics: true
-  verifyExposureStats:
+      hasMatrixCatalog: true
+  verifyBiasExp:
     class: lsst.cp.verify.CpVerifyExpMergeTask
     config:
       connections.inputStats: 'verifyBiasDetStats'
       connections.inputResults: 'verifyBiasDetResults'
+      connections.inputMatrix: 'verifyBiasDetMatrix'
       connections.outputStats: 'verifyBiasExpStats'
       connections.outputResults: 'verifyBiasExpResults'
+      connections.outputMatrix: 'verifyBiasExpMatrix'
       hasInputResults: true
-      hasMatrixCatalog: false
-  verifyRunStats:
+      hasMatrixCatalog: true
+  verifyBias:
     class: lsst.cp.verify.CpVerifyRunMergeTask
     config:
       connections.inputStats: 'verifyBiasExpStats'
       connections.inputResults: 'verifyBiasExpResults'
+      connections.inputMatrix: 'verifyBiasExpMatrix'
       connections.outputStats: 'verifyBiasStats'
       connections.outputResults: 'verifyBiasResults'
+      connections.outputMatrix: 'verifyBiasMatrix'
       hasInputResults: true
-      hasMatrixCatalog: false
+      hasMatrixCatalog: true

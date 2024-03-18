@@ -18,6 +18,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import numpy as np
 from astropy.table import Table
 
 import lsst.pex.config as pexConfig
@@ -66,13 +67,13 @@ class CpVerifyCalibConnections(pipeBase.PipelineTaskConnections,
         name="detectorResults",
         doc="Output results from cp_verify.",
         storageClass="ArrowAstropy",
-        dimensions=["instrument", "exposure", "detector"],
+        dimensions=["instrument", "detector"],
     )
     outputMatrix = cT.Output(
         name="detectorMatrix",
         doc="Output matrix results from cp_verify.",
         storageClass="ArrowAstropy",
-        dimensions=["instrument", "exposure", "detector"],
+        dimensions=["instrument", "detector"],
     )
 
     def __init__(self, *, config=None):
@@ -111,6 +112,11 @@ class CpVerifyCalibConfig(pipeBase.PipelineTaskConfig,
         default={},
     )
 
+    stageName = pexConfig.Field(
+        dtype=str,
+        doc="Stage name to use in columns.",
+        default="noCalib",
+    )
     useIsrStatistics = pexConfig.Field(
         dtype=bool,
         doc="Use statistics calculated by IsrTask?",
@@ -134,8 +140,6 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
     ConfigClass = CpVerifyCalibConfig
     _DefaultName = 'cpVerifyCalib'
 
-    stageName = 'noStageCalib'
-
     def runQuantum(self, butlerQC, inputRefs, outputRefs):
         inputs = butlerQC.get(inputRefs)
         inputs["dimensions"] = dict(inputRefs.inputCalib.dataId.required)
@@ -148,7 +152,7 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             camera=None,
             exposure=None,
             dimensions=None,
-    ):
+           ):
         """Calculate quality statistics and verify they meet the requirements
         for a calibration.
 
@@ -295,11 +299,35 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         outputMatrix : `list` [`dict`]
             A list of rows to add to the output matrix.
         """
+        rows = {}
         rowList = []
+        matrixRowList = None
+
+        if self.config.useIsrStatistics:
+            mjd = statisticsDict["ISR"]["MJD"]
+        else:
+            mjd = np.nan
 
         rowBase = {
             "instrument": dimensions["instrument"],
             "detector": dimensions["detector"],
+            "mjd": mjd,
         }
 
-        return rowList, None
+        # AMP results:
+        for ampName, stats in statisticsDict["AMP"].items():
+            rows[ampName] = rowBase
+            rows[ampName]["amplifier"] = ampName
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_{key}"] = value
+
+        # VERIFY results
+        for ampName, stats in statisticsDict["VERIFY"]["AMP"].items():
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
+
+        # pack final list
+        for ampName, stats in rows.items():
+            rowList.append(stats)
+
+        return rowList, matrixRowList

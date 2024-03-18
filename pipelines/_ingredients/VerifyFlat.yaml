@@ -24,6 +24,8 @@ tasks:
       connections.inputResults: 'verifyFlatDetResults'
       connections.outputStats: 'verifyFlatExpStats'
       connections.outputResults: 'verifyFlatExpResults'
+      hasInputResults: true
+      hasMatrixCatalog: false
   verifyFlat:
     class: lsst.cp.verify.CpVerifyRunMergeTask
     config:
@@ -31,3 +33,5 @@ tasks:
       connections.inputResults: 'verifyFlatExpResults'
       connections.outputStats: 'verifyFlatStats'
       connections.outputResults: 'verifyFlatResults'
+      hasInputResults: true
+      hasMatrixCatalog: false
