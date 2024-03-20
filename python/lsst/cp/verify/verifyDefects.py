@@ -339,7 +339,7 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
         rowList = []
         matrixRowList = None
 
-        if self.config.userIsrStatistics:
+        if self.config.useIsrStatistics:
             mjd = statisticsDict["ISR"]["MJD"]
         else:
             mjd = np.nan
@@ -360,20 +360,21 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
         # ISR results
         nBadColumns = np.nan
-        for ampName, stats in detStats["ISR"]["CALIBDIST"].items():
-            if ampName == "detector":
-                nBadColumsn = stats[ampName]["LSST CALIB DEFECTS N_BAD_COLUMNS"]
-            else:
-                key = f"LSST CALIB DEFECTS {ampName} N_HOT"
-                row[ampName][f"{self.config.stageName}_N_HOT"] = stats[ampName][key]
-                key = f"LSST CALIB DEFECTS {ampName} N_COLD"
-                row[ampName][f"{self.config.stageName}_N_COLD"] = stats[ampName][key]
+        if "ISR" in statisticsDict:
+            for ampName, stats in statisticsDict["ISR"]["CALIBDIST"].items():
+                if ampName == "detector":
+                    nBadColumns = stats[ampName]["LSST CALIB DEFECTS N_BAD_COLUMNS"]
+                else:
+                    key = f"LSST CALIB DEFECTS {ampName} N_HOT"
+                    rows[ampName][f"{self.config.stageName}_N_HOT"] = stats[ampName][key]
+                    key = f"LSST CALIB DEFECTS {ampName} N_COLD"
+                    rows[ampName][f"{self.config.stageName}_N_COLD"] = stats[ampName][key]
 
         # DET results
-        row["detector"] = rowBase
-        row["detector"][f"{self.config.stageName}_N_BAD_COLUMNS"] = nBadColumns
+        rows["detector"] = rowBase
+        rows["detector"][f"{self.config.stageName}_N_BAD_COLUMNS"] = nBadColumns
 
-        for ampName, stats in row.items():
+        for ampName, stats in rows.items():
             rowList.append(stats)
 
         return rowList, matrixRowList

@@ -18,7 +18,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import math
+import numpy as np
 
 from astropy.table import Table
 
@@ -655,7 +655,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
         psf = measAlg.SingleGaussianPsf(
             self.config.psfSize,
             self.config.psfSize,
-            self.config.psfFwhm / (2 * math.sqrt(2 * math.log(2))),
+            self.config.psfFwhm / (2 * np.sqrt(2 * np.log(2))),
         )
         crRejectedExp.setPsf(psf)
         try:
@@ -813,9 +813,10 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
                 rows[ampName][f"{self.config.stageName}_{key}"] = value
 
         # VERIFY results
-        for ampName, stats in statisticsDict["VERIFY"]["AMP"].items():
-            for key, value in stats.items():
-                rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
+        if "AMP" in statisticsDict["VERIFY"]:
+            for ampName, stats in statisticsDict["VERIFY"]["AMP"].items():
+                for key, value in stats.items():
+                    rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
 
         # pack final list
         for ampName, stats in rows.items():

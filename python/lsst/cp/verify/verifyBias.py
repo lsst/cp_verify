@@ -209,8 +209,9 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
                 rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
 
         # METADATA results
-        for ampName, value in statisticsDict["METADATA"]["RESIDUAL STDEV"].items():
-            rows[ampName][f"{self.config.stageName}_READ_NOISE"] = value
+        if 'RESIDUAL STDEV' in statisticsDict["METADATA"]:
+            for ampName, value in statisticsDict["METADATA"]["RESIDUAL STDEV"].items():
+                rows[ampName][f"{self.config.stageName}_READ_NOISE"] = value
 
         # ISR results
         if self.config.useIsrStatistics:

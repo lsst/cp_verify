@@ -152,7 +152,7 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             camera=None,
             exposure=None,
             dimensions=None,
-           ):
+            ):
         """Calculate quality statistics and verify they meet the requirements
         for a calibration.
 

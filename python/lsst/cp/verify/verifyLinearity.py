@@ -263,7 +263,7 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
 
         for ampName, stats in rows.items():
             rowList.append(stats)
-    
+
         return rowList, matrixRowList
 
 

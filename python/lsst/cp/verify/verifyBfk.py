@@ -254,7 +254,6 @@ class CpVerifyBfkTask(CpVerifyStatsTask):
         }
 
         # CAT results
-        verifyDict = statisticsDict["VERIFY"]["VERIFY"]["CATALOG"]
         for ampName, stats in statisticsDict["CAT"].items():
             rows[ampName] = rowBase
             rows[ampName]["amplifier"] = ampName
@@ -267,4 +266,3 @@ class CpVerifyBfkTask(CpVerifyStatsTask):
             rowList.append(stats)
 
         return rowList, matrixRowList
-

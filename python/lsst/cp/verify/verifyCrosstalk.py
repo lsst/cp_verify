@@ -75,7 +75,7 @@ class CpVerifyCrosstalkTask(CpVerifyCalibTask):
         outputStatistics['N_AMP'] = inputCalib.nAmp
         # I think this is the residual set, which isn't what we want,
         # but will serve as a placeholder.
-        outputStatistics['COEFFS'] = inputCalib.coeffs.tolist()
+        outputStatistics['COEFFS'] = inputCalib.coeffs
 
         return outputStatistics
 
@@ -151,7 +151,6 @@ class CpVerifyCrosstalkTask(CpVerifyCalibTask):
         outputMatrix : `list` [`dict`]
             A list of rows to add to the output matrix.
         """
-        rows = {}
         rowList = []
         matrixRowList = []
 

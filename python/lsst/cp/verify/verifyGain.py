@@ -222,4 +222,3 @@ class CpVerifyGainTask(CpVerifyCalibTask):
                 verifyDetStatsFinal[testName] = bool(np.all(list(verifyDetStats[testName])))
 
         return verifyDetStatsFinal, bool(success)
-
