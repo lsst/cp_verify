@@ -75,7 +75,7 @@ class CpVerifyCrosstalkTask(CpVerifyCalibTask):
         outputStatistics['N_AMP'] = inputCalib.nAmp
         # I think this is the residual set, which isn't what we want,
         # but will serve as a placeholder.
-        outputStatistics['COEFFS'] = inputCalib.coeffs
+        outputStatistics['COEFFS'] = inputCalib.coeffs.tolist()
 
         return outputStatistics
 
