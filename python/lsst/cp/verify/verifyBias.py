@@ -42,7 +42,7 @@ class CpVerifyBiasConfig(CpVerifyStatsConfig,
 
     def setDefaults(self):
         super().setDefaults()
-        self.stageName = 'bias'
+        self.stageName = 'BIAS'
         self.imageStatKeywords = {'MEAN': 'MEAN',  # noqa F841
                                   'NOISE': 'STDEVCLIP', }
         self.crImageStatKeywords = {'CR_NOISE': 'STDEV', }  # noqa F841

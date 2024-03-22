@@ -80,7 +80,7 @@ class CpVerifyBfkConfig(CpVerifyStatsConfig,
 
     def setDefaults(self):
         super().setDefaults()
-        self.stageName = 'bfk'
+        self.stageName = 'BFK'
         self.catalogStatKeywords = {'BRIGHT_SLOPE': None,
                                     'NUM_MATCHES': None,
                                    }  # noqa F841

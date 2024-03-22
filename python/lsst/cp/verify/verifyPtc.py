@@ -77,7 +77,7 @@ class CpVerifyPtcConfig(CpVerifyCalibConfig,
 
     def setDefaults(self):
         super().setDefaults()
-        self.stageName = 'ptc'
+        self.stageName = 'PTC'
 
 
 def linearModel(x, m, b):

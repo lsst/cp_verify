@@ -243,7 +243,7 @@ class CpVerifyStatsConfig(
     stageName = pexConfig.Field(
         dtype=str,
         doc="Stage name to use for table columns.",
-        default="noStage",
+        default="NOSTAGE",
     )
     useIsrStatistics = pexConfig.Field(
         dtype=bool,

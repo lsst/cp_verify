@@ -45,7 +45,7 @@ class CpVerifyCrosstalkConfig(CpVerifyCalibConfig,
 
     def setDefaults(self):
         super().setDefaults()
-        self.stageName = 'crosstalk'
+        self.stageName = 'CROSSTALK'
         self.calibStatKeywords = {'SNR': ''}  # noqa F841
 
 

@@ -67,7 +67,7 @@ class CpVerifyGainConfig(CpVerifyCalibConfig,
 
     def setDefaults(self):
         super().setDefaults()
-        self.stageName = 'gain'
+        self.stageName = 'GAIN'
 
 
 class CpVerifyGainTask(CpVerifyCalibTask):

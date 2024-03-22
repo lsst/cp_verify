@@ -65,7 +65,7 @@ class CpVerifyLinearityConfig(CpVerifyCalibConfig,
 
     def setDefaults(self):
         super().setDefaults()
-        self.stageName = 'linearity'
+        self.stageName = 'LINEARITY'
 
 
 class CpVerifyLinearityTask(CpVerifyCalibTask):

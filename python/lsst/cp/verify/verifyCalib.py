@@ -115,7 +115,7 @@ class CpVerifyCalibConfig(pipeBase.PipelineTaskConfig,
     stageName = pexConfig.Field(
         dtype=str,
         doc="Stage name to use in columns.",
-        default="noCalib",
+        default="NOCALIB",
     )
     useIsrStatistics = pexConfig.Field(
         dtype=bool,

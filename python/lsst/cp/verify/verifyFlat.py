@@ -35,7 +35,7 @@ class CpVerifyFlatConfig(CpVerifyStatsConfig,
 
     def setDefaults(self):
         super().setDefaults()
-        self.stageName = 'flat'
+        self.stageName = 'FLAT'
         self.imageStatKeywords = {'MEAN': 'MEAN',  # noqa F841
                                   'NOISE': 'STDEVCLIP', }
         self.detectorStatKeywords = {'MEAN': 'MEAN',  # noqa F841

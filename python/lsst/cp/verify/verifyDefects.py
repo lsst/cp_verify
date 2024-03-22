@@ -82,7 +82,7 @@ class CpVerifyDefectsConfig(
 
     def setDefaults(self):
         super().setDefaults()
-        self.stageName = 'defects'
+        self.stageName = 'DEFECTS'
 
         self.maskNameList = ["BAD"]  # noqa F821
 
