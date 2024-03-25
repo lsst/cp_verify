@@ -73,7 +73,18 @@ class CpVerifyDefectsConnections(
         storageClass="StructuredDataDict",
         dimensions=["instrument", "visit", "detector"],
     )
-
+    outputResults = cT.Output(
+        name="detectorResults",
+        doc="Output results from cp_verify.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "visit", "detector"],
+    )
+    outputMatrix = cT.Output(
+        name="detectorMatrix",
+        doc="Output matrix results from cp_verify.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "visit", "detector"],
+    )
 
 class CpVerifyDefectsConfig(
     CpVerifyStatsConfig, pipelineConnections=CpVerifyDefectsConnections
@@ -365,7 +376,9 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
         rowBase = {
             "instrument": dimensions["instrument"],
-            "exposure": dimensions["exposure"],
+            # "exposure": dimensions["exposure"],
+            "exposure": dimensions["visit"],   # ensure an exposure dimension for downstream.
+            "visit": dimensions["visit"],
             "detector": dimensions["detector"],
             "mjd": mjd,
         }
@@ -384,10 +397,14 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
                 if ampName == "detector":
                     nBadColumns = stats[ampName]["LSST CALIB DEFECTS N_BAD_COLUMNS"]
                 else:
-                    key = f"LSST CALIB DEFECTS {ampName} N_HOT"
-                    rows[ampName][f"{self.config.stageName}_N_HOT"] = stats[ampName][key]
-                    key = f"LSST CALIB DEFECTS {ampName} N_COLD"
-                    rows[ampName][f"{self.config.stageName}_N_COLD"] = stats[ampName][key]
+                    if ampName in stats.keys():
+                        key = f"LSST CALIB DEFECTS {ampName} N_HOT"
+                        rows[ampName][f"{self.config.stageName}_N_HOT"] = stats[ampName][key]
+                        key = f"LSST CALIB DEFECTS {ampName} N_COLD"
+                        rows[ampName][f"{self.config.stageName}_N_COLD"] = stats[ampName][key]
+                    else:
+                        print(stats)
+                        raise RuntimeError("Manual break.")
 
         # DET results
         rows["detector"] = rowBase

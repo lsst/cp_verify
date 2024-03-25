@@ -460,13 +460,13 @@ class CpVerifyVisitExpMergeConnections(pipeBase.PipelineTaskConnections,
         name="exposureResults",
         doc="Output results.",
         storageClass="ArrowAstropy",
-        dimensions=["instrument", "exposure"],
+        dimensions=["instrument", "visit"],
     )
     outputMatrix = cT.Output(
         name="exposureMatrix",
         doc="Output matrix.",
         storageClass="ArrowAstropy",
-        dimensions=["instrument", "exposure"],
+        dimensions=["instrument", "visit"],
     )
 
     def __init__(self, *, config=None):

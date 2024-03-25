@@ -7,6 +7,8 @@ tasks:
       connections.outputExposure: 'verifyDefectIsr'
       doDefect: true
       doCrosstalk: true
+      doCalculateStatistics: true
+      isrStats.doCopyCalibDistributionStatistics: true
   verifyDefectChar:
     class: lsst.pipe.tasks.characterizeImage.CharacterizeImageTask
     config:
@@ -39,6 +41,8 @@ tasks:
       connections.uncorrectedCatalog: 'verifyUncorrDefectSrc'
       connections.outputStats: 'verifyCombinedDefectDetStats'
       connections.outputResults: 'verifyCombinedDefectDetResults'
+      useIsrStatistics: true
+      hasMatrixCatalog: false
   verifyDefectExp:
     class: lsst.cp.verify.CpVerifyVisitExpMergeTask
     config:
@@ -46,6 +50,8 @@ tasks:
       connections.inputResults: 'verifyCombinedDefectDetResults'
       connections.outputStats: 'verifyCombinedDefectExpStats'
       connections.outputResults: 'verifyCombinedDefectExpResults'
+      hasInputResults: true
+      hasMatrixCatalog: false
   verifyDefect:
     class: lsst.cp.verify.CpVerifyVisitRunMergeTask
     config:
@@ -53,3 +59,5 @@ tasks:
       connections.inputResults: 'verifyCombinedDefectExpResults'
       connections.outputStats: 'verifyCombinedDefectStats'
       connections.outputResults: 'verifyCombinedDefectResults'
+      hasInputResults: true
+      hasMatrixCatalog: false
