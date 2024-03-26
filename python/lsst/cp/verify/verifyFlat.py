@@ -196,7 +196,7 @@ class CpVerifyFlatTask(CpVerifyStatsTask):
                 rows['detector'][f"{self.config.stageName}_DET_VERIFY_{testName}"] = verifyDict[testName]
 
         # ISR results
-        if self.config.useIsrStatistics:
+        if self.config.useIsrStatistics and "ISR" in statisticsDict:
             for ampName, stats in statisticsDict["ISR"]["CALIBDIST"].items():
                 for level in self.config.expectedDistributionLevels:
                     key = f"LSST CALIB {self.config.stageName.upper()} {ampName} DISTRIBUTION {level}-PCT"
@@ -328,7 +328,7 @@ class CpVerifyFlatExpMergeTask(CpVerifyExpMergeTask):
                 rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
 
         # ISR results
-        if self.config.useIsrStatistics:
+        if self.config.useIsrStatistics and "ISR" in statisticsDict:
             for ampName, stats in statisticsDict["ISR"]["CALIBDIST"].items():
                 for level in self.config.expectedDistributionLevels:
                     key = f"LSST CALIB {self.config.stageName.upper()} {ampName} DISTRIBUTION {level}-PCT"

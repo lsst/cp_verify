@@ -86,6 +86,7 @@ class CpVerifyDefectsConnections(
         dimensions=["instrument", "visit", "detector"],
     )
 
+
 class CpVerifyDefectsConfig(
     CpVerifyStatsConfig, pipelineConnections=CpVerifyDefectsConnections
 ):
@@ -392,19 +393,15 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
         # ISR results
         nBadColumns = np.nan
-        if "ISR" in statisticsDict:
+        if self.config.useIsrStatistics and "ISR" in statisticsDict:
             for ampName, stats in statisticsDict["ISR"]["CALIBDIST"].items():
                 if ampName == "detector":
-                    nBadColumns = stats[ampName]["LSST CALIB DEFECTS N_BAD_COLUMNS"]
-                else:
-                    if ampName in stats.keys():
-                        key = f"LSST CALIB DEFECTS {ampName} N_HOT"
-                        rows[ampName][f"{self.config.stageName}_N_HOT"] = stats[ampName][key]
-                        key = f"LSST CALIB DEFECTS {ampName} N_COLD"
-                        rows[ampName][f"{self.config.stageName}_N_COLD"] = stats[ampName][key]
-                    else:
-                        print(stats)
-                        raise RuntimeError("Manual break.")
+                    nBadColumns = stats[ampName].get("LSST CALIB DEFECTS N_BAD_COLUMNS", np.nan)
+                elif ampName in stats.keys():
+                    key = f"LSST CALIB DEFECTS {ampName} N_HOT"
+                    rows[ampName][f"{self.config.stageName}_N_HOT"] = stats[ampName].get(key, np.nan)
+                    key = f"LSST CALIB DEFECTS {ampName} N_COLD"
+                    rows[ampName][f"{self.config.stageName}_N_COLD"] = stats[ampName].get(key, np.nan)
 
         # DET results
         rows["detector"] = rowBase

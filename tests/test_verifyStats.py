@@ -265,6 +265,7 @@ class VerifyDefectsTestCase(lsst.utils.tests.TestCase):
         self.camera = isrMock.IsrMock().getCamera()
         self.dimensions = {'instrument': self.camera.getName(),
                            'exposure': 1234,
+                           'visit': 1234,
                            'detector': self.camera[10].getName(),
                            }
 

@@ -179,7 +179,7 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
             rows[ampName][f"{self.config.stageName}_READ_NOISE"] = value
 
         # ISR results
-        if self.config.useIsrStatistics:
+        if self.config.useIsrStatistics and "ISR" in statisticsDict:
             for ampName, stats in statisticsDict["ISR"]["CALIBDIST"].items():
                 for level in self.config.expectedDistributionLevels:
                     key = f"LSST CALIB {self.config.stageName.upper()} {ampName} DISTRIBUTION {level}-PCT"

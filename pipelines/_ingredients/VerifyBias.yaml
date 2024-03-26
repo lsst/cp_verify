@@ -1,4 +1,8 @@
 description: cp_verify BIAS calibration verification
+imports:
+  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+    include:
+      - analyzeBiasCore
 tasks:
   verifyBiasApply:
     class: lsst.ip.isr.isrTask.IsrTask
@@ -57,3 +61,5 @@ tasks:
       connections.outputMatrix: 'verifyBiasMatrix'
       hasInputResults: true
       hasMatrixCatalog: true
+    analyzeBiasCore: lsst.analysis.tools.tasks.VerifyCalibAnalysisTask
+

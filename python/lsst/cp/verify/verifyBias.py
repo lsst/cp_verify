@@ -214,46 +214,39 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
                 rows[ampName][f"{self.config.stageName}_READ_NOISE"] = value
 
         # ISR results
-        if self.config.useIsrStatistics:
-            matrixRowList = statisticsDict["ISR"]["AMPCORR"]
+        if self.config.useIsrStatistics and "ISR" in statisticsDict:
+            if "AMPCORR" in statisticsDict["ISR"]:
+                matrixRowList = statisticsDict["ISR"]["AMPCORR"]
 
             for ampName, stats in statisticsDict["ISR"]["BIASSHIFT"].items():
                 rows[ampName][f"{self.config.stageName}_BIAS_SHIFT_COUNT"] = len(stats['BIAS_SHIFTS'])
                 rows[ampName][F"{self.config.stageName}_BIAS_SHIFT_NOISE"] = stats['LOCAL_NOISE']
+
             for ampName, stats in statisticsDict["ISR"]["CALIBDIST"].items():
                 for level in self.config.expectedDistributionLevels:
                     key = f"LSST CALIB {self.config.stageName.upper()} {ampName} DISTRIBUTION {level}-PCT"
                     rows[ampName][f"{self.config.stageName}_BIAS_DIST_{level}_PCT"] = stats[key]
 
-            # We need all rows of biasParallelProfile and biasParallelProfile
-            # to be the same length for serialization. Therefore, we pad
-            # to the longest length.
-            projStats = statisticsDict["ISR"]["PROJECTION"]
-            maxLen = 0
-            key = "AMP_HPROJECTION"
-            for ampName in projStats[key].keys():
-                rows[ampName][f"{self.config.stageName}_SERIAL_PROF"] = np.array(projStats[key][ampName])
-                if (myLen := len(rows[ampName][f"{self.config.stageName}_SERIAL_PROF"])) > maxLen:
-                    maxLen = myLen
-            for ampName in rows.keys():
-                if (myLen := len(rows[ampName][f"{self.config.stageName}_SERIAL_PROF"])) < maxLen:
-                    rows[ampName][f"{self.config.stageName}_SERIAL_PROF"] = np.pad(
-                        rows[ampName][f"{self.config.stageName}_SERIAL_PROF"],
-                        (0, maxLen - myLen),
-                        constant_values=np.nan)
+            if "PROJECTION" in statisticsDict["ISR"]:
+                # We need all rows of biasParallelProfile and
+                # biasParallelProfile to be the same length for
+                # serialization. Therefore, we pad to the longest
+                # length.
+                projStats = statisticsDict["ISR"]["PROJECTION"]
+                maxLen = 0
+                for sourceKey, key in {"AMP_HPROJECTION": f"{self.config.stageName}_SERIAL_PROF",
+                                       "AMP_VPROJECTION": f"{self.config.stageName}_PARALLEL_PROF"}.items():
+                    for ampName in projStats[sourceKey].keys():
+                        rows[ampName][key] = np.array(projStats[sourceKey][ampName])
+                        if (myLen := len(rows[ampName][key])) > maxLen:
+                            maxLen = myLen
 
-            maxLen = 0
-            key = "AMP_VPROJECTION"
-            for ampName in projStats[key].keys():
-                rows[ampName][f"{self.config.stageName}_PARALLEL_PROF"] = np.array(projStats[key][ampName])
-                if (myLen := len(rows[ampName][f"{self.config.stageName}_PARALLEL_PROF"])) > maxLen:
-                    maxLen = myLen
-            for ampName in rows.keys():
-                if (myLen := len(rows[ampName][f"{self.config.stageName}_PARALLEL_PROF"])) < maxLen:
-                    rows[ampName][f"{self.config.stageName}_PARALLEL_PROF"] = np.pad(
-                        rows[ampName][f"{self.config.stageName}_PARALLEL_PROF"],
-                        (0, maxLen - myLen),
-                        constant_values=np.nan)
+                    for ampName in rows.keys():
+                        if (myLen := len(rows[ampName][key])) < maxLen:
+                            rows[ampName][key] = np.pad(
+                                rows[ampName][key],
+                                (0, maxLen - myLen),
+                                constant_values=np.nan)
 
         # pack final list
         for ampName, stats in rows.items():
