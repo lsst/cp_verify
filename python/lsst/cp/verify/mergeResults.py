@@ -214,7 +214,7 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
                     for statKey, statDict in inStats.items():
                         if 'SUCCESS' in statDict and not statDict['SUCCESS']:
                             for failure in statDict['FAILURES']:
-                                calcStats['FAILURES'].append(statKey + " " + failure)
+                                calcStats['FAILURES'].append(f"{statKey} {failure}")
 
             outputStats[thisName] = calcStats
 
