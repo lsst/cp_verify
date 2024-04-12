@@ -33,6 +33,7 @@ class CpVerifyDarkConfig(CpVerifyStatsConfig,
 
     def setDefaults(self):
         super().setDefaults()
+        self.stageName = 'DARK'
         self.imageStatKeywords = {'MEAN': 'MEAN',  # noqa F841
                                   'NOISE': 'STDEVCLIP', }
         self.crImageStatKeywords = {'CR_NOISE': 'STDEV', }  # noqa F841
@@ -124,3 +125,69 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
             verifyStats[ampName] = verify
 
         return {'AMP': verifyStats}, bool(success)
+
+    def repackStats(self, statisticsDict, dimensions):
+        """Repack information into flat tables.
+
+        This method should be redefined in subclasses.
+
+        Parameters
+        ----------
+        statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
+
+        Returns
+        -------
+        outputResults : `list` [`dict`]
+            A list of rows to add to the output table.
+        outputMatrix : `list` [`dict`]
+            A list of rows to add to the output matrix.
+        """
+        rows = {}
+        rowList = []
+        matrixRowList = None
+
+        if self.config.useIsrStatistics:
+            mjd = statisticsDict["ISR"]["MJD"]
+        else:
+            mjd = np.nan
+
+        rowBase = {
+            "instrument": dimensions["instrument"],
+            "exposure": dimensions["exposure"],
+            "detector": dimensions["detector"],
+            "mjd": mjd,
+        }
+
+        # AMP results:
+        for ampName, stats in statisticsDict["AMP"].items():
+            rows[ampName] = {}
+            rows[ampName].update(rowBase)
+            rows[ampName]["amplifier"] = ampName
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_{key}"] = value
+
+        # VERIFY results
+        for ampName, stats in statisticsDict["VERIFY"]["AMP"].items():
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
+
+        # METADATA results
+        for ampName, value in statisticsDict["METADATA"]["RESIDUAL STDEV"].items():
+            rows[ampName][f"{self.config.stageName}_READ_NOISE"] = value
+
+        # ISR results
+        if self.config.useIsrStatistics and "ISR" in statisticsDict:
+            for ampName, stats in statisticsDict["ISR"]["CALIBDIST"].items():
+                for level in self.config.expectedDistributionLevels:
+                    key = f"LSST CALIB {self.config.stageName.upper()} {ampName} DISTRIBUTION {level}-PCT"
+                    rows[ampName][f"{self.config.stageName}_DARK_DIST_{level}_PCT"] = stats[key]
+
+        # pack final list
+        for ampName, stats in rows.items():
+            rowList.append(stats)
+
+        return rowList, matrixRowList

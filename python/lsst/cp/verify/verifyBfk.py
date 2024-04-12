@@ -80,6 +80,7 @@ class CpVerifyBfkConfig(CpVerifyStatsConfig,
 
     def setDefaults(self):
         super().setDefaults()
+        self.stageName = 'BFK'
         self.catalogStatKeywords = {'BRIGHT_SLOPE': None,
                                     'NUM_MATCHES': None,
                                    }  # noqa F841
@@ -241,3 +242,47 @@ class CpVerifyBfkTask(CpVerifyStatsTask):
         if catalogVerify['NUM_MATCHES'] and not catalogVerify['BRIGHT_SLOPE']:
             success = False
         return {'AMP': verifyStats, 'CATALOG': catalogVerify}, bool(success)
+
+    def repackStats(self, statisticsDict, dimensions):
+        """Repack information into flat tables.
+
+        This method should be redefined in subclasses.
+
+        Parameters
+        ----------
+        statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
+
+        Returns
+        -------
+        outputResults : `list` [`dict`]
+            A list of rows to add to the output table.
+        outputMatrix : `list` [`dict`]
+            A list of rows to add to the output matrix.
+        """
+        rows = {}
+        rowList = []
+        matrixRowList = None
+
+        rowBase = {
+            "instrument": dimensions["instrument"],
+            "detector": dimensions["detector"],
+        }
+
+        # CAT results
+        for ampName, stats in statisticsDict["CAT"].items():
+            rows[ampName] = {}
+            rows[ampName].update(rowBase)
+            rows[ampName]["amplifier"] = ampName
+            for key, value in stats.items():
+                rows["ampName"][f"{self.config.stageName}_{key}"] = value
+                rows["ampName"][f"{self.config.stageName}_VERIFY_{key}"] = value
+
+        # pack final list
+        for ampName, stats in rows.items():
+            rowList.append(stats)
+
+        return rowList, matrixRowList

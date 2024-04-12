@@ -73,6 +73,18 @@ class CpVerifyDefectsConnections(
         storageClass="StructuredDataDict",
         dimensions=["instrument", "visit", "detector"],
     )
+    outputResults = cT.Output(
+        name="detectorResults",
+        doc="Output results from cp_verify.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "visit", "detector"],
+    )
+    outputMatrix = cT.Output(
+        name="detectorMatrix",
+        doc="Output matrix results from cp_verify.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "visit", "detector"],
+    )
 
 
 class CpVerifyDefectsConfig(
@@ -82,6 +94,8 @@ class CpVerifyDefectsConfig(
 
     def setDefaults(self):
         super().setDefaults()
+        self.stageName = 'DEFECTS'
+
         self.maskNameList = ["BAD"]  # noqa F821
 
         self.imageStatKeywords = {
@@ -331,3 +345,69 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             "DET": verifyStatsDet,
             "CATALOG": verifyStatsCat,
         }, bool(success)
+
+    def repackStats(self, statisticsDict, dimensions):
+        """Repack information into flat tables.
+
+        This method should be redefined in subclasses.
+
+        Parameters
+        ----------
+        statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
+
+        Returns
+        -------
+        outputResults : `list` [`dict`]
+            A list of rows to add to the output table.
+        outputMatrix : `list` [`dict`]
+            A list of rows to add to the output matrix.
+        """
+        rows = {}
+        rowList = []
+        matrixRowList = None
+
+        if self.config.useIsrStatistics:
+            mjd = statisticsDict["ISR"]["MJD"]
+        else:
+            mjd = np.nan
+
+        rowBase = {
+            "instrument": dimensions["instrument"],
+            "exposure": dimensions["visit"],   # ensure an exposure dimension for downstream.
+            "visit": dimensions["visit"],
+            "detector": dimensions["detector"],
+            "mjd": mjd,
+        }
+
+        # AMP results
+        for ampName, stats in statisticsDict["AMP"].items():
+            rows[ampName] = {}
+            rows[ampName].update(rowBase)
+            rows[ampName]["amplifier"] = ampName
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_{key}"] = value
+
+        # ISR results
+        nBadColumns = np.nan
+        if self.config.useIsrStatistics and "ISR" in statisticsDict:
+            for ampName, stats in statisticsDict["ISR"]["CALIBDIST"].items():
+                if ampName == "detector":
+                    nBadColumns = stats[ampName].get("LSST CALIB DEFECTS N_BAD_COLUMNS", np.nan)
+                elif ampName in stats.keys():
+                    key = f"LSST CALIB DEFECTS {ampName} N_HOT"
+                    rows[ampName][f"{self.config.stageName}_N_HOT"] = stats[ampName].get(key, np.nan)
+                    key = f"LSST CALIB DEFECTS {ampName} N_COLD"
+                    rows[ampName][f"{self.config.stageName}_N_COLD"] = stats[ampName].get(key, np.nan)
+
+        # DET results
+        rows["detector"] = rowBase
+        rows["detector"][f"{self.config.stageName}_N_BAD_COLUMNS"] = nBadColumns
+
+        for ampName, stats in rows.items():
+            rowList.append(stats)
+
+        return rowList, matrixRowList

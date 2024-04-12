@@ -18,6 +18,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import numpy as np
+from astropy.table import Table
+
 import lsst.pex.config as pexConfig
 import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
@@ -60,6 +63,24 @@ class CpVerifyCalibConnections(pipeBase.PipelineTaskConnections,
         storageClass="StructuredDataDict",
         dimensions=["instrument", "detector"],
     )
+    outputResults = cT.Output(
+        name="detectorResults",
+        doc="Output results from cp_verify.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "detector"],
+    )
+    outputMatrix = cT.Output(
+        name="detectorMatrix",
+        doc="Output matrix results from cp_verify.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "detector"],
+    )
+
+    def __init__(self, *, config=None):
+        super().__init__(config=config)
+
+        if not config.hasMatrixCatalog:
+            self.outputs.discard("outputMatrix")
 
 
 class CpVerifyCalibConfig(pipeBase.PipelineTaskConfig,
@@ -91,6 +112,22 @@ class CpVerifyCalibConfig(pipeBase.PipelineTaskConfig,
         default={},
     )
 
+    stageName = pexConfig.Field(
+        dtype=str,
+        doc="Stage name to use in columns.",
+        default="NOCALIB",
+    )
+    useIsrStatistics = pexConfig.Field(
+        dtype=bool,
+        doc="Use statistics calculated by IsrTask?",
+        default=False,
+    )
+    hasMatrixCatalog = pexConfig.Field(
+        dtype=bool,
+        doc="Will a matrix table of results be made?",
+        default=False,
+    )
+
 
 class CpVerifyCalibTask(pipeBase.PipelineTask):
     """Main statistic measurement and validation class.
@@ -103,7 +140,19 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
     ConfigClass = CpVerifyCalibConfig
     _DefaultName = 'cpVerifyCalib'
 
-    def run(self, inputCalib, camera=None, exposure=None):
+    def runQuantum(self, butlerQC, inputRefs, outputRefs):
+        inputs = butlerQC.get(inputRefs)
+        inputs["dimensions"] = dict(inputRefs.inputCalib.dataId.required)
+
+        outputs = self.run(**inputs)
+        butlerQC.put(outputs, outputRefs)
+
+    def run(self,
+            inputCalib,
+            camera=None,
+            exposure=None,
+            dimensions=None,
+            ):
         """Calculate quality statistics and verify they meet the requirements
         for a calibration.
 
@@ -116,6 +165,8 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
         exposure : `lsst.afw.image.Exposure`, optional
             Dummy exposure to identify a particular calibration
             dataset.
+        dimensions : `dict`
+            Dictionary of input dictionary.
 
         Returns
         -------
@@ -123,31 +174,22 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             Result struct with components:
             - ``outputStats`` : `dict`
                 The output measured statistics.
-
-        Notes
-        -----
-        The outputStats should have a yaml representation of the form
-        (with STAT and TEST being the appropriate statistic and test
-        names)
-
-        DET:
-          STAT: value
-          STAT2: value
-        AMP:
-          STAT: value
-          STAT2: value
-        VERIFY:
-          TEST: boolean
-        SUCCESS: boolean
-
         """
         outputStats = {}
         outputStats['AMP'] = self.amplifierStatistics(inputCalib, camera=camera)
         outputStats['DET'] = self.detectorStatistics(inputCalib, camera=camera)
         outputStats['VERIFY'], outputStats['SUCCESS'] = self.verify(inputCalib, outputStats, camera=camera)
 
+        outputResults, outputMatrix = self.repackStats(outputStats, dimensions)
+        if outputResults is not None:
+            outputResults = Table(outputResults)
+        if outputMatrix is not None:
+            outputMatrix = Table(outputMatrix)
+
         return pipeBase.Struct(
             outputStats=outputStats,
+            outputResults=outputResults,
+            outputMatrix=outputMatrix,
         )
 
     # Methods that need to be implemented by the calibration-level subclasses.
@@ -236,3 +278,57 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             subclass.
         """
         raise NotImplementedError("Subclasses must implement verification criteria.")
+
+    def repackStats(self, statisticsDict, dimensions):
+        """Repack information into flat tables.
+
+        This method should be redefined in subclasses.
+
+        Parameters
+        ----------
+        statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
+
+        Returns
+        -------
+        outputResults : `list` [`dict`]
+            A list of rows to add to the output table.
+        outputMatrix : `list` [`dict`]
+            A list of rows to add to the output matrix.
+        """
+        rows = {}
+        rowList = []
+        matrixRowList = None
+
+        if self.config.useIsrStatistics:
+            mjd = statisticsDict["ISR"]["MJD"]
+        else:
+            mjd = np.nan
+
+        rowBase = {
+            "instrument": dimensions["instrument"],
+            "detector": dimensions["detector"],
+            "mjd": mjd,
+        }
+
+        # AMP results:
+        for ampName, stats in statisticsDict["AMP"].items():
+            rows[ampName] = {}
+            rows[ampName].update(rowBase)
+            rows[ampName]["amplifier"] = ampName
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_{key}"] = value
+
+        # VERIFY results
+        for ampName, stats in statisticsDict["VERIFY"]["AMP"].items():
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
+
+        # pack final list
+        for ampName, stats in rows.items():
+            rowList.append(stats)
+
+        return rowList, matrixRowList
