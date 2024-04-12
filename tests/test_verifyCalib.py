@@ -44,7 +44,7 @@ class VerifyCrosstalkTestCase(lsst.utils.tests.TestCase):
 
         config = cpVerify.CpVerifyCrosstalkConfig()
         task = cpVerify.CpVerifyCrosstalkTask(config=config)
-        results = task.run(crosstalk)
+        results = task.run(crosstalk, dimensions={'instrument': 'fakeCam', 'detector': 'det00'})
         crosstalkStats = results.outputStats
 
         self.assertEqual(crosstalkStats['DET']['N_AMP'], crosstalk.nAmp)
@@ -58,14 +58,15 @@ class VerifyCrosstalkTestCase(lsst.utils.tests.TestCase):
         image stat methods haven't changed.
         """
         crosstalk = CrosstalkCalib(nAmp=2)
-        crosstalk.coeffs = np.array([[0.0, 1e-6], [1e-6, 0.0]]),
-        crosstalk.coeffErr = np.array([[0.0, 1e-5], [1e-5, 0.0]]),
-        crosstalk.coeffNum = np.array([[0, 100], [100, 0]]),
+        crosstalk.coeffs = np.array([[0.0, 1e-6], [1e-6, 0.0]])
+        crosstalk.coeffErr = np.array([[0.0, 1e-5], [1e-5, 0.0]])
+        crosstalk.coeffNum = np.array([[0, 100], [100, 0]])
         crosstalk.coeffValid = np.array([[False, False], [False, False]], dtype=bool)
 
         config = cpVerify.CpVerifyCrosstalkConfig()
         task = cpVerify.CpVerifyCrosstalkTask(config=config)
-        results = task.run(crosstalk)
+        results = task.run(crosstalk, dimensions={'instrument': 'fakeCam', 'detector': 'det00'})
+
         crosstalkStats = results.outputStats
 
         self.assertEqual(crosstalkStats['DET']['N_AMP'], crosstalk.nAmp)
