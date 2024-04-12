@@ -216,8 +216,9 @@ class CpVerifyFlatExpMergeConfig(CpVerifyExpMergeByFilterConfig):
 
     def setDefaults(self):
         super().setDefaults()
-        self.statKeywords = {'EXPOSURE_SCATTER': 'STDEV',  # noqa F841
-                                     }
+        self.statKeywords = {
+            'EXPOSURE_SCATTER': 'STDEV',  # noqa F841
+        }
 
 
 class CpVerifyFlatExpMergeTask(CpVerifyExpMergeByFilterTask):
@@ -302,7 +303,6 @@ class CpVerifyFlatExpMergeTask(CpVerifyExpMergeByFilterTask):
         outputMatrix : `list` [`dict`]
             A list of rows to add to the output matrix.
         """
-        rows = {}
         rowList = []
         matrixRowList = None
 
