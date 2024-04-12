@@ -5,14 +5,13 @@ tasks:
     config:
       connections.inputCalib: 'ptc'
       connections.outputStats: 'verifyPtcDetStats'
+      connections.outputResults: 'verifyPtcDetResults'
   verifyPtc:
     class: lsst.cp.verify.CpVerifyCalibMergeTask
     config:
       connections.inputStats: 'verifyPtcDetStats'
+      connections.inputResults: 'verifyPtcDetResults'
       connections.outputStats: 'verifyPtcStats'
-  repackPtcResults:
-    class: lsst.cp.verify.CpVerifyRepackPtcTask
-    config:
-      connections.detectorStats: 'verifyPtcDetStats'
-      connections.runStats: 'verifyPtcStats'
-      connections.outputCatalog: 'verifyPtcResults'
+      connections.outputResults: 'verifyPtcResults'
+      thisDimension: 'detector'
+      hasInputResults: true

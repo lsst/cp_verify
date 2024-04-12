@@ -29,8 +29,13 @@ tasks:
     config:
       connections.inputCalib: 'verifyLinearitySecondLinearizer'
       connections.outputStats: 'verifyLinearityDetStats'
+      connections.outputResults: 'verifyLinearityDetResults'
   verifyLinearity:
     class: lsst.cp.verify.CpVerifyCalibMergeTask
     config:
       connections.inputStats: 'verifyLinearityDetStats'
+      connections.inputResults: 'verifyLinearityDetResults'
       connections.outputStats: 'verifyLinearityStats'
+      connections.outputResults: 'verifyLinearityResults'
+      thisDimension: 'detector'
+      hasInputResults: true

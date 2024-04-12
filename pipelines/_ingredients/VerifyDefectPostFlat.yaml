@@ -26,15 +26,20 @@ tasks:
     config:
       connections.inputExp: 'verifyDefectProc'
       connections.outputStats: 'verifyDefectDetStats'
+      connections.outputResults: 'verifyDefectDetResults'
       doVignette: false
       useReadNoise: false
   verifyExposureStats:
     class: lsst.cp.verify.CpVerifyExpMergeTask
     config:
       connections.inputStats: 'verifyDefectDetStats'
+      connections.inputResults: 'verifyDefectDetResults'
       connections.outputStats: 'verifyDefectExpStats'
+      connections.outputResults: 'verifyDefectExpResults'
   verifyRunStats:
     class: lsst.cp.verify.CpVerifyRunMergeTask
     config:
       connections.inputStats: 'verifyDefectExpStats'
+      connections.inputResults: 'verifyDefectExpResults'
       connections.outputStats: 'verifyDefectStats'
+      connections.outputResults: 'verifyDefectResults'

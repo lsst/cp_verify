@@ -15,21 +15,24 @@ tasks:
     config:
       connections.inputExp: 'verifyFlatProc'
       connections.outputStats: 'verifyFlatDetStats'
+      connections.outputResults: 'verifyFlatDetResults'
       useIsrStatistics: true
   verifyFlatExp:
-    class: lsst.cp.verify.CpVerifyExpMergeTask
+    class: lsst.cp.verify.CpVerifyFlatExpMergeTask
     config:
       connections.inputStats: 'verifyFlatDetStats'
+      connections.inputResults: 'verifyFlatDetResults'
       connections.outputStats: 'verifyFlatExpStats'
+      connections.outputResults: 'verifyFlatExpResults'
+      hasInputResults: true
+      hasMatrixCatalog: false
+      stageName: 'flat'
   verifyFlat:
-    class: lsst.cp.verify.CpVerifyRunMergeTask
+    class: lsst.cp.verify.CpVerifyRunMergeByFilterTask
     config:
       connections.inputStats: 'verifyFlatExpStats'
+      connections.inputResults: 'verifyFlatExpResults'
       connections.outputStats: 'verifyFlatStats'
-  repackFlatResults:
-    class: lsst.cp.verify.CpVerifyRepackFlatTask
-    config:
-      connections.detectorStats: 'verifyFlatDetStats'
-      connections.exposureStats: 'verifyFlatExpStats'
-      connections.runStats: 'verifyFlatStats'
-      connections.outputCatalog: 'verifyFlatResults'
+      connections.outputResults: 'verifyFlatResults'
+      hasInputResults: true
+      hasMatrixCatalog: false
