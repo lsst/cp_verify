@@ -282,7 +282,9 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
     def repackStats(self, statisticsDict, dimensions):
         """Repack information into flat tables.
 
-        This method should be redefined in subclasses.
+        This method may be redefined in subclasses.  This default
+        version will repack simple amp-level statistics and
+        verification results.
 
         Parameters
         ----------
@@ -291,6 +293,9 @@ class CpVerifyCalibTask(pipeBase.PipelineTask):
             should have keys that are statistic names (`str`) with
             values that are some sort of scalar (`int` or `float` are
             the mostly likely types).
+        dimensions : `dict`
+            The dictionary of dimensions values for this data, to be
+            included in the output results.
 
         Returns
         -------

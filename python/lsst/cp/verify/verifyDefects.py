@@ -347,25 +347,7 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
         }, bool(success)
 
     def repackStats(self, statisticsDict, dimensions):
-        """Repack information into flat tables.
-
-        This method should be redefined in subclasses.
-
-        Parameters
-        ----------
-        statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
-            Dictionary of measured statistics.  The inner dictionary
-            should have keys that are statistic names (`str`) with
-            values that are some sort of scalar (`int` or `float` are
-            the mostly likely types).
-
-        Returns
-        -------
-        outputResults : `list` [`dict`]
-            A list of rows to add to the output table.
-        outputMatrix : `list` [`dict`]
-            A list of rows to add to the output matrix.
-        """
+        # docstring inherited
         rows = {}
         rowList = []
         matrixRowList = None

@@ -214,20 +214,7 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
                 'DET': verifyDetStatsFinal}, bool(success)
 
     def repackStats(self, statisticsDict, dimensions):
-        """Repack information into flat tables.
-
-        This method should be redefined in subclasses.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        outputResults : `list` [`dict`]
-            A list of rows to add to the output table.
-        outputMatrix : `list` [`dict`]
-            A list of rows to add to the output matrix.
-        """
+        # docstring inherited
         rows = {}
         rowList = []
         matrixRowList = []

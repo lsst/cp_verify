@@ -452,9 +452,9 @@ class CpVerifyRunMergeTask(CpVerifyExpMergeTask):
     _DefaultName = 'cpVerifyRunMerge'
 
     pass
-
-
 # End ExpMerge/RunMerge
+
+
 # Begin ExpMergeByFilter/RunMergeByFilter
 class CpVerifyExpMergeByFilterConnections(pipeBase.PipelineTaskConnections,
                                           dimensions={"instrument", "exposure", "physical_filter"},
@@ -608,9 +608,9 @@ class CpVerifyRunMergeByFilterTask(CpVerifyExpMergeTask):
     _DefaultName = 'cpVerifyRunMergeByFilter'
 
     pass
-
-
 # End ExpMergeByFilter/RunMergeByFilter
+
+
 # Begin ExpMergeByVisit/RunMergeByVisit
 class CpVerifyVisitExpMergeConnections(pipeBase.PipelineTaskConnections,
                                        dimensions={"instrument", "visit"},
@@ -756,9 +756,9 @@ class CpVerifyVisitRunMergeTask(CpVerifyRunMergeTask):
     _DefaultName = 'cpVerifyVisitRunMerge'
 
     pass
-
-
 # End ExpMergeByVisit/RunMergeByVisit
+
+
 # Begin CalibMerge (this is a one-step)
 class CpVerifyCalibMergeConnections(pipeBase.PipelineTaskConnections,
                                     dimensions={"instrument"},
