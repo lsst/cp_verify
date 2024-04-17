@@ -120,7 +120,7 @@ class CpVerifyExpMergeConfig(pipeBase.PipelineTaskConfig,
 
     thisDimension = pexConfig.Field(
         dtype=str,
-        doc="Dimension name for this input.",
+        doc="Dimension name that these inputs will be merged over.",
         default="detector",
     )
     stageName = pexConfig.Field(
@@ -150,10 +150,30 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
 
         Parameters
         ----------
+        inputStats : `dict`
+            A nested dictionary of measured statistics and
+            verification results.
+        inputDims : `dict`
+            The input dimensions for each element of the inputStats.
+        camera : `lsst.afw.cameraGeom.Camera`, optional
+            The camera definition, used for identifying amplifier and
+            detector names.
+        inputResults : `astropy.Table`, optional
+            The statistics information, formatted into a flat table.
+        inputMatrix : `astropy.Table`, optional
+            A table of results that represent the elements of matrices
+            of values.
 
         Returns
         -------
-        outputStats
+        outputStats : `dict`
+            A nested dictionary of merged statistics and verification
+            results.
+        outputResults : `astropy.Table`
+            Flat table containing the merged results from all
+            inputResults.
+        outputMatrix : `astropy.Table`
+            Table containing the merge results from all inputMatrix.
 
         See Also
         --------
