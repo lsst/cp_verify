@@ -118,7 +118,7 @@ class CpVerifyExpMergeConfig(pipeBase.PipelineTaskConfig,
         default=False,
     )
 
-    thisDimension = pexConfig.Field(
+    mergeDimension = pexConfig.Field(
         dtype=str,
         doc="Dimension name that these inputs will be merged over.",
         default="detector",
@@ -184,10 +184,10 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
 
         mergedStats = {}   # This contains the merged set of subcomponent stats.
         for inStats, dimensions in zip(inputStats, inputDims):
-            thisId = dimensions[self.config.thisDimension]
+            thisId = dimensions[self.config.mergeDimension]
             thisName = thisId
 
-            if self.config.thisDimension == 'detector':
+            if self.config.mergeDimension == 'detector':
                 thisName = camera[thisId].getName()
 
             calcStats = {}
@@ -245,7 +245,7 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
 
             outputStats[thisName] = calcStats
 
-        if self.config.thisDimension == 'detector':
+        if self.config.mergeDimension == 'detector':
             outKey = 'EXP'
         else:
             outKey = 'RUN'
@@ -438,7 +438,7 @@ class CpVerifyRunMergeConfig(CpVerifyExpMergeConfig,
                              pipelineConnections=CpVerifyRunMergeConnections):
     """Configuration paramters for exposure stats merging.
     """
-    thisDimension = pexConfig.Field(
+    mergeDimension = pexConfig.Field(
         dtype=str,
         doc="Dimension name for this input.",
         default="exposure",
@@ -519,7 +519,7 @@ class CpVerifyExpMergeByFilterConfig(CpVerifyExpMergeConfig,
                                      pipelineConnections=CpVerifyExpMergeByFilterConnections):
     """Configuration paramters for exposure stats merging.
     """
-    thisDimension = pexConfig.Field(
+    mergeDimension = pexConfig.Field(
         dtype=str,
         doc="Dimension name for this input.",
         default="detector",

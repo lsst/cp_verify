@@ -37,5 +37,5 @@ tasks:
       connections.inputResults: 'verifyLinearityDetResults'
       connections.outputStats: 'verifyLinearityStats'
       connections.outputResults: 'verifyLinearityResults'
-      thisDimension: 'detector'
+      mergeDimension: 'detector'
       hasInputResults: true

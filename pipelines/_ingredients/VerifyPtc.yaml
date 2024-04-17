@@ -13,5 +13,5 @@ tasks:
       connections.inputResults: 'verifyPtcDetResults'
       connections.outputStats: 'verifyPtcStats'
       connections.outputResults: 'verifyPtcResults'
-      thisDimension: 'detector'
+      mergeDimension: 'detector'
       hasInputResults: true

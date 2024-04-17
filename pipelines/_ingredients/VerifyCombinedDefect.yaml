@@ -50,7 +50,7 @@ tasks:
       connections.inputResults: 'verifyCombinedDefectDetResults'
       connections.outputStats: 'verifyCombinedDefectExpStats'
       connections.outputResults: 'verifyCombinedDefectExpResults'
-      thisDimension: 'visit'
+      mergeDimension: 'visit'
       hasInputResults: true
       hasMatrixCatalog: false
   verifyDefect:
@@ -60,6 +60,6 @@ tasks:
       connections.inputResults: 'verifyCombinedDefectExpResults'
       connections.outputStats: 'verifyCombinedDefectStats'
       connections.outputResults: 'verifyCombinedDefectResults'
-      thisDimension: 'visit'
+      mergeDimension: 'visit'
       hasInputResults: true
       hasMatrixCatalog: false

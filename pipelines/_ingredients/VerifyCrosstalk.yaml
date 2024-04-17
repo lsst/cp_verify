@@ -34,6 +34,6 @@ tasks:
       connections.outputStats: 'verifyCrosstalkStats'
       connections.outputResults: 'verifyCrosstalkResults'
       connections.outputMatrix: 'verifyCrosstalkMatrix'
-      thisDimension: 'detector'
+      mergeDimension: 'detector'
       hasInputResults: true
       hasMatrixCatalog: true
