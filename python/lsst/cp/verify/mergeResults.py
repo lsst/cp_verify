@@ -275,7 +275,7 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
 
     @staticmethod
     def mergeTable(inputResults, newStats=None):
-        """Merge input tables, padding columns as needed.
+        """Merge input tables.
 
         Parameters
         ----------
@@ -348,6 +348,40 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
         NotImplementedError :
             This method must be implemented by the calibration-type
             subclass.
+        """
+        raise NotImplementedError("Subclasses must implement verification criteria.")
+
+    def pack(self, statisticsDict, dimensions, outKey):
+        """Repack information into flat tables.
+
+        This method should be redefined in subclasses, if new
+        statistics are measured.
+
+        Parameters
+        ----------
+        statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
+        dimensions : `dict`
+            Dictionary of input dimensions.
+        outKey : `str`
+            Key to use to access the data to pack.
+
+        Returns
+        -------
+        outputResults : `list` [`dict`]
+            A list of rows to add to the output table.
+        outputMatrix : `list` [`dict`]
+            A list of rows to add to the output matrix.
+
+        Raises
+        ------
+        NotImplementedError :
+            This method must be implemented by the calibration-type
+            subclass.
+
         """
         raise NotImplementedError("Subclasses must implement verification criteria.")
 

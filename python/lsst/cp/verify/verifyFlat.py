@@ -268,8 +268,6 @@ class CpVerifyFlatExpMergeTask(CpVerifyExpMergeByFilterTask):
     def pack(self, statisticsDict, dimensions, outKey):
         """Repack information into flat tables.
 
-        This method should be redefined in subclasses.
-
         Parameters
         ----------
         statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
@@ -277,6 +275,10 @@ class CpVerifyFlatExpMergeTask(CpVerifyExpMergeByFilterTask):
             should have keys that are statistic names (`str`) with
             values that are some sort of scalar (`int` or `float` are
             the mostly likely types).
+        dimensions : `dict`
+            Dictionary of input dimensions.
+        outKey : `str`
+            Key to use to access the data to pack.
 
         Returns
         -------
