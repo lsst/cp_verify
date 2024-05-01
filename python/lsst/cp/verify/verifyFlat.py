@@ -21,7 +21,7 @@
 import numpy as np
 import lsst.afw.math as afwMath
 from .verifyStats import CpVerifyStatsConfig, CpVerifyStatsTask, CpVerifyStatsConnections
-from .mergeResults import CpVerifyExpMergeConfig, CpVerifyExpMergeTask
+from .mergeResults import CpVerifyExpMergeByFilterConfig, CpVerifyExpMergeByFilterTask
 
 __all__ = ['CpVerifyFlatConfig', 'CpVerifyFlatTask',
            'CpVerifyFlatExpMergeConfig', 'CpVerifyFlatExpMergeTask']
@@ -35,6 +35,7 @@ class CpVerifyFlatConfig(CpVerifyStatsConfig,
 
     def setDefaults(self):
         super().setDefaults()
+        self.stageName = 'FLAT'
         self.imageStatKeywords = {'MEAN': 'MEAN',  # noqa F841
                                   'NOISE': 'STDEVCLIP', }
         self.detectorStatKeywords = {'MEAN': 'MEAN',  # noqa F841
@@ -135,22 +136,80 @@ class CpVerifyFlatTask(CpVerifyStatsTask):
 
         return {'AMP': verifyStats, 'DET': verifyDet}, bool(success)
 
+    def repackStats(self, statisticsDict, dimensions):
+        # docstring inherited
+        rows = {}
+        rowList = []
+        matrixRowList = None
 
-class CpVerifyFlatExpMergeConfig(CpVerifyExpMergeConfig):
+        if self.config.useIsrStatistics:
+            mjd = statisticsDict["ISR"]["MJD"]
+        else:
+            mjd = np.nan
+
+        print(dimensions)
+        rowBase = {
+            "instrument": dimensions["instrument"],
+            "exposure": dimensions["exposure"],
+            "detector": dimensions["detector"],
+            "physical_filter": dimensions["physical_filter"],
+            "mjd": mjd,
+        }
+
+        # AMP results:
+        for ampName, stats in statisticsDict["AMP"].items():
+            rows[ampName] = {}
+            rows[ampName].update(rowBase)
+            rows[ampName]["amplifier"] = ampName
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_{key}"] = value
+
+        # VERIFY results
+        for ampName, stats in statisticsDict["VERIFY"]["AMP"].items():
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
+
+        # METADATA results
+        # DET results
+        rows['detector'] = rowBase
+        for testName, value in statisticsDict["DET"].items():
+            verifyDict = statisticsDict["VERIFY"]["DET"]
+            rows['detector'][f"{self.config.stageName}_DET_{testName}"] = value
+            if testName in verifyDict:
+                rows['detector'][f"{self.config.stageName}_DET_VERIFY_{testName}"] = verifyDict[testName]
+
+        # ISR results
+        if self.config.useIsrStatistics and "ISR" in statisticsDict:
+            for ampName, stats in statisticsDict["ISR"]["CALIBDIST"].items():
+                for level in self.config.expectedDistributionLevels:
+                    key = f"LSST CALIB {self.config.stageName.upper()} {ampName} DISTRIBUTION {level}-PCT"
+                    rows[ampName][f"{self.config.stageName}_FLAT_DIST_{level}_PCT"] = stats[key]
+
+        # pack final list
+        for ampName, stats in rows.items():
+            rowList.append(stats)
+
+        return rowList, matrixRowList
+
+
+class CpVerifyFlatExpMergeConfig(CpVerifyExpMergeByFilterConfig):
     """Inherits from base CpVerifyExpMergeConfig
     """
 
     def setDefaults(self):
         super().setDefaults()
-        self.exposureStatKeywords = {'EXPOSURE_SCATTER': 'STDEV',  # noqa F841
-                                     }
+        self.statKeywords = {
+            'EXPOSURE_SCATTER': 'STDEV',  # noqa F841
+        }
 
 
-class CpVerifyFlatExpMergeTask(CpVerifyExpMergeTask):
+class CpVerifyFlatExpMergeTask(CpVerifyExpMergeByFilterTask):
     """Inherits from base CpVerifyExpMergeTask
     """
+    ConfigClass = CpVerifyFlatExpMergeConfig
+    _DefaultName = 'cpVerifyFlatExpMerge'
 
-    def exposureStatistics(self, statisticsDictionary):
+    def calcStatistics(self, statisticsDictionary):
         """Calculate exposure level statistics based on the existing
         per-amplifier and per-detector measurements.
 
@@ -172,7 +231,7 @@ class CpVerifyFlatExpMergeTask(CpVerifyExpMergeTask):
             # Get detector stats:
             detectorMeans.append(stats['DET']['MEAN'])
 
-        return {'SCATTER': np.stdev(detectorMeans)}
+        return {'SCATTER': float(np.std(detectorMeans))}
 
     def verify(self, detectorStatistics, statisticsDictionary):
         """Verify if the measured statistics meet the verification criteria.
@@ -205,3 +264,48 @@ class CpVerifyFlatExpMergeTask(CpVerifyExpMergeTask):
         success = bool(np.all(list(verifyStats.values())))
 
         return {'EXP': verifyStats}, bool(success)
+
+    def pack(self, statisticsDict, dimensions, outKey):
+        """Repack information into flat tables.
+
+        Parameters
+        ----------
+        statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
+        dimensions : `dict`
+            Dictionary of input dimensions.
+        outKey : `str`
+            Key to use to access the data to pack.
+
+        Returns
+        -------
+        outputResults : `list` [`dict`]
+            A list of rows to add to the output table.
+        outputMatrix : `list` [`dict`]
+            A list of rows to add to the output matrix.
+        """
+        rowList = []
+        matrixRowList = None
+
+        # We can only do stats if we only have one thing.
+        rowBase = {
+            "instrument": dimensions[0]["instrument"],
+            "exposure": dimensions[0]["exposure"],
+            "detector": dimensions[0]["detector"],
+        }
+
+        # This only needs to add the new results.
+        stats = statisticsDict[outKey]
+        verify = statisticsDict["VERIFY"][outKey]
+
+        for test, value in stats.items():
+            rowBase[f"{self.config.stageName}_{test}"] = value
+            rowBase[f"{self.config.stageName}_VERIFY_{test}"] = verify[test]
+
+        # pack final list
+        rowList.append(rowBase)
+
+        return rowList, matrixRowList

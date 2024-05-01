@@ -71,6 +71,10 @@ class VerifyStatsTestCase(lsst.utils.tests.TestCase):
         """Generate a mock exposure/camera to test."""
         self.inputExp = isrMock.CalibratedRawMock().run()
         self.camera = isrMock.IsrMock().getCamera()
+        self.dimensions = {'instrument': self.camera.getName(),
+                           'exposure': 1234,
+                           'detector': self.camera[10].getName(),
+                           }
 
         updateMockExp(self.inputExp)
 
@@ -82,18 +86,18 @@ class VerifyStatsTestCase(lsst.utils.tests.TestCase):
             config = cpVerify.CpVerifyStatsConfig()
             config.numSigmaClip = 3.0
             task = cpVerify.CpVerifyStatsTask(config=config)
-            results = task.run(self.inputExp, self.camera)
+            results = task.run(self.inputExp, camera=self.camera, dimensions=self.dimensions)
 
             # Or the catalog stats
             config.catalogStatKeywords = {'CAT_MEAN', 'MEDIAN'}
             task = cpVerify.CpVerifyStatsTask(config=config)
-            results = task.run(self.inputExp, self.camera)
+            results = task.run(self.inputExp, camera=self.camera, dimensions=self.dimensions)
 
             # Or the detector stats
             config.catalogStatKeywords = {}
             config.detectorStatKeywords = {'DET_SIGMA', 'STDEV'}
             task = cpVerify.CpVerifyStatsTask(config=config)
-            results = task.run(self.inputExp, self.camera)
+            results = task.run(self.inputExp, camera=self.camera, dimensions=self.dimensions)
         self.assertIsNone(results)
 
     def test_generic(self):
@@ -114,7 +118,7 @@ class VerifyStatsTestCase(lsst.utils.tests.TestCase):
         config.numSigmaClip = 3.0
         task = ToySubClass(config=config)
 
-        results = task.run(self.inputExp, self.camera)
+        results = task.run(self.inputExp, camera=self.camera, dimensions=self.dimensions)
         resultStats = results.outputStats
 
         self.assertAlmostEqual(resultStats['AMP']['C:0,0']['MEAN'], 1506.06976, 4)
@@ -147,6 +151,10 @@ class VerifyBiasTestCase(lsst.utils.tests.TestCase):
         updateMockExp(self.inputExp)
 
         self.camera = isrMock.IsrMock().getCamera()
+        self.dimensions = {'instrument': self.camera.getName(),
+                           'exposure': 1234,
+                           'detector': self.camera[10].getName(),
+                           }
 
     def test_bias(self):
         """Test a subset of the output values to identify that the
@@ -156,7 +164,7 @@ class VerifyBiasTestCase(lsst.utils.tests.TestCase):
         config.numSigmaClip = 3.0
         config.ampCornerBoxSize = 15
         task = cpVerify.CpVerifyBiasTask(config=config)
-        results = task.run(self.inputExp, self.camera)
+        results = task.run(self.inputExp, camera=self.camera, dimensions=self.dimensions)
         biasStats = results.outputStats
 
         self.assertAlmostEqual(biasStats['AMP']['C:0,0']['MEAN'], 2.08672, 4)
@@ -194,6 +202,10 @@ class VerifyDarkTestCase(lsst.utils.tests.TestCase):
         self.metadata["subGroup"] = metadataContents
 
         self.camera = isrMock.IsrMock().getCamera()
+        self.dimensions = {'instrument': self.camera.getName(),
+                           'exposure': 1234,
+                           'detector': self.camera[10].getName(),
+                           }
 
     def test_dark(self):
         """Test a subset of the output values to identify that the
@@ -202,7 +214,10 @@ class VerifyDarkTestCase(lsst.utils.tests.TestCase):
         config = cpVerify.CpVerifyDarkConfig()
         config.numSigmaClip = 3.0
         task = cpVerify.CpVerifyDarkTask(config=config)
-        results = task.run(self.inputExp, self.camera, taskMetadata=self.metadata)
+        results = task.run(self.inputExp,
+                           camera=self.camera,
+                           taskMetadata=self.metadata,
+                           dimensions=self.dimensions)
         darkStats = results.outputStats
 
         self.assertAlmostEqual(darkStats['AMP']['C:0,0']['MEAN'], 2.0043, 4)
@@ -248,6 +263,11 @@ class VerifyDefectsTestCase(lsst.utils.tests.TestCase):
         self.inputExp.getMask().getArray()[75, 50] = 1
 
         self.camera = isrMock.IsrMock().getCamera()
+        self.dimensions = {'instrument': self.camera.getName(),
+                           'exposure': 1234,
+                           'visit': 1234,
+                           'detector': self.camera[10].getName(),
+                           }
 
     def test_defects(self):
         """Test a subset of the output values to identify that the
@@ -268,9 +288,12 @@ class VerifyDefectsTestCase(lsst.utils.tests.TestCase):
         task = cpVerify.CpVerifyDefectsTask(config=config)
 
         # Also use the inputExp as uncorrectedExposure.
-        results = task.run(self.inputExp, self.camera,
-                           uncorrectedExp=self.inputExp, inputCatalog=inputCatalogMock,
-                           uncorrectedCatalog=uncorrectedCatalogMock)
+        results = task.run(self.inputExp,
+                           camera=self.camera,
+                           uncorrectedExp=self.inputExp,
+                           inputCatalog=inputCatalogMock,
+                           uncorrectedCatalog=uncorrectedCatalogMock,
+                           dimensions=self.dimensions)
         defectStats = results.outputStats
 
         self.assertEqual(defectStats['AMP']['C:0,0']['DEFECT_PIXELS'], 53)

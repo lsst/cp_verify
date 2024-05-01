@@ -42,6 +42,7 @@ class CpVerifyBiasConfig(CpVerifyStatsConfig,
 
     def setDefaults(self):
         super().setDefaults()
+        self.stageName = 'BIAS'
         self.imageStatKeywords = {'MEAN': 'MEAN',  # noqa F841
                                   'NOISE': 'STDEVCLIP', }
         self.crImageStatKeywords = {'CR_NOISE': 'STDEV', }  # noqa F841
@@ -158,3 +159,81 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
             verifyStats[ampName] = verify
 
         return {'AMP': verifyStats}, bool(success)
+
+    def repackStats(self, statisticsDict, dimensions):
+        # docstring inherited
+        rows = {}
+        rowList = []
+        matrixRowList = None
+
+        if self.config.useIsrStatistics:
+            mjd = statisticsDict["ISR"]["MJD"]
+        else:
+            mjd = np.nan
+
+        rowBase = {
+            "instrument": dimensions["instrument"],
+            "exposure": dimensions["exposure"],
+            "detector": dimensions["detector"],
+            "mjd": mjd,
+        }
+
+        # AMP results:
+        for ampName, stats in statisticsDict["AMP"].items():
+            rows[ampName] = {}
+            rows[ampName].update(rowBase)
+
+            rows[ampName]["amplifier"] = ampName
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_{key}"] = value
+
+        # VERIFY results
+        for ampName, stats in statisticsDict["VERIFY"]["AMP"].items():
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
+
+        # METADATA results
+        if 'RESIDUAL STDEV' in statisticsDict["METADATA"]:
+            for ampName, value in statisticsDict["METADATA"]["RESIDUAL STDEV"].items():
+                rows[ampName][f"{self.config.stageName}_READ_NOISE"] = value
+
+        # ISR results
+        if self.config.useIsrStatistics and "ISR" in statisticsDict:
+            if "AMPCORR" in statisticsDict["ISR"]:
+                matrixRowList = statisticsDict["ISR"]["AMPCORR"]
+
+            for ampName, stats in statisticsDict["ISR"]["BIASSHIFT"].items():
+                rows[ampName][f"{self.config.stageName}_BIAS_SHIFT_COUNT"] = len(stats['BIAS_SHIFTS'])
+                rows[ampName][F"{self.config.stageName}_BIAS_SHIFT_NOISE"] = stats['LOCAL_NOISE']
+
+            for ampName, stats in statisticsDict["ISR"]["CALIBDIST"].items():
+                for level in self.config.expectedDistributionLevels:
+                    key = f"LSST CALIB {self.config.stageName.upper()} {ampName} DISTRIBUTION {level}-PCT"
+                    rows[ampName][f"{self.config.stageName}_BIAS_DIST_{level}_PCT"] = stats[key]
+
+            if "PROJECTION" in statisticsDict["ISR"]:
+                # We need all rows of biasParallelProfile and
+                # biasParallelProfile to be the same length for
+                # serialization. Therefore, we pad to the longest
+                # length.
+                projStats = statisticsDict["ISR"]["PROJECTION"]
+                maxLen = 0
+                for sourceKey, key in {"AMP_HPROJECTION": f"{self.config.stageName}_SERIAL_PROF",
+                                       "AMP_VPROJECTION": f"{self.config.stageName}_PARALLEL_PROF"}.items():
+                    for ampName in projStats[sourceKey].keys():
+                        rows[ampName][key] = np.array(projStats[sourceKey][ampName])
+                        if (myLen := len(rows[ampName][key])) > maxLen:
+                            maxLen = myLen
+
+                    for ampName in rows.keys():
+                        if (myLen := len(rows[ampName][key])) < maxLen:
+                            rows[ampName][key] = np.pad(
+                                rows[ampName][key],
+                                (0, maxLen - myLen),
+                                constant_values=np.nan)
+
+        # pack final list
+        for ampName, stats in rows.items():
+            rowList.append(stats)
+
+        return rowList, matrixRowList

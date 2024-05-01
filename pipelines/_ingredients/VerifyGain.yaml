@@ -5,8 +5,12 @@ tasks:
     config:
       connections.inputCalib: 'cpPtcExtract'
       connections.outputStats: 'verifyGainDetStats'
+      connections.outputResults: 'verifyGainDetResults'
   verifyGain:
     class: lsst.cp.verify.CpVerifyCalibMergeTask
     config:
       connections.inputStats: 'verifyGainDetStats'
+      connections.inputResults: 'verifyGainDetResults'
       connections.outputStats: 'verifyGainStats'
+      connections.outputResults: 'verifyGainResults'
+      hasInputResults: true

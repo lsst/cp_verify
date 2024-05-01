@@ -18,7 +18,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import math
+import numpy as np
+
+from astropy.table import Table
 
 import lsst.afw.geom as afwGeom
 import lsst.afw.math as afwMath
@@ -91,6 +93,18 @@ class CpVerifyStatsConnections(
         storageClass="StructuredDataDict",
         dimensions=["instrument", "exposure", "detector"],
     )
+    outputResults = cT.Output(
+        name="detectorResults",
+        doc="Output results from cp_verify.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure", "detector"],
+    )
+    outputMatrix = cT.Output(
+        name="detectorMatrix",
+        doc="Output matrix results from cp_verify.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure", "detector"],
+    )
 
     def __init__(self, *, config=None):
         super().__init__(config=config)
@@ -107,6 +121,9 @@ class CpVerifyStatsConnections(
 
         if config.useIsrStatistics is not True:
             self.inputs.discard("isrStatistics")
+
+        if not config.hasMatrixCatalog:
+            self.outputs.discard("outputMatrix")
 
 
 class CpVerifyStatsConfig(
@@ -222,10 +239,26 @@ class CpVerifyStatsConfig(
         doc="Statistics to create for the full detector from the per-amplifier measurements.",
         default={},
     )
+
+    stageName = pexConfig.Field(
+        dtype=str,
+        doc="Stage name to use for table columns.",
+        default="NOSTAGE",
+    )
     useIsrStatistics = pexConfig.Field(
         dtype=bool,
         doc="Use statistics calculated by IsrTask?",
         default=False,
+    )
+    hasMatrixCatalog = pexConfig.Field(
+        dtype=bool,
+        doc="Will a matrix table of results be made?",
+        default=False,
+    )
+    expectedDistributionLevels = pexConfig.ListField(
+        dtype=float,
+        doc="Percentile levels expected in the calibration header.",
+        default=[0, 5, 16, 50, 84, 95, 100],
     )
 
 
@@ -244,6 +277,16 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
         super().__init__(**kwargs)
         self.makeSubtask("repair")
 
+    def runQuantum(self, butlerQC, inputRefs, outputRefs):
+        inputs = butlerQC.get(inputRefs)
+
+        # Pass the full dataId, as we want to retain filter info.
+        inputs["dimensions"] = dict(inputRefs.inputExp.dataId.mapping)
+        print("CZW", inputs["dimensions"], dict(inputRefs.inputExp.dataId.mapping))
+        # import pdb; pdb.set_trace()
+        outputs = self.run(**inputs)
+        butlerQC.put(outputs, outputRefs)
+
     def run(
         self,
         inputExp,
@@ -253,6 +296,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
         taskMetadata=None,
         inputCatalog=None,
         uncorrectedCatalog=None,
+        dimensions=None,
     ):
         """Calculate quality statistics and verify they meet the requirements
         for a calibration.
@@ -271,6 +315,8 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             The source catalog to measure.
         uncorrectedCatalog : `lsst.afw.image.Table`
             The alternate source catalog to measure.
+        dimensions : `dict`
+            Dictionary of input dictionary.
 
         Returns
         -------
@@ -278,36 +324,6 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             Result struct with components:
             - ``outputStats`` : `dict`
                 The output measured statistics.
-
-        Notes
-        -----
-        The outputStats should have a yaml representation of the form
-
-        AMP:
-          Amp1:
-            STAT: value
-            STAT2: value2
-          Amp2:
-          Amp3:
-        DET:
-          STAT: value
-          STAT2: value
-        CATALOG:
-          STAT: value
-          STAT2: value
-        VERIFY:
-          DET:
-            TEST: boolean
-          CATALOG:
-            TEST: boolean
-          AMP:
-            Amp1:
-              TEST: boolean
-              TEST2: boolean
-            Amp2:
-            Amp3:
-        SUCCESS: boolean
-
         """
         outputStats = {}
 
@@ -353,8 +369,12 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             inputExp, outputStats
         )
 
+        outputResults, outputMatrix = self.repackStats(outputStats, dimensions)
+
         return pipeBase.Struct(
             outputStats=outputStats,
+            outputResults=Table(outputResults),
+            outputMatrix=Table(outputMatrix),
         )
 
     @staticmethod
@@ -635,7 +655,7 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
         psf = measAlg.SingleGaussianPsf(
             self.config.psfSize,
             self.config.psfSize,
-            self.config.psfFwhm / (2 * math.sqrt(2 * math.log(2))),
+            self.config.psfFwhm / (2 * np.sqrt(2 * np.log(2))),
         )
         crRejectedExp.setPsf(psf)
         try:
@@ -749,3 +769,63 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
             subclass.
         """
         raise NotImplementedError("Subclasses must implement verification criteria.")
+
+    def repackStats(self, statisticsDict, dimensions):
+        """Repack information into flat tables.
+
+        This method may be redefined in subclasses.  This default
+        version will repack simple amp-level statistics and
+        verification results.
+
+        Parameters
+        ----------
+        statisticsDictionary : `dict` [`str`, `dict` [`str`, scalar]],
+            Dictionary of measured statistics.  The inner dictionary
+            should have keys that are statistic names (`str`) with
+            values that are some sort of scalar (`int` or `float` are
+            the mostly likely types).
+        dimensions : `dict`
+            The dictionary of dimensions values for this data, to be
+            included in the output results.
+
+        Returns
+        -------
+        outputResults : `list` [`dict`]
+            A list of rows to add to the output table.
+        outputMatrix : `list` [`dict`]
+            A list of rows to add to the output matrix.
+        """
+        rows = {}
+        rowList = []
+        matrixRowList = None
+
+        if self.config.useIsrStatistics:
+            mjd = statisticsDict["ISR"]["MJD"]
+        else:
+            mjd = np.nan
+
+        rowBase = {
+            "instrument": dimensions["instrument"],
+            "detector": dimensions["detector"],
+            "mjd": mjd,
+        }
+
+        # AMP results:
+        for ampName, stats in statisticsDict["AMP"].items():
+            rows[ampName] = {}
+            rows[ampName].update(rowBase)
+            rows[ampName]["amplifier"] = ampName
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_{key}"] = value
+
+        # VERIFY results
+        if "AMP" in statisticsDict["VERIFY"]:
+            for ampName, stats in statisticsDict["VERIFY"]["AMP"].items():
+                for key, value in stats.items():
+                    rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
+
+        # pack final list
+        for ampName, stats in rows.items():
+            rowList.append(stats)
+
+        return rowList, matrixRowList

@@ -22,8 +22,18 @@ tasks:
     config:
       connections.inputCalib: 'verifyCrosstalk'
       connections.outputStats: 'verifyCrosstalkDetStats'
+      connections.outputResults: 'verifyCrosstalkDetResults'
+      connections.outputMatrix: 'verifyCrosstalkDetMatrix'
+      hasMatrixCatalog: true
   verifyCrosstalk:
     class: lsst.cp.verify.CpVerifyCalibMergeTask
     config:
       connections.inputStats: 'verifyCrosstalkDetStats'
+      connections.inputResults: 'verifyCrosstalkDetResults'
+      connections.inputMatrix: 'verifyCrosstalkDetMatrix'
       connections.outputStats: 'verifyCrosstalkStats'
+      connections.outputResults: 'verifyCrosstalkResults'
+      connections.outputMatrix: 'verifyCrosstalkMatrix'
+      mergeDimension: 'detector'
+      hasInputResults: true
+      hasMatrixCatalog: true

@@ -47,9 +47,6 @@ class CpVerifyLinearityConfig(CpVerifyCalibConfig,
                               pipelineConnections=CpVerifyLinearityConnections):
     """Inherits from base CpVerifyCalibConfig."""
 
-    def setDefaults(self):
-        super().setDefaults()
-
     maxResidualThresholdSpline = pexConfig.Field(
         dtype=float,
         doc="Maximum percentage for linearity residuals, if spline",
@@ -65,6 +62,10 @@ class CpVerifyLinearityConfig(CpVerifyCalibConfig,
         doc="Maximum percentage for linearity residuals, if lookup table.",
         default=1.0,
     )
+
+    def setDefaults(self):
+        super().setDefaults()
+        self.stageName = 'LINEARITY'
 
 
 class CpVerifyLinearityTask(CpVerifyCalibTask):
@@ -149,7 +150,7 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
         calibMetadata = calib.getMetadata()
         detId = calibMetadata['DETECTOR']
         detector = camera[detId]
-
+        verifyAmpStats = {}
         for amp in detector:
             verify = {}
             ampName = amp.getName()
@@ -192,7 +193,7 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
             if verify['SUCCESS'] is False:
                 success = False
 
-            verifyStats[ampName] = verify
+            verifyAmpStats[ampName] = verify
 
         # Loop over amps to make a detector summary.
         verifyDetStats = {'MAX_RESIDUAL_ERROR': []}
@@ -209,12 +210,53 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
             # Save the tests that failed
             if not testBool:
                 verifyDetStatsFinal[testName] = bool(np.all(list(verifyDetStats[testName])))
-        return verifyDetStatsFinal, bool(success)
+        return {'AMP': verifyAmpStats,
+                'DET': verifyDetStatsFinal}, bool(success)
+
+    def repackStats(self, statisticsDict, dimensions):
+        # docstring inherited
+        rows = {}
+        rowList = []
+        matrixRowList = []
+
+        rowBase = {
+            "instrument": dimensions["instrument"],
+            "detector": dimensions["detector"],
+        }
+
+        # AMP results
+        for ampName, stats in statisticsDict["AMP"].items():
+            coeffs = stats.pop("LINEARITY_COEFFS")
+            if stats["LINEARITY_TYPE"] == 'spline':
+                centers, values = np.split(coeffs, 2)
+                centers = centers.tolist()
+                values = values.tolist()
+            else:
+                values = coeffs
+                centers = np.full_like(values, np.nan).tolist()
+
+            rows[ampName] = {}
+            rows[ampName].update(rowBase)
+            rows[ampName]["amplifier"] = ampName
+            rows[ampName][f"{self.config.stageName}_CENTERS"] = centers
+            rows[ampName][f"{self.config.stageName}_COEFFS"] = values
+            for testName, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_{testName}"] = value
+
+        # VERIFY results
+        rows["detector"] = rowBase
+        for ampName, stats in statisticsDict["VERIFY"]["AMP"].items():
+            for testName, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_{testName}"] = value
+
+        for ampName, stats in rows.items():
+            rowList.append(stats)
+
+        return rowList, matrixRowList
+
 
 # Subclass the linearity classess so that the linearizer
 # is a regular Input instead of a PrerequisiteInput
-
-
 class CpvLinearitySolveConnections(pipeBase.PipelineTaskConnections,
                                    dimensions=("instrument", "detector")):
     dummy = cT.Input(

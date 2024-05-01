@@ -39,13 +39,18 @@ tasks:
       connections.inputCatalog: 'icSrc'
       connections.uncorrectedCatalog: 'verifyUncorrBfkSrc'
       connections.outputStats: 'verifyBfkDetStats'
+      connections.outputResults: 'verifyBfkDetResults'
   verifyBfkExp:
     class: lsst.cp.verify.CpVerifyVisitExpMergeTask
     config:
       connections.inputStats: 'verifyBfkDetStats'
+      connections.inputResults: 'verifyBfkDetResults'
       connections.outputStats: 'verifyBfkExpStats'
+      connections.outputResults: 'verifyBfkExpResults'
   verifyBfk:
     class: lsst.cp.verify.CpVerifyVisitRunMergeTask
     config:
       connections.inputStats: 'verifyBfkExpStats'
+      connections.inputResults: 'verifyBfkExpResults'
       connections.outputStats: 'verifyBfkStats'
+      connections.outputResults: 'verifyBfkResults'

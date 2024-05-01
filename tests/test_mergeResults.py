@@ -58,13 +58,12 @@ class MergeResultsTestCase(lsst.utils.tests.TestCase):
         """Generate simulated verify statistics, and prove they merge
         correctly.
         """
-
         expMergeTask = cpVerify.CpVerifyExpMergeTask()
-
-        expResults1 = expMergeTask.run(self.detectorResults1, self.camera, self.detectorDimensions1)
-        expResults2 = expMergeTask.run(self.detectorResults2, self.camera, self.detectorDimensions2)
+        expResults1 = expMergeTask.run(self.detectorResults1, self.detectorDimensions1, self.camera)
+        expResults2 = expMergeTask.run(self.detectorResults2, self.detectorDimensions2, self.camera)
         self.assertTrue(expResults1.outputStats['SUCCESS'])
         self.assertFalse(expResults2.outputStats['SUCCESS'])  # Expected to have one failure
+        self.assertEqual(expResults2.outputStats['R:1,0 S:1,0']['FAILURES'][0], "C:0,2 SIGMA_TEST")
 
         # Prep inputs to full calibration run merge.
         inputStats = [expResults1.outputStats, expResults2.outputStats]
@@ -72,7 +71,7 @@ class MergeResultsTestCase(lsst.utils.tests.TestCase):
 
         runMergeTask = cpVerify.CpVerifyRunMergeTask()
 
-        runResults = runMergeTask.run(inputStats, inputDims)
+        runResults = runMergeTask.run(inputStats, inputDims, self.camera)
         self.assertFalse(runResults.outputStats['SUCCESS'])
 
         # We know this one failed.
@@ -116,6 +115,7 @@ class MergeResultsTestCase(lsst.utils.tests.TestCase):
         ampVerify = dict()
         detVerify = dict()
         catVerify = dict()
+        expVerify = dict()
         for ampName in ampDict:
             ampVerify[ampName] = dict()
             ampSuccess = True
@@ -128,7 +128,7 @@ class MergeResultsTestCase(lsst.utils.tests.TestCase):
                     success = False
             ampVerify[ampName]['SUCCESS'] = ampSuccess
         return {'SUCCESS': success, 'AMP': ampDict, 'DET': detDict, 'CATALOG': catDict,
-                'VERIFY': {'AMP': ampVerify, 'DET': detVerify, 'CATALOG': catVerify}}
+                'VERIFY': {'AMP': ampVerify, 'DET': detVerify, 'CATALOG': catVerify, 'EXP': expVerify}}
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):

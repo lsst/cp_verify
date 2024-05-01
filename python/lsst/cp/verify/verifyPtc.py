@@ -31,9 +31,6 @@ class CpVerifyPtcConfig(CpVerifyCalibConfig,
                         pipelineConnections=CpVerifyCalibConnections):
     """Inherits from base CpVerifyCalibConfig."""
 
-    def setDefaults(self):
-        super().setDefaults()
-
     gainThreshold = pexConfig.Field(
         dtype=float,
         doc="Maximum percentage difference between PTC gain and nominal amplifier gain.",
@@ -77,6 +74,10 @@ class CpVerifyPtcConfig(CpVerifyCalibConfig,
         doc="Maximum a00 (c.f., Astier+19) for E2V CCDs.",
         default=-2.61e-6,
     )
+
+    def setDefaults(self):
+        super().setDefaults()
+        self.stageName = 'PTC'
 
 
 def linearModel(x, m, b):
@@ -287,3 +288,39 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             verifyStats[ampName] = verify
 
         return {'AMP': verifyStats}, bool(success)
+
+    def repackStats(self, statisticsDict, dimensions):
+        # docstring inherited
+        rows = {}
+        rowList = []
+        matrixRowList = None
+
+        if self.config.useIsrStatistics:
+            mjd = statisticsDict["ISR"]["MJD"]
+        else:
+            mjd = np.nan
+
+        rowBase = {
+            "instrument": dimensions["instrument"],
+            "detector": dimensions["detector"],
+            "mjd": mjd,
+        }
+
+        # AMP results:
+        for ampName, stats in statisticsDict["AMP"].items():
+            rows[ampName] = {}
+            rows[ampName].update(rowBase)
+            rows[ampName]["amplifier"] = ampName
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_{key}"] = value
+
+        # VERIFY results
+        for ampName, stats in statisticsDict["VERIFY"]["AMP"].items():
+            for key, value in stats.items():
+                rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
+
+        # pack final list
+        for ampName, stats in rows.items():
+            rowList.append(stats)
+
+        return rowList, matrixRowList

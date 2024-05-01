@@ -19,21 +19,23 @@ tasks:
       connections.inputExp: 'verifyDarkProc'
       connections.taskMetadata: 'verifyDarkApply_metadata'
       connections.outputStats: 'verifyDarkDetStats'
+      connections.outputResults: 'verifyDarkDetResults'
       useIsrStatistics: true
   verifyDarkExp:
     class: lsst.cp.verify.CpVerifyExpMergeTask
     config:
       connections.inputStats: 'verifyDarkDetStats'
+      connections.inputResults: 'verifyDarkDetResults'
       connections.outputStats: 'verifyDarkExpStats'
+      connections.outputResults: 'verifyDarkExpResults'
+      hasInputResults: true
+      hasMatrixCatalog: false
   verifyDark:
     class: lsst.cp.verify.CpVerifyRunMergeTask
     config:
       connections.inputStats: 'verifyDarkExpStats'
+      connections.inputResults: 'verifyDarkExpResults'
       connections.outputStats: 'verifyDarkStats'
-  repackDarkResults:
-    class: lsst.cp.verify.CpVerifyRepackDarkTask
-    config:
-      connections.detectorStats: 'verifyDarkDetStats'
-      connections.exposureStats: 'verifyDarkExpStats'
-      connections.runStats: 'verifyDarkStats'
-      connections.outputCatalog: 'verifyDarkResults'
+      connections.outputResults: 'verifyDarkResults'
+      hasInputResults: true
+      hasMatrixCatalog: false

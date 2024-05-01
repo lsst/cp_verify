@@ -8,6 +8,18 @@ lsst.cp.verify
 
 .. This module is used to perform a series of tests, defined by DMTN-101, to verify the quality of calibration products produced by `cp_pipe`.
 
+.. _lsst.cp_verify-using:
+
+Using lsst.cp.verify
+====================
+
+.. toctree::
+   :maxdepth: 1
+
+   using-cp-verify
+
+.. _lsst.cp.verify-contributing:
+
 Contributing
 ============
 

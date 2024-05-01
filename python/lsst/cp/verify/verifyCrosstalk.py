@@ -45,6 +45,7 @@ class CpVerifyCrosstalkConfig(CpVerifyCalibConfig,
 
     def setDefaults(self):
         super().setDefaults()
+        self.stageName = 'CROSSTALK'
         self.calibStatKeywords = {'SNR': ''}  # noqa F841
 
 
@@ -72,6 +73,9 @@ class CpVerifyCrosstalkTask(CpVerifyCalibTask):
         outputStatistics = {}
         outputStatistics['N_VALID'] = int(np.sum(inputCalib.coeffValid))
         outputStatistics['N_AMP'] = inputCalib.nAmp
+        # I think this is the residual set, which isn't what we want,
+        # but will serve as a placeholder.
+        outputStatistics['COEFFS'] = inputCalib.coeffs.tolist()
 
         return outputStatistics
 
@@ -126,3 +130,55 @@ class CpVerifyCrosstalkTask(CpVerifyCalibTask):
             success = False
 
         return verifyStats, success
+
+    def repackStats(self, statisticsDict, dimensions):
+        # docstring inherited
+        rowList = []
+        matrixRowList = []
+
+        if self.config.useIsrStatistics:
+            mjd = statisticsDict["ISR"]["MJD"]
+        else:
+            mjd = np.nan
+
+        rowBase = {
+            "instrument": dimensions["instrument"],
+            "detector": dimensions["detector"],
+            "mjd": mjd,
+            "amplifier": "detector",
+        }
+        row = {}
+        row.update(rowBase)
+
+        # Pack DET results
+        for key, value in statisticsDict['DET'].items():
+            if key == 'COEFFS':
+                matrixRowBase = {
+                    "instrument": dimensions["instrument"],
+                    "detector": dimensions["detector"],
+                    "detectorComp": dimensions["detector"],
+                    "mjd": mjd,
+                }
+
+                Umax = statisticsDict['DET']['N_AMP']
+                Vmax = statisticsDict['DET']['N_AMP']
+                for u in range(Umax):
+                    for v in range(Vmax):
+                        matrixRow = matrixRowBase
+                        matrixRow["amplifierIdx"] = u
+                        matrixRow["amplifierCompIdx"] = v
+                        matrixRow["coefficient"] = value[u][v]
+
+                        matrixRowList.append(matrixRow)
+            else:
+                row[f"{self.config.stageName}_{key}"] = value
+
+        # VERIFY results
+
+        for key, value in statisticsDict["VERIFY"].items():
+            row[f"{self.config.stageName}_VERIFY_{key}"] = value
+
+        # pack final list
+        rowList.append(row)
+
+        return rowList, matrixRowList

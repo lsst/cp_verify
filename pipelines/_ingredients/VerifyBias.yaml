@@ -1,4 +1,8 @@
 description: cp_verify BIAS calibration verification
+imports:
+  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+    include:
+      - analyzeBiasCore
 tasks:
   verifyBiasApply:
     class: lsst.ip.isr.isrTask.IsrTask
@@ -22,31 +26,38 @@ tasks:
       isrStats.doProjectionStatistics: true
       isrStats.doBiasShiftStatistics: true
       isrStats.doAmplifierCorrelationStatistics: true
-  verifyMeasureStats:
+  verifyBiasChip:
     class: lsst.cp.verify.CpVerifyBiasTask
     config:
       connections.inputExp: 'verifyBiasProc'
       connections.taskMetadata: 'verifyBiasApply_metadata'
       connections.outputStats: 'verifyBiasDetStats'
+      connections.outputResults: 'verifyBiasDetResults'
+      connections.outputMatrix: 'verifyBiasDetMatrix'
       doVignette: false
       useReadNoise: true
       useIsrStatistics: true
-  verifyExposureStats:
+      hasMatrixCatalog: true
+  verifyBiasExp:
     class: lsst.cp.verify.CpVerifyExpMergeTask
     config:
       connections.inputStats: 'verifyBiasDetStats'
+      connections.inputResults: 'verifyBiasDetResults'
+      connections.inputMatrix: 'verifyBiasDetMatrix'
       connections.outputStats: 'verifyBiasExpStats'
-  verifyRunStats:
+      connections.outputResults: 'verifyBiasExpResults'
+      connections.outputMatrix: 'verifyBiasExpMatrix'
+      hasInputResults: true
+      hasMatrixCatalog: true
+  verifyBias:
     class: lsst.cp.verify.CpVerifyRunMergeTask
     config:
       connections.inputStats: 'verifyBiasExpStats'
+      connections.inputResults: 'verifyBiasExpResults'
+      connections.inputMatrix: 'verifyBiasExpMatrix'
       connections.outputStats: 'verifyBiasStats'
-  repackBiasResults:
-    class: lsst.cp.verify.CpVerifyRepackBiasTask
-    config:
-      connections.detectorStats: 'verifyBiasDetStats'
-      connections.exposureStats: 'verifyBiasExpStats'
-      connections.runStats: 'verifyBiasStats'
-      connections.outputCatalog: 'verifyBiasResults'
-      connections.matrixCatalog: 'verifyBiasCorrelations'
+      connections.outputResults: 'verifyBiasResults'
+      connections.outputMatrix: 'verifyBiasMatrix'
+      hasInputResults: true
       hasMatrixCatalog: true
+  analyzeBiasCore: lsst.analysis.tools.tasks.VerifyCalibAnalysisTask
