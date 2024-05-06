@@ -3,6 +3,7 @@ imports:
   - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
     include:
       - analyzeBiasCore
+      - analyzeBiasDetCore
 tasks:
   verifyBiasApply:
     class: lsst.ip.isr.isrTask.IsrTask
@@ -78,6 +79,7 @@ tasks:
       connections.inputExps: 'verifyBiasProcBin64'
       connections.outputData: 'verifyBiasResidual64'
       binning: 64
+  analyzeBiasDetCore: lsst.analysis.tools.tasks.VerifyCalibDetectorTask
 contracts:
   - verifyBiasApply.binFactor1 == mosaicExp8.binning
   - verifyBiasApply.binFactor2 == mosaicExp64.binning

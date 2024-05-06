@@ -1,4 +1,9 @@
 description: cp_verify DARK calibration verification
+imports:
+  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+    include:
+      - analyzeDarkCore
+      - analyzeDarkDetCore
 tasks:
   verifyDarkApply:
     class: lsst.ip.isr.isrTask.IsrTask
@@ -56,6 +61,8 @@ tasks:
       connections.inputExps: 'verifyDarkProcBin64'
       connections.outputData: 'verifyDarkResidual64'
       binning: 64
+  analyzeDarkCore: lsst.analysis.tools.tasks.VerifyCalibAnalysisTask
+  analyzeDarkDetCore: lsst.analysis.tools.tasks.VerifyCalibDetectorTask
 contracts:
   - verifyDarkApply.binFactor1 == mosaicExp8.binning
   - verifyDarkApply.binFactor2 == mosaicExp64.binning

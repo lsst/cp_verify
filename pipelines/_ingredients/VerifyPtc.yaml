@@ -1,4 +1,9 @@
 description: cp_verify Photon Transfer Curve calibration verification
+imports:
+  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+    include:
+      - analyzePtcCore
+      - analyzePtcDetCore
 tasks:
   verifyPtcCalib:
     class: lsst.cp.verify.verifyPtc.CpVerifyPtcTask
@@ -15,3 +20,5 @@ tasks:
       connections.outputResults: 'verifyPtcResults'
       mergeDimension: 'detector'
       hasInputResults: true
+  analyzePtcCore: lsst.analysis.tools.tasks.VerifyCalibAnalysisTask
+  analyzePtcDetCore: lsst.analysis.tools.tasks.VerifyCalibDetectorTask

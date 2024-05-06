@@ -1,4 +1,8 @@
 description: Another cp_verify defect calibration verification pipeline
+imports:
+  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+    include:
+      - analyzeDefectCore
 tasks:
   verifyDefectIsr:
     class: lsst.ip.isr.isrTask.IsrTask
@@ -63,3 +67,4 @@ tasks:
       mergeDimension: 'visit'
       hasInputResults: true
       hasMatrixCatalog: false
+  analyzeDefectCore: lsst.analysis.tools.tasks.VerifyCalibAnalysisTask

@@ -1,4 +1,8 @@
 description: cp_verify FLAT calibration verification
+imports:
+  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+    include:
+      - analyzeFlatDetCore
 tasks:
   verifyFlatApply:
     class: lsst.ip.isr.isrTask.IsrTask
@@ -53,6 +57,10 @@ tasks:
       connections.inputExps: 'verifyFlatProcBin64'
       connections.outputData: 'verifyFlatResidual64'
       binning: 64
+  analyzeFlatDetCore: lsst.analysis.tools.tasks.VerifyCalibAnalysisTaskByFilter
 contracts:
   - verifyFlatApply.binFactor1 == mosaicExp8.binning
   - verifyFlatApply.binFactor2 == mosaicExp64.binning
+
+
+
