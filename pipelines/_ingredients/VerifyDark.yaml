@@ -5,6 +5,8 @@ tasks:
     config:
       connections.ccdExposure: 'raw'
       connections.outputExposure: 'verifyDarkProc'
+      connections.outputBin1Exposure: 'verifyDarkProcBin8'
+      connections.outputBin2Exposure: 'verifyDarkProcBin64'
       # Disable downstream processing.
       overscan.fitType: 'MEDIAN_PER_ROW'
       doDark: true
@@ -42,18 +44,18 @@ tasks:
       connections.outputResults: 'verifyDarkResults'
       hasInputResults: true
       hasMatrixCatalog: false
-  mosaicExp1:
+  mosaicExp8:
     class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
     config:
-      connections.inputExps: 'postIsrBin1'
-      connections.outputData: 'verifyDarkResidual1'
+      connections.inputExps: 'verifyDarkProcBin8'
+      connections.outputData: 'verifyDarkResidual8'
       binning: 8
-  mosaicExp2:
+  mosaicExp64:
     class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
     config:
-      connections.inputExps: 'postIsrBin2'
-      connections.outputData: 'verifyDarkResidual2'
+      connections.inputExps: 'verifyDarkProcBin64'
+      connections.outputData: 'verifyDarkResidual64'
       binning: 64
 contracts:
-  - verifyDarkApply.binFactor1 == mosaicExp1.binning
-  - verifyDarkApply.binFactor2 == mosaicExp2.binning
+  - verifyDarkApply.binFactor1 == mosaicExp8.binning
+  - verifyDarkApply.binFactor2 == mosaicExp64.binning
