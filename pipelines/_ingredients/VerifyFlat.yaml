@@ -5,11 +5,16 @@ tasks:
     config:
       connections.ccdExposure: 'raw'
       connections.outputExposure: 'verifyFlatProc'
+      connections.outputBin1Exposure: 'verifyFlatProcBin8'
+      connections.outputBin2Exposure: 'verifyFlatProcBin64'
       # Disable downstream processing.
       doApplyGains: false
       doFringe: false
       doCalculateStatistics: true
       isrStats.doCopyCalibDistributionStatistics: true
+      doBinnedExposures: true
+      binFactor1: 8
+      binFactor2: 64
   verifyFlatChip:
     class: lsst.cp.verify.CpVerifyFlatTask
     config:
@@ -36,3 +41,18 @@ tasks:
       connections.outputResults: 'verifyFlatResults'
       hasInputResults: true
       hasMatrixCatalog: false
+  mosaicExp8:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExps: 'verifyFlatProcBin8'
+      connections.outputData: 'verifyFlatResidual8'
+      binning: 8
+  mosaicExp64:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExps: 'verifyFlatProcBin64'
+      connections.outputData: 'verifyFlatResidual64'
+      binning: 64
+contracts:
+  - verifyFlatApply.binFactor1 == mosaicExp8.binning
+  - verifyFlatApply.binFactor2 == mosaicExp64.binning

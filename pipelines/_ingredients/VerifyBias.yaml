@@ -9,6 +9,8 @@ tasks:
     config:
       connections.ccdExposure: 'raw'
       connections.outputExposure: 'verifyBiasProc'
+      connections.outputBin1Exposure: 'verifyBiasProcBin8'
+      connections.outputBin2Exposure: 'verifyBiasProcBin64'
       overscan.fitType: 'MEDIAN_PER_ROW'
       doBias: true
       doVariance: true
@@ -26,6 +28,9 @@ tasks:
       isrStats.doProjectionStatistics: true
       isrStats.doBiasShiftStatistics: true
       isrStats.doAmplifierCorrelationStatistics: true
+      doBinnedExposures: true
+      binFactor1: 8
+      binFactor2: 64
   verifyBiasChip:
     class: lsst.cp.verify.CpVerifyBiasTask
     config:
@@ -61,3 +66,18 @@ tasks:
       hasInputResults: true
       hasMatrixCatalog: true
   analyzeBiasCore: lsst.analysis.tools.tasks.VerifyCalibAnalysisTask
+  mosaicExp8:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExps: 'verifyBiasProcBin8'
+      connections.outputData: 'verifyBiasResidual8'
+      binning: 8
+  mosaicExp64:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExps: 'verifyBiasProcBin64'
+      connections.outputData: 'verifyBiasResidual64'
+      binning: 64
+contracts:
+  - verifyBiasApply.binFactor1 == mosaicExp8.binning
+  - verifyBiasApply.binFactor2 == mosaicExp64.binning
