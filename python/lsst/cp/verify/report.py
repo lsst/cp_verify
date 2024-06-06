@@ -34,6 +34,8 @@ import os
 import re
 
 from matplotlib import cm
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # import lsst.afw.image as afwImage
@@ -44,19 +46,15 @@ from lsst.daf.butler.datastores.file_datastore.retrieve_artifacts import (
 )
 from lsst.resources import ResourcePath
 from lsst.summit.utils import getQuantiles
-
+# from fgcm.fgcmUtilities import makeFigure  # This doesn't find it??
 
 class CpvReporter():
-    DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/PREOPS-5182/"
-
     DATASET_MAP = {
         'bias': [
             'bias',
             'biasMosaic8',
-            'biasMosaic64',
             'verifyBiasResults',
             'verifyBiasResidual8',
-            'verifyBiasResidual64',
             'cpBiasCore_metrics',
             'cpBiasCore_biasCornerMeanPerAmp_FocalPlaneGeometryPlot',
             'cpBiasCore_biasCrNoisePerAmp_FocalPlaneGeometryPlot',
@@ -67,18 +65,18 @@ class CpvReporter():
         'dark': [
             'dark',
             'darkMosaic8',
-            'darkMosaic64',
+            #            'darkMosaic64',
             'verifyDarkResults',
             'verifyDarkResidual8',
-            'verifyDarkResidual64',
+            # 'verifyDarkResidual64',
         ],
         'flat': [
             'flat',
             'flatMosaic8',
-            'flatMosaic64',
+            # 'flatMosaic64',
             'verifyFlatResults',
             'verifyFlatResidual8',
-            'verifyFlatResidual64',
+            # 'verifyFlatResidual64',
         ],
         'defects': [
             'defects',
@@ -94,6 +92,73 @@ class CpvReporter():
         'cti': [],
     }
 
+    DOC_MAP = {
+        'bias': "The combined bias calibration.",
+        'biasMosaic8': "Mosaic of combined bias calibration.",
+        'verifyBiasResults': "Catalog of combined bias verification results.",
+        'verifyBiasResidual8': "Mosaic of bias residuals (bias exposure corrected up through bias application).",
+        'cpBiasCore_metrics': "Core metric bundle for bias calibration.",
+        'cpBiasCore_biasCornerMeanPerAmp_FocalPlaneGeometryPlot': "The bias mean in 200x200 box at amp readout corner.",
+        'cpBiasCore_biasCrNoisePerAmp_FocalPlaneGeometryPlot': "The image noise measured after cosmic ray rejection.",
+        'cpBiasCore_biasMeanPerAmp_FocalPlaneGeometryPlot': "The image mean.",
+        'cpBiasCore_biasNoisePerAmp_FocalPlaneGeometryPlot': "The image noise.",
+        'cpBiasCore_biasReadNoisePerAmp_FocalPlaneGeometryPlot': "The noise in the serial overscan after overscan correction.",
+        'dark': "The combined dark calibration.",
+        'darkMosaic8': "Mosaic of combined dark calibration.",
+        'verifyDarkResults': "Catalog of combined dark verification results.",
+        'verifyDarkResidual8': "Mosaic of dark residuals (dark exposure corrected up through dark application).",
+        'flat': "The combined flat calibration.",
+        'flatMosaic8': "Mosaic of combined flat calibration.",
+        'verifyFlatResults': "Catalog of combined flat verification results.",
+        'verifyFlatResidual8': "Mosaic of flat residuals (flat exposure corrected up through flat application).",
+        'defects': "The combined defects calibration.",
+        'verifyDefectsResults': "Catalog of combined defect verification results.",
+        'ptc': "The photon transfer curve calibration.",
+        'verifyPtcResults': "Catalog of PTC verification results."
+    }
+
+
+    if True:
+        DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/PREOPS-5181/"
+        DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/PREOPS-5181a/"
+        COLLECTIONS = [
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyBias.20240529a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyDark.20240529a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-r.20240529a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-g.20240529a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-z.20240529a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-y.20240529a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-white.20240529a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyBias.20240528a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyDark.20240528a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-r.20240528a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-g.20240528a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-z.20240528a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-y.20240528a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-empty.20240528a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/ptcGen.20240528a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyDark.20240530a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-r.20240530a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-g.20240530a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-z.20240530a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-y.20240530a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-white.20240530a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/ptcGen.20240530a",
+            "u/huanlin/PREOPS-5181/CR1_LATISS/ptcGen.20240530a.ABC",
+        ]
+    else:
+        DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/PREOPS-5182/"
+        DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/2024-06-06/"
+        COLLECTIONS = [
+            "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyBias.20240528a",
+            "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyDark.20240528a",
+            "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyFlat-i06.20240528a",
+            "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyBias.20240530a",
+            "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyDark.20240530a",
+            "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyFlat-i06.20240530a",
+        ]
+    DO_COPY = True
+    DO_OVERWRITE = False
     def __init__(self, repo="/repo/embargo", **kwargs):
         super().__init__()
         self.datasets = []
@@ -103,14 +168,12 @@ class CpvReporter():
         self.repo = repo
         self.butler = Butler(repo)
 
-    def copy_datasets(self, doCopy=True,
-                      collections=[
-                          "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyBias.20240528a",
-                          "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyDark.20240528a",
-                          "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyFlat-i06.20240528a",
-                          #                          "u/huanlin/PREOPS-5181/CR1_LATISS/verifyBias.20240529a",
-
-                      ]):
+    def copy_datasets(self, doCopy=None, doOverwrite=None,
+                      collections=None,
+                      ):
+        doCopy = self.DO_COPY
+        doOverwrite = self.DO_OVERWRITE
+        collections = self.COLLECTIONS
         # Based on https://github.com/lsst/daf_butler/blob/main/python/lsst/daf/butler/datastores/fileDatastore.py#L1978 # noqa W505
         for stage, dataset_types in self.DATASET_MAP.items():
             refs = self.butler.registry.queryDatasets(datasetType=dataset_types,
@@ -138,54 +201,82 @@ class CpvReporter():
                         False
                     )
                     dataset['uri'] = target_uri
+                    willCopy = doCopy
 
-                    if target_uri.getExtension().lower() == ".fits":
+                    if target_uri.getExtension().lower() == ".fits" and dataset['storageClass'] in ('ImageF', 'ExposureF', 'ImageD', 'ExposureD'):
                         # We need a PNG at that location.
                         png_uri = target_uri.updatedExtension("png")
                         dataset['uri'] = png_uri
+                        if os.path.exists(png_uri.path):
+                            if willCopy and not doOverwrite:
+                                willCopy = False
 
-                        if doCopy:
+                        if willCopy:
                             data = self.butler.get(ref)
                             self.fits_to_png(data, png_uri.path, f"{ref.datasetType.name} {ref.dataId}")
                     elif target_uri.getExtension().lower() == ".parq":
                         # Let's convert the table for now
                         html_uri = target_uri.updatedExtension("html")
                         dataset['uri'] = html_uri
-                        if doCopy:
+                        if os.path.exists(html_uri.path):
+                            if willCopy and not doOverwrite:
+                                willCopy = False
+                        willCopy=True
+                        if willCopy:
                             data = self.butler.get(ref)
-                            data.write(html_uri.path, format='ascii.html')
-                    elif doCopy:
-                        # Otherwise just copy directly.
-                        target_uri.transfer_from(source_uri, transfer="copy", overwrite=True)
+                            data.write(html_uri.path, format='ascii.html', overwrite=True,
+                                       exclude_names=['BIAS_SERIAL_PROF', 'BIAS_PARALLEL_PROF'] )
+
+                    elif os.path.exists(target_uri.path):
+                        if willCopy and doOverwrite:
+                            # Otherwise just copy directly.
+                            target_uri.transfer_from(source_uri, transfer="copy", overwrite=True)
+                    else:
+                        if willCopy:
+                            # Otherwise just copy directly.
+                            target_uri.transfer_from(source_uri, transfer="copy", overwrite=True)
 
                 self.datasets.append(dataset)
 
     def parse_datasets(self):
         populated_stages_list = []
 
+        # Make navigation page.
+        self.out_files["navigation.html"] = self._init_page("Navigation")
+        self.include("navigation.html", "index.html")
+        self.out_files["manifest.html"] = self._init_page("Manifest")
+
+        tag = self.link(self.out_files["index.html"], "Parent", "./..")
+        self.navigation_append("index.html", "Parent", tag)
+
         for stage in ['bias', 'dark', 'flat', 'ptc', ]:
             dss = [x for x in self.datasets if x['stage'] == stage]
             if len(dss) > 0:
                 populated_stages_list.append(stage)
+            self.title(self.out_files["index.html"], stage)
 
-            self.out_files[f"{stage}.html"] = self._init_page()
+            # self.out_files[f"{stage}.html"] = self._init_page()
             self.out_files[f"{stage}_exp.html"] = self._init_page()
+            self.include("navigation.html", f"{stage}_exp.html")
             self.out_files[f"{stage}_det.html"] = self._init_page()
+            self.include("navigation.html", f"{stage}_det.html")
 
             exps = [x for x in dss if x['exposure'] is not None]
             dets = [x for x in dss if x['detector'] is not None]
 
             for ds in sorted(exps, key=lambda x: x['exposure']):
+                self.block(ds, self.out_files[f"{stage}_exp.html"])
                 if ('.png' in ds['uri'].path):
-                    self.block(ds, self.out_files[f"{stage}_exp.html"])
                     self.image_handler(ds['uri'].path, self.out_files[f"{stage}_exp.html"])
-            self.link(self.out_files["index.html"], f"{stage} exposures", f"./{stage}_exp.html")
+            tag = self.link(self.out_files["index.html"], f"{stage} exposures", f"./{stage}_exp.html")
+            self.navigation_append("index.html", f"{stage} exposures", tag)
 
             for ds in sorted(dets, key=lambda x: x['detector']):
+                self.block(ds, self.out_files[f"{stage}_det.html"])
                 if ('.png' in ds['uri'].path):
-                    self.block(ds, self.out_files[f"{stage}_det.html"])
                     self.image_handler(ds['uri'].path, self.out_files[f"{stage}_det.html"])
-            self.link(self.out_files["index.html"], f"{stage} detectors", f"./{stage}_det.html")
+            tag = self.link(self.out_files["index.html"], f"{stage} detectors", f"./{stage}_det.html")
+            self.navigation_append("index.html", f"{stage} detectors", tag)
 
             for ds in dss:
                 if ds['storageClass'] == 'ArrowAstropy':
@@ -193,14 +284,36 @@ class CpvReporter():
                     self.block(ds, self.out_files["index.html"], ds['uri'])
                 elif ds['exposure'] is None and ds['detector'] is None:
                     self.block(ds, self.out_files["index.html"])
-                    self.image_handler(ds['uri'].path, self.out_files["index.html"])
-            self.link(self.out_files["index.html"], f"{stage}", f"./{stage}.html")
+                    if ".png" in ds['uri'].path:
+                        self.image_handler(ds['uri'].path, self.out_files["index.html"])
+
+            #self.link(self.out_files["index.html"], f"{stage}", f"./{stage}.html")
+
+        # Record all datasets here, and link to them directly:
+        page = self.out_files["manifest.html"]
+        tag = self.link(self.out_files["index.html"], "Manifest", f"./manifest.html")
+        self.navigation_append("index.html", "Manifest", tag)
+
+        page.extend(["<table width='100%'>",
+                     "<tr>",
+                     "<th>stage</th>", "<th>ref</th>", "<th>type</th>", "<th>storageClass</th>",
+                     "<th>dataId</th>", "<th>collection</th>", 
+                     "</tr>"])
+        for ds in self.datasets:
+            relative_file = re.sub(r"^.*/src/", "./src/", ds['uri'].path)
+            page.extend(["<tr>",
+                         f"<td>{ds['stage']}</td>", f"<td>{ds['ref']}</td>",
+                         "<td>", f'<a href="{relative_file}">', f"{ds['type']}", "</a>",
+                         f"<td>{ds['storageClass']}</td>",
+                         f"<td>{ds['dataId']}</td>", f"<td>{ds['collection']}</td>",
+                         "</tr>"])
+
 
     def generate_report(self):
         src_dir = os.path.join(self.DESTINATION, "src")
         os.makedirs(src_dir, exist_ok=True)
 
-        self.copy_datasets(doCopy=True)
+        self.copy_datasets(doCopy=self.DO_COPY)
         self.parse_datasets()
         self.write_pages()
 
@@ -219,8 +332,12 @@ class CpvReporter():
             " * { margin: 0; padding: 0;}",
             " .imgbox { display: grid; height: 100%; }",
             " .center-fit { max-width: 100%; max-height: 100vh; margin:auto; }",
+            " .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; }",
+            " .tooltip .tooltiptext { visibility: hidden; color: white; background-color: black; text-align: center; top: -5px; left: 105%; }",
+            " .tooltip:hover .tooltiptext { visibility: visible; }",
             "</style>",
             "</title>", title, "</title>",
+            '<base target="_parent">',
             "</head>",
             "<body>",
         ]
@@ -234,34 +351,66 @@ class CpvReporter():
     def image_handler(image_filename, page):
         """Handle images."""
         relative_file = re.sub(r"^.*/src/", "./src/", image_filename)
-        page.append(f'<a href="{relative_file}">')
-        page.append(f'<img class="center-fit" src="{relative_file}">')
-        page.append('</a>')
+        if "Mosaic64" not in relative_file:
+            page.append(f'<a href="{relative_file}">')
+            page.append(f'<img class="center-fit" src="{relative_file}">')
+            page.append('</a>')
 
-    @staticmethod
-    def block(dataset, page, link=None):
-        page.extend(["<table width='100%'>", "<tr>", "<th>DataId</th>", "<th>T1</th>", "</tr>"])
+
+    def block(self, dataset, page, link=None, doc=None):
+        if doc is None:
+            doc = self.DOC_MAP.get(dataset['type'], "Undocumented.")
+        page.extend(["<table width='100%'>",
+                     "<tr>",
+                     "<th></th>", "<th align='left'>DataId:</th>",
+                     "<th></th>", "<th align='left'>Dataset:</th>", "</tr>"])
         page.extend(["<tr>",
-                     f"<td>{dataset['instrument']}</td>",
-                     f"<td>{dataset['collection']}</td>",
+                     "<td align='right'>Instrument</td>", f"<td>{dataset['instrument']}</td>",
+                     "<td align='right'>Collection</td>", f"<td>{dataset['collection']}</td>",
                      "</tr>"])
-        page.extend(["<tr>", f"<td>{dataset['exposure']}</td>", f"<td>{dataset['stage']}</td>", "</tr>"])
+        page.extend(["<tr>",
+                     "<td align='right'>Exposure</td>", f"<td>{dataset['exposure']}</td>",
+                     "<td align='right'>Stage</td>", f"<td>{dataset['stage']}</td>", "</tr>"])
+        page.extend(["<tr>",
+                     "<td align='right'>Detector</td>", f"<td>{dataset['detector']}</td>"]),
         if link:
-            page.extend(["<tr>", f"<td>{dataset['detector']}</td>"]),
-            page.extend(["<a href='" + f"{dataset['uri']}" + "'>",
-                         "<td>{dataset['type']}</td>", "</a>", "</tr>"])
-        else:
-            page.extend(["<tr>", f"<td>{dataset['detector']}</td>", f"<td>{dataset['type']}</td>", "</tr>"])
-        page.extend(["<tr>", f"<td>{dataset['physical_filter']}</td>", "<td></td>", "</tr>"])
+            page.extend(["<a href='" + f"{link}" + "'>",])
+        page.extend(["<td align='right'>Dataset type</td>", f"<td>{dataset['type']} ", "</td>"])
+        if link:
+            page.extend(["</a>"])
+        page.extend(["</tr>"])
+        page.extend(["<tr>",
+                     "<td align='right'>Physical Filter</td>", f"<td>{dataset['physical_filter']}</td>",
+                     "<td align='right'>Docstring</td>", f"<td>{doc}</td>",
+                     "</tr>"])
         page.extend(["</table>"])
 
     @staticmethod
     def link(page, text, link):
-        page.extend(["<table width='100%'>", "<tr>", "<th>T0</th>", "<th>T1</th>", "</tr>"])
-        page.extend(["<tr>", "<td></td>"]),
-        page.extend(["<td>", f"<a href='{link}'>",
-                     f"{text}" "</a>", "</td>", "</tr>"])
-        page.extend(["</table>"])
+        text_ref = text.replace(" ", "-")
+        page.extend([f"<h2 id='{text_ref}'>", f"<a href='{link}'>",
+                     f"{text}" "</a>", "</h2>"])
+        return text_ref
+
+    def navigation_append(self, destination, text, tag, level=3):
+        page = self.out_files["navigation.html"]
+        page.extend([f"<a href='./{destination}#{tag}'>",
+                     f"<h{level}>{text}</h{level}>",
+                     "</a>"])
+
+    def title(self, page, text):
+        text_ref = text.replace(" ", "-")
+        page.extend(["<center>",
+                     f"<h1 id={text_ref}>", text, "</h1>",
+                     "</center>"])
+        self.navigation_append("index.html", text, text_ref)
+
+    def include(self, source, target):
+        source_page = self.out_files[source]
+        target_page = self.out_files[target]
+
+        target_page.extend([f"<iframe width='100%' src='./{source}'>",
+                            "</iframe>"])
 
     @staticmethod
     def fits_to_png(data, out_filename, title):
@@ -273,7 +422,8 @@ class CpvReporter():
         except AttributeError:
             array = data.array
 
-        fig = plt.figure()
+        fig =  Figure()
+        canvas = FigureCanvasAgg(fig)
         ax = fig.gca()
         ax.clear()
         cmap = cm.gray
