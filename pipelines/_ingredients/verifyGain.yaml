@@ -1,0 +1,19 @@
+description: cp_verify gain-from-flat-pairs calibration verification
+tasks:
+  verifyGainDet:
+    class: lsst.cp.verify.CpVerifyGainTask
+    config:
+      connections.inputCalib: "cpPtcPartial"
+      connections.outputStats: "verifyGainDetStats"
+      connections.outputResults: "verifyGainDetResults"
+  verifyGain:
+    class: lsst.cp.verify.CpVerifyCalibMergeTask
+    config:
+      connections.inputStats: "verifyGainDetStats"
+      connections.inputResults: "verifyGainDetResults"
+      connections.outputStats: "verifyGainStats"
+      connections.outputResults: "verifyGainResults"
+      hasInputResults: true
+contracts:
+  - verifyGain.connections.inputStats == verifyGainDet.connections.outputStats
+  - verifyGain.connections.inputResults == verifyGainDet.connections.outputResults
