@@ -9,5 +9,8 @@ setupRequired(pipe_tasks)
 setupRequired(utils)
 setupRequired(pipe_base)
 setupRequired(analysis_tools)
+setupOptional(obs_lsst)
+setupOptional(obs_decam)
+setupOptional(obs_subaru)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
