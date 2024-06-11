@@ -30,3 +30,6 @@ from .verifyDark import *
 from .verifyFlat import *
 from .verifyCrosstalk import *
 from .verifyPtc import *
+from .verifyLinearity import *
+from .verifyGain import *
+from .verifyBfk import *
