@@ -19,7 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__all__ = ['CpVerifyLinearityConnections', 'CpVerifyLinearityConfig', 'CpVerifyLinearityTask']
+__all__ = [
+    "CpVerifyLinearityConnections",
+    "CpVerifyLinearityConfig",
+    "CpVerifyLinearityTask",
+    "CpvLinearitySolveConfig",
+    "CpvLinearitySolveTask",
+]
 
 import lsst.cp.pipe as cpPipe
 import lsst.pipe.base as pipeBase
