@@ -19,17 +19,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .version import *
-from .verifyStats import *
-from .verifyCalib import *
 from .mergeResults import *
-
-from .verifyBias import *
-from .verifyDefects import *
-from .verifyDark import *
-from .verifyFlat import *
-from .verifyCrosstalk import *
-from .verifyPtc import *
-from .verifyLinearity import *
-from .verifyGain import *
 from .verifyBfk import *
+from .verifyBias import *
+from .verifyCalib import *
+from .verifyCrosstalk import *
+from .verifyDark import *
+from .verifyDefects import *
+from .verifyFlat import *
+from .verifyGain import *
+from .verifyLinearity import *
+from .verifyPtc import *
+from .verifyStats import *
+from .version import *
