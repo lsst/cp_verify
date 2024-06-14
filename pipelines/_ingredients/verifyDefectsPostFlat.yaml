@@ -1,0 +1,50 @@
+description: cp_verify DEFECT calibration verification
+tasks:
+  verifyDefectsPostFlatIsr:
+    class: lsst.ip.isr.IsrTask
+    config:
+      connections.ccdExposure: "raw"
+      connections.outputExposure: "verifyDefectsPostFlatIsrExp"
+      doWrite: true
+      doOverscan: true
+      doAssembleCcd: true
+      doBias: true
+      doVariance: false
+      doLinearize: false
+      doBrighterFatter: false
+      doDark: true
+      doStrayLight: false
+      doFlat: true
+      doFringe: false
+      doApplyGains: false
+      doDefect: true
+      doSaturationInterpolation: false
+      growSaturationFootprintSize: 0
+  verifyDefectsPostFlatDet:
+    class: lsst.cp.verify.CpVerifyDefectsTask
+    config:
+      connections.inputExp: "verifyDefectsPostFlatIsrExp"
+      connections.outputStats: "verifyDefectsPostFlatDetStats"
+      connections.outputResults: "verifyDefectsPostFlatDetResults"
+      doVignette: false
+      useReadNoise: false
+  verifyDefectsPostFlatExp:
+    class: lsst.cp.verify.CpVerifyExpMergeTask
+    config:
+      connections.inputStats: "verifyDefectsPostFlatDetStats"
+      connections.inputResults: "verifyDefectsPostFlatDetResults"
+      connections.outputStats: "verifyDefectsPostFlatExpStats"
+      connections.outputResults: "verifyDefectsPostFlatExpResults"
+  verifyDefectsPostFlat:
+    class: lsst.cp.verify.CpVerifyRunMergeTask
+    config:
+      connections.inputStats: "verifyDefectsPostFlatExpStats"
+      connections.inputResults: "verifyDefectsPostFlatExpResults"
+      connections.outputStats: "verifyDefectsPostsFlatStats"
+      connections.outputResults: "verifyDefectsPostFlatResults"
+contracts:
+  - verifyDefectsPostFlatDet.connections.inputExp == verifyDefectsPostFlatIsr.connections.outputExposure
+  - verifyDefectsPostFlatExp.connections.inputStats == verifyDefectsPostFlatDet.connections.outputStats
+  - verifyDefectsPostFlatExp.connections.inputResults == verifyDefectsPostFlatDet.connections.outputResults
+  - verifyDefectsPostFlat.connections.inputStats == verifyDefectsPostFlatExp.connections.outputStats
+  - verifyDefectsPostFlat.connections.inputResults == verifyDefectsPostFlatExp.connections.outputResults

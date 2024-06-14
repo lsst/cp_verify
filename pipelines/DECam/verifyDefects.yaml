@@ -1,0 +1,4 @@
+description: cp_verify for Defects measured from combined calibrations.
+instrument: lsst.obs.decam.DarkEnergyCamera
+imports:
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyDefects.yaml

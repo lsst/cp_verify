@@ -1,0 +1,4 @@
+description: cp_verify CROSSTALK calibration verification
+instrument: lsst.obs.decam.DarkEnergyCamera
+imports:
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyCrosstalk.yaml

@@ -1,0 +1,53 @@
+description: cp_verify DEFECT calibration verification
+tasks:
+  verifyDefectsIndividualIsr:
+    class: lsst.ip.isr.IsrTask
+    config:
+      connections.ccdExposure: "raw"
+      connections.outputExposure: "verifyDefectsIndividualIsrExp"
+      doWrite: true
+      doOverscan: true
+      doAssembleCcd: true
+      doBias: true
+      doVariance: false
+      doLinearize: false
+      doBrighterFatter: false
+      doDark: false
+      doStrayLight: false
+      doFlat: false
+      doFringe: false
+      doApplyGains: false
+      doDefect: true
+      doSaturationInterpolation: false
+      growSaturationFootprintSize: 0
+      doCalculateStatistics: true
+      isrStats.doCopyCalibDistributionStatistics: true
+  verifyDefectsIndividualDet:
+    class: lsst.cp.verify.CpVerifyDefectsTask
+    config:
+      connections.inputExp: "verifyDefectsIndividualIsrExp"
+      connections.outputStats: "verifyDefectsIndividualDetStats"
+      connections.outputResults: "verifyDefectsIndividualDetResults"
+      doVignette: false
+      useReadNoise: false
+      useIsrStatistics: true
+  verifyDefectsIndividualExp:
+    class: lsst.cp.verify.CpVerifyExpMergeTask
+    config:
+      connections.inputStats: "verifyDefectsIndividualDetStats"
+      connections.inputResults: "verifyDefectsIndividualDetResults"
+      connections.outputStats: "verifyDefectsIndividualExpStats"
+      connections.outputResults: "verifyDefectsIndividualExpResults"
+  verifyDefectsIndividual:
+    class: lsst.cp.verify.CpVerifyRunMergeTask
+    config:
+      connections.inputStats: "verifyDefectsIndividualExpStats"
+      connections.inputResults: "verifyDefectsIndividualExpResults"
+      connections.outputStats: "verifyDefectsIndividualStats"
+      connections.outputResults: "verifyDefectsIndividualResults"
+contracts:
+  - verifyDefectsIndividualDet.connections.inputExp == verifyDefectsIndividualIsr.connections.outputExposure
+  - verifyDefectsIndividualExp.connections.inputStats == verifyDefectsIndividualDet.connections.outputStats
+  - verifyDefectsIndividualExp.connections.inputResults == verifyDefectsIndividualDet.connections.outputResults
+  - verifyDefectsIndividual.connections.inputStats == verifyDefectsIndividualExp.connections.outputStats
+  - verifyDefectsIndividual.connections.inputResults == verifyDefectsIndividualExp.connections.outputResults

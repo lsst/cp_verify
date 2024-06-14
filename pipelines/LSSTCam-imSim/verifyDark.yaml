@@ -1,0 +1,4 @@
+description: cp_verify DARK calibration verification
+instrument: lsst.obs.lsst.LsstCamImSim
+imports:
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyDark.yaml

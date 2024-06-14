@@ -1,0 +1,46 @@
+description: cp_verify CROSSTALK calibration verification
+tasks:
+  verifyCrosstalkIsr:
+    class: lsst.ip.isr.IsrTask
+    config:
+      connections.ccdExposure: "raw"
+      connections.outputExposure: "verifyCrosstalkIsrExp"
+      connections.crosstalk: "crosstalk"
+      doCrosstalk: true
+  verifyCrosstalkExtract:
+    class: lsst.cp.pipe.CrosstalkExtractTask
+    config:
+      connections.inputExp: "verifyCrosstalkIsrExp"
+      connections.outputRatios: "verifyCrosstalkRatio"
+  verifyCrosstalkSolve:
+    class: lsst.cp.pipe.CrosstalkSolveTask
+    config:
+      connections.inputRatios: "verifyCrosstalkRatio"
+      connections.outputCrosstalk: "verifyCrosstalk"
+  verifyCrosstalkDet:
+    class: lsst.cp.verify.CpVerifyCrosstalkTask
+    config:
+      connections.inputCalib: "verifyCrosstalk"
+      connections.outputStats: "verifyCrosstalkDetStats"
+      connections.outputResults: "verifyCrosstalkDetResults"
+      connections.outputMatrix: "verifyCrosstalkDetMatrix"
+      hasMatrixCatalog: true
+  verifyCrosstalk:
+    class: lsst.cp.verify.CpVerifyCalibMergeTask
+    config:
+      connections.inputStats: "verifyCrosstalkDetStats"
+      connections.inputResults: "verifyCrosstalkDetResults"
+      connections.inputMatrix: "verifyCrosstalkDetMatrix"
+      connections.outputStats: "verifyCrosstalkStats"
+      connections.outputResults: "verifyCrosstalkResults"
+      connections.outputMatrix: "verifyCrosstalkMatrix"
+      mergeDimension: "detector"
+      hasInputResults: true
+      hasMatrixCatalog: true
+contracts:
+  - verifyCrosstalkExtract.connections.inputExp == verifyCrosstalkIsr.connections.outputExposure
+  - verifyCrosstalkSolve.connections.inputRatios == verifyCrosstalkExtract.connections.outputRatios
+  - verifyCrosstalkDet.connections.inputCalib == verifyCrosstalkSolve.connections.outputCrosstalk
+  - verifyCrosstalk.connections.inputStats == verifyCrosstalkDet.connections.outputStats
+  - verifyCrosstalk.connections.inputResults == verifyCrosstalkDet.connections.outputResults
+  - verifyCrosstalk.connections.inputMatrix == verifyCrosstalkDet.connections.outputMatrix

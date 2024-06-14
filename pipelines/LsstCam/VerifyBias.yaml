@@ -1,9 +1,0 @@
-description: cp_verify BIAS calibration verification
-instrument: lsst.obs.lsst.LsstCam
-imports:
-  - location: $CP_VERIFY_DIR/pipelines/_ingredients/VerifyBias.yaml
-tasks:
-  verifyBiasApply:
-    class: lsst.ip.isr.isrTask.IsrTask
-    config:
-      doDefect: false

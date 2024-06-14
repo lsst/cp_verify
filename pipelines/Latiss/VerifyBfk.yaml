@@ -1,4 +1,0 @@
-description: cp_verify BFK calibration verification
-instrument: lsst.obs.lsst.Latiss
-imports:
-  - location: $CP_VERIFY_DIR/pipelines/_ingredients/VerifyBfk.yaml
