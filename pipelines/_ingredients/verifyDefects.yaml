@@ -17,6 +17,7 @@ tasks:
       connections.sourceCat: "verifyDefectsIcSrc"
       doApCorr: false
       doDeblend: false
+      doNormalizedCalibration: false
   verifyUncorrectedDefectsIsr:
     class: lsst.ip.isr.IsrTask
     config:
@@ -35,6 +36,7 @@ tasks:
       doApCorr: false
       doDeblend: false
       doMeasurePsf: false
+      doNormalizedCalibration: false
   verifyDefectsDet:
     class: lsst.cp.verify.CpVerifyDefectsTask
     config:
