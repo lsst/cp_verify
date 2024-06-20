@@ -56,27 +56,29 @@ class CpvReporter():
             'verifyBiasResults',
             'verifyBiasResidual8',
             'cpBiasCore_metrics',
-            'cpBiasCore_biasCornerMeanPerAmp_FocalPlaneGeometryPlot',
-            'cpBiasCore_biasCrNoisePerAmp_FocalPlaneGeometryPlot',
+            'cpBiasCore_biasReadNoisePerAmp_FocalPlaneGeometryPlot',
             'cpBiasCore_biasMeanPerAmp_FocalPlaneGeometryPlot',
             'cpBiasCore_biasNoisePerAmp_FocalPlaneGeometryPlot',
-            'cpBiasCore_biasReadNoisePerAmp_FocalPlaneGeometryPlot',
+            'cpBiasCore_biasCrNoisePerAmp_FocalPlaneGeometryPlot',
+            'cpBiasCore_biasCornerMeanPerAmp_FocalPlaneGeometryPlot',
+            'biasIsr_config',
+            'verifyBiasApply_config'
         ],
         'dark': [
             'dark',
             'darkMosaic8',
-            #            'darkMosaic64',
             'verifyDarkResults',
             'verifyDarkResidual8',
-            # 'verifyDarkResidual64',
+            'darkIsr_config',
+            'verifyDarkApply_config',
         ],
         'flat': [
             'flat',
             'flatMosaic8',
-            # 'flatMosaic64',
             'verifyFlatResults',
             'verifyFlatResidual8',
-            # 'verifyFlatResidual64',
+            'flatIsr_config',
+            'verifyFlatApply_config',
         ],
         'defects': [
             'defects',
@@ -117,10 +119,8 @@ class CpvReporter():
         'verifyPtcResults': "Catalog of PTC verification results."
     }
 
-
-    if True:
+    if False:
         DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/PREOPS-5181/"
-        DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/PREOPS-5181a/"
         COLLECTIONS = [
             "u/huanlin/PREOPS-5181/CR1_LATISS/verifyBias.20240529a",
             "u/huanlin/PREOPS-5181/CR1_LATISS/verifyDark.20240529a",
@@ -148,7 +148,6 @@ class CpvReporter():
         ]
     else:
         DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/PREOPS-5182/"
-        DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/2024-06-06/"
         COLLECTIONS = [
             "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyBias.20240528a",
             "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyDark.20240528a",
@@ -168,6 +167,14 @@ class CpvReporter():
         self.repo = repo
         self.butler = Butler(repo)
 
+    def generate_report(self):
+        src_dir = os.path.join(self.DESTINATION, "src")
+        os.makedirs(src_dir, exist_ok=True)
+
+        self.copy_datasets(doCopy=self.DO_COPY)
+        self.parse_datasets()
+        self.write_pages()
+
     def copy_datasets(self, doCopy=None, doOverwrite=None,
                       collections=None,
                       ):
@@ -185,7 +192,7 @@ class CpvReporter():
                 dataset = {'stage': stage,
                            'ref': ref,
                            'type': ref.datasetType.name,
-                           'storageClass': ref.datasetType.storageClass.name,
+                           'storage_class': ref.datasetType.storageClass.name,
                            'dataId': ref.dataId,
                            'instrument': ref.dataId.get('instrument', None),
                            'exposure': ref.dataId.get('exposure', None),
@@ -203,7 +210,8 @@ class CpvReporter():
                     dataset['uri'] = target_uri
                     willCopy = doCopy
 
-                    if target_uri.getExtension().lower() == ".fits" and dataset['storageClass'] in ('ImageF', 'ExposureF', 'ImageD', 'ExposureD'):
+                    if target_uri.getExtension().lower() == ".fits" and \
+                       dataset['storage_class'] in ('ImageF', 'ExposureF', 'ImageD', 'ExposureD'):
                         # We need a PNG at that location.
                         png_uri = target_uri.updatedExtension("png")
                         dataset['uri'] = png_uri
@@ -214,7 +222,8 @@ class CpvReporter():
                         if willCopy:
                             data = self.butler.get(ref)
                             self.fits_to_png(data, png_uri.path, f"{ref.datasetType.name} {ref.dataId}")
-                    elif target_uri.getExtension().lower() == ".parq":
+                    elif target_uri.getExtension().lower() == ".parq" and \
+                         dataset['storage_class'] in ('ArrowAstropy', ):
                         # Let's convert the table for now
                         html_uri = target_uri.updatedExtension("html")
                         dataset['uri'] = html_uri
@@ -224,9 +233,14 @@ class CpvReporter():
                         willCopy=True
                         if willCopy:
                             data = self.butler.get(ref)
-                            data.write(html_uri.path, format='ascii.html', overwrite=True,
-                                       exclude_names=['BIAS_SERIAL_PROF', 'BIAS_PARALLEL_PROF'] )
-
+                            files_created = self.parq_to_html(data, html_uri)
+                    elif target_uri.getExtension().lower() == ".py":
+                        # These should be config files
+                        html_uri = target_uri.updatedExtension("html")
+                        dataset['uri'] = html_uri
+                        if willCopy:
+                            data = self.butler.get(ref)
+                            self.py_to_html(data, html_uri)
                     elif os.path.exists(target_uri.path):
                         if willCopy and doOverwrite:
                             # Otherwise just copy directly.
@@ -243,19 +257,22 @@ class CpvReporter():
 
         # Make navigation page.
         self.out_files["navigation.html"] = self._init_page("Navigation")
+        self.navigation_init()
         self.include("navigation.html", "index.html")
         self.out_files["manifest.html"] = self._init_page("Manifest")
 
         tag = self.link(self.out_files["index.html"], "Parent", "./..")
-        self.navigation_append("index.html", "Parent", tag)
+        self.navigation_append("index.html", "Parent", tag, newColumn=True)
+        self.navigation_append("manifest.html", "Manifest", "", newColumn=False)
 
-        for stage in ['bias', 'dark', 'flat', 'ptc', ]:
+        for stage in ['bias', 'dark', 'flat', 'ptc', 'defects', 'crosstalk', 'cti']:
             dss = [x for x in self.datasets if x['stage'] == stage]
             if len(dss) > 0:
                 populated_stages_list.append(stage)
+            else:
+                continue
             self.title(self.out_files["index.html"], stage)
 
-            # self.out_files[f"{stage}.html"] = self._init_page()
             self.out_files[f"{stage}_exp.html"] = self._init_page()
             self.include("navigation.html", f"{stage}_exp.html")
             self.out_files[f"{stage}_det.html"] = self._init_page()
@@ -279,43 +296,33 @@ class CpvReporter():
             self.navigation_append("index.html", f"{stage} detectors", tag)
 
             for ds in dss:
-                if ds['storageClass'] == 'ArrowAstropy':
+                if ds['storage_class'] == 'ArrowAstropy':
                     # Is a results catalog
                     self.block(ds, self.out_files["index.html"], ds['uri'])
+                    self.include(ds['uri'].path, "index.html")
                 elif ds['exposure'] is None and ds['detector'] is None:
                     self.block(ds, self.out_files["index.html"])
                     if ".png" in ds['uri'].path:
                         self.image_handler(ds['uri'].path, self.out_files["index.html"])
-
-            #self.link(self.out_files["index.html"], f"{stage}", f"./{stage}.html")
+                    else:
+                        self.include(ds['uri'].path, "index.html")
 
         # Record all datasets here, and link to them directly:
         page = self.out_files["manifest.html"]
-        tag = self.link(self.out_files["index.html"], "Manifest", f"./manifest.html")
-        self.navigation_append("index.html", "Manifest", tag)
-
         page.extend(["<table width='100%'>",
                      "<tr>",
-                     "<th>stage</th>", "<th>ref</th>", "<th>type</th>", "<th>storageClass</th>",
-                     "<th>dataId</th>", "<th>collection</th>", 
+                     "<th>stage</th>", "<th>ref</th>", "<th>type</th>", "<th>storage_class</th>",
+                     "<th>dataId</th>", "<th>collection</th>",
                      "</tr>"])
         for ds in self.datasets:
-            relative_file = re.sub(r"^.*/src/", "./src/", ds['uri'].path)
+            relative_file = self.relative_file(ds['uri'].path)
             page.extend(["<tr>",
                          f"<td>{ds['stage']}</td>", f"<td>{ds['ref']}</td>",
                          "<td>", f'<a href="{relative_file}">', f"{ds['type']}", "</a>",
-                         f"<td>{ds['storageClass']}</td>",
+                         f"<td>{ds['storage_class']}</td>",
                          f"<td>{ds['dataId']}</td>", f"<td>{ds['collection']}</td>",
                          "</tr>"])
 
-
-    def generate_report(self):
-        src_dir = os.path.join(self.DESTINATION, "src")
-        os.makedirs(src_dir, exist_ok=True)
-
-        self.copy_datasets(doCopy=self.DO_COPY)
-        self.parse_datasets()
-        self.write_pages()
 
     def write_pages(self):
         for ff, contents in self.out_files.items():
@@ -326,20 +333,46 @@ class CpvReporter():
                     print(line, file=ff)
 
     @staticmethod
-    def _init_page(title=None):
+    def _init_page(title=""):
         return [
             "<html>", "<head>", "<style> ",
             " * { margin: 0; padding: 0;}",
             " .imgbox { display: grid; height: 100%; }",
             " .center-fit { max-width: 100%; max-height: 100vh; margin:auto; }",
-            " .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; }",
-            " .tooltip .tooltiptext { visibility: hidden; color: white; background-color: black; text-align: center; top: -5px; left: 105%; }",
-            " .tooltip:hover .tooltiptext { visibility: visible; }",
+            " .pre-comment { color: red; }",
+            " td { padding: 0 15px; }",
+            " .ctable { display: table; }",
+            " .ctable tr { display: table-cell; }",
+            " .ctable tr td { display: block; }",
             "</style>",
-            "</title>", title, "</title>",
+            "<title>", title, "</title>",
             '<base target="_parent">',
             "</head>",
             "<body>",
+            '<map name="atools_comcam">',
+            '<area shape="rect" coords="325,1600,780,1155" alt="S00" href="S00.html">',
+            '<area shape="rect" coords="325,1130,780,685" alt="S01" href="S01.html">',
+            '<area shape="rect" coords="325,660,780,215" alt="S02" href="S02.html">',
+            '<area shape="rect" coords="795,1600,1250,1155" alt="S00" href="S10.html">',
+            '<area shape="rect" coords="795,1130,1250,685" alt="S01" href="S11.html">',
+            '<area shape="rect" coords="795,660,1250,215" alt="S02" href="S12.html">',
+            '<area shape="rect" coords="1265,1600,1720,1155" alt="S00" href="S20.html">',
+            '<area shape="rect" coords="1265,1130,1720,685" alt="S01" href="S21.html">',
+            '<area shape="rect" coords="1265,660,1720,215" alt="S02' href="S22.html'>',
+            '</map>',
+            '<map name="atools_latiss">',
+            '<area shape="rect" coords="
+ <!-- (317,1600) @ 490, 670, 845, 1020, 1197, 1375, 1550, 1725 -->
+ <!--            @ 909, 1380 -->
+</map>
+<map name="mosaic_latiss">
+ <!-- (115, 431) - (500, 50) // 8, 2 -->
+</map>
+<map name="mosaic_comcam">
+ <!-- (111, 437) - (240, 313) , (244, 437) - (372, 314), (376, 438) - (503, 313) -->
+ <!--                                                          306) - (504, 180) -->
+ <!-- 							       175) - (504, 47)  -->
+</map>
         ]
 
     @staticmethod
@@ -348,9 +381,12 @@ class CpvReporter():
                 "</html>"]
 
     @staticmethod
-    def image_handler(image_filename, page):
+    def relative_file(filename):
+        return re.sub(r"^.*/src/", "./src/", filename)
+
+    def image_handler(self, image_filename, page):
         """Handle images."""
-        relative_file = re.sub(r"^.*/src/", "./src/", image_filename)
+        relative_file = self.relative_file(image_filename)
         if "Mosaic64" not in relative_file:
             page.append(f'<a href="{relative_file}">')
             page.append(f'<img class="center-fit" src="{relative_file}">')
@@ -362,8 +398,8 @@ class CpvReporter():
             doc = self.DOC_MAP.get(dataset['type'], "Undocumented.")
         page.extend(["<table width='100%'>",
                      "<tr>",
-                     "<th></th>", "<th align='left'>DataId:</th>",
-                     "<th></th>", "<th align='left'>Dataset:</th>", "</tr>"])
+                     "<th colspan='2' align='center'>DataId:</th>",
+                     "<th colspan='2' align='center'>Dataset:</th>", "</tr>"])
         page.extend(["<tr>",
                      "<td align='right'>Instrument</td>", f"<td>{dataset['instrument']}</td>",
                      "<td align='right'>Collection</td>", f"<td>{dataset['collection']}</td>",
@@ -392,28 +428,35 @@ class CpvReporter():
                      f"{text}" "</a>", "</h2>"])
         return text_ref
 
-    def navigation_append(self, destination, text, tag, level=3):
+    def navigation_init(self):
         page = self.out_files["navigation.html"]
-        page.extend([f"<a href='./{destination}#{tag}'>",
-                     f"<h{level}>{text}</h{level}>",
-                     "</a>"])
+        page.extend(["<table class='ctable' width='100%'>",
+                     "<tr>"])
+
+    def navigation_append(self, destination, text, tag, newColumn=False):
+        page = self.out_files["navigation.html"]
+        if newColumn:
+            page.extend(["</tr>", "</tr>"])
+        page.extend(["<td>",
+                     f"<a href='./{destination}#{tag}'>",
+                     f"{text}",
+                     "</a>", "</td>"])
 
     def title(self, page, text):
         text_ref = text.replace(" ", "-")
         page.extend(["<center>",
                      f"<h1 id={text_ref}>", text, "</h1>",
                      "</center>"])
-        self.navigation_append("index.html", text, text_ref)
+        self.navigation_append("index.html", text, text_ref, newColumn=True)
 
     def include(self, source, target):
-        source_page = self.out_files[source]
         target_page = self.out_files[target]
-
-        target_page.extend([f"<iframe width='100%' src='./{source}'>",
+        relative_file = self.relative_file(source)
+        target_page.extend([f"<iframe width='100%' src='./{relative_file}'>",
                             "</iframe>"])
 
     @staticmethod
-    def fits_to_png(data, out_filename, title):
+    def fits_to_png(data, target_uri, title):
         # Taken from
         # https://github.com/lsst-sitcom/rubintv_production/blob/main/python/lsst/rubintv/production/slac/mosaicing.py  # noqa W505
         # _plotFpMosaic()
@@ -422,6 +465,7 @@ class CpvReporter():
         except AttributeError:
             array = data.array
 
+        # This should be available in lsst.utils.plotting, as of DM-44725.
         fig =  Figure()
         canvas = FigureCanvasAgg(fig)
         ax = fig.gca()
@@ -437,13 +481,79 @@ class CpvReporter():
         fig.suptitle(title)
         fig.colorbar(im, cax=cax)
         fig.tight_layout()
-        fig.savefig(out_filename)
+        fig.savefig(target_uri.path)
         plt.close()
 
     @staticmethod
-    def table_handler(data_filename, page):
-        """Handle data tables."""
-        pass
+    def parq_to_html(data, target_uri):
+        format_dict = {}
+
+        files_created = {}
+        # Remove vectors, as they will be too big.
+        # Build up format dictionary.
+        columns_to_remove = []
+        for index, name in enumerate(data.dtype.names):
+            if len(data.dtype[index].shape) != 0:
+                columns_to_remove.append(name)
+                continue
+            if data.dtype[index].kind in ('f', 'c'):
+                # is float
+                format_dict[name] = "%.4g"
+                if name == 'mjd':
+                    # Let's let these be long
+                    format_dict[name] = "12.10f"
+            elif data.dtype[index].kind in ('i', 'u'):
+                # is int
+                format_dict[name] = "%d"
+            else:
+                format_dict[name] = "%s"
+
+        # Actually remove the vectors:
+        data.remove_columns(columns_to_remove)
+        # Write full table:
+        data.write(target_uri.path,
+                   format='ascii.html',
+                   overwrite=True,
+                   formats=format_dict)
+        # files_created[f"{filename_base}.html"] = {}
+
+        if False:
+            # Write subset tables:
+            if 'exposure' in data.columns:
+                exposures = set(data['exposure'])
+                for exp in exposures:
+                    mask = data['exposure'] == exp
+                    subset = data[mask]
+                    data.write(f"{filename_base}_exp{exp}.html",
+                               format='ascii.html',
+                               overwrite=True,
+                    formats=format_dict)
+                    files_created[f"{filename_base}_exp{exp}.html"] = {'exposure': exp}
+
+                    if 'detector' in data.columns:
+                        detectors = set(data['exposure'])
+                        for det in detectors:
+                            mask = data['detector'] == det
+                            subset = data[mask]
+                            data.write(f"{filename_base}_det{det}.html",
+                                       format='ascii.html',
+                                       overwrite=True,
+                                       formats=format_dict)
+                            files_created[f"{filename_base}_det{det}.html"] = {'detector': det}
+
+    def py_to_html(self, data, target_uri):
+        # For configs and such.
+        with open(target_uri.path, 'w') as ff:
+            for line in self._init_page():
+                print(line, file=ff)
+                # import pdb; pdb.set_trace()
+            for line in data.saveToString().split("\n"):
+                if len(line) > 0 and  line[0] == '#':
+                    print("<pre class='pre-comment'>", line, "</pre>", file=ff)
+                else:
+                    print("<pre>", line, "</pre>", file=ff)
+            for line in self._close_page():
+                print(line, file=ff)
 
 
 def main():
