@@ -93,6 +93,8 @@ class CpVerifyExpMergeConnections(pipeBase.PipelineTaskConnections,
             self.outputs.remove("outputMatrix")
         if not self.config.hasInputResults:
             self.inputs.remove("inputResults")
+        if self.config.doDropStats:
+            self.outputs.remove("outputStats")
 
 
 class CpVerifyExpMergeConfig(pipeBase.PipelineTaskConfig,
@@ -114,6 +116,11 @@ class CpVerifyExpMergeConfig(pipeBase.PipelineTaskConfig,
     hasInputResults = pexConfig.Field(
         dtype=bool,
         doc="Are there results tables to merge?",
+        default=False,
+    )
+    doDropStats = pexConfig.Field(
+        dtype=bool,
+        doc="Drop to-be-deprecated internal stats files to avoid butler dimension mismatch?",
         default=False,
     )
 
@@ -443,6 +450,10 @@ class CpVerifyRunMergeConnections(pipeBase.PipelineTaskConnections,
         if not self.config.hasMatrixCatalog:
             self.inputs.remove("inputMatrix")
             self.outputs.remove("outputMatrix")
+        if not self.config.hasInputResults:
+            self.inputs.remove("inputResults")
+        if self.config.doDropStats:
+            self.outputs.remove("outputStats")
 
 
 class CpVerifyRunMergeConfig(CpVerifyExpMergeConfig,
@@ -524,6 +535,10 @@ class CpVerifyExpMergeByFilterConnections(pipeBase.PipelineTaskConnections,
         if not self.config.hasMatrixCatalog:
             self.inputs.remove("inputMatrix")
             self.outputs.remove("outputMatrix")
+        if not self.config.hasInputResults:
+            self.inputs.remove("inputResults")
+        if self.config.doDropStats:
+            self.outputs.remove("outputStats")
 
 
 class CpVerifyExpMergeByFilterConfig(CpVerifyExpMergeConfig,
@@ -603,6 +618,10 @@ class CpVerifyRunMergeByFilterConnections(pipeBase.PipelineTaskConnections,
         if not self.config.hasMatrixCatalog:
             self.inputs.remove("inputMatrix")
             self.outputs.remove("outputMatrix")
+        if not self.config.hasInputResults:
+            self.inputs.remove("inputResults")
+        if self.config.doDropStats:
+            self.outputs.remove("outputStats")
 
 
 class CpVerifyRunMergeByFilterConfig(CpVerifyRunMergeConfig,
@@ -680,6 +699,10 @@ class CpVerifyVisitExpMergeConnections(pipeBase.PipelineTaskConnections,
         if not self.config.hasMatrixCatalog:
             self.inputs.remove("inputMatrix")
             self.outputs.remove("outputMatrix")
+        if not self.config.hasInputResults:
+            self.inputs.remove("inputResults")
+        if self.config.doDropStats:
+            self.outputs.remove("outputStats")
 
 
 class CpVerifyVisitExpMergeConfig(CpVerifyExpMergeConfig,
@@ -753,6 +776,10 @@ class CpVerifyVisitRunMergeConnections(pipeBase.PipelineTaskConnections,
         if not self.config.hasMatrixCatalog:
             self.inputs.remove("inputMatrix")
             self.outputs.remove("outputMatrix")
+        if not self.config.hasInputResults:
+            self.inputs.remove("inputResults")
+        if self.config.doDropStats:
+            self.outputs.remove("outputStats")
 
 
 class CpVerifyVisitRunMergeConfig(CpVerifyRunMergeConfig,
@@ -828,6 +855,10 @@ class CpVerifyCalibMergeConnections(pipeBase.PipelineTaskConnections,
         if not self.config.hasMatrixCatalog:
             self.inputs.remove("inputMatrix")
             self.outputs.remove("outputMatrix")
+        if not self.config.hasInputResults:
+            self.inputs.remove("inputResults")
+        if self.config.doDropStats:
+            self.outputs.remove("outputStats")
 
 
 class CpVerifyCalibMergeConfig(CpVerifyRunMergeConfig,
