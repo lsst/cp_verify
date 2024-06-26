@@ -24,10 +24,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-# import glob
-# import json
-# import numpy as np
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import os
@@ -38,15 +34,13 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-# import lsst.afw.image as afwImage
-
 from lsst.daf.butler import Butler
 from lsst.daf.butler.datastores.file_datastore.retrieve_artifacts import (
     determine_destination_for_retrieved_artifact,
 )
 from lsst.resources import ResourcePath
 from lsst.summit.utils import getQuantiles
-# from fgcm.fgcmUtilities import makeFigure  # This doesn't find it??
+
 
 class CpvReporter():
     DATASET_MAP = {
