@@ -24,7 +24,6 @@ tasks:
       connections.inputResults: "verifyFlatDetResults"
       connections.outputStats: "verifyFlatExpStats"
       connections.outputResults: "verifyFlatExpResults"
-      doDropStats: true
       hasInputResults: true
       hasMatrixCatalog: false
       stageName: "flat"
