@@ -1,0 +1,9 @@
+description: cp_verify DARK calibration verification
+instrument: lsst.obs.rubinGenericCamera.StarTrackerFast
+imports:
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyDark.yaml
+tasks:
+  verifyDarkIsr:
+    class: lsst.ip.isr.IsrTask
+    config:
+      doOverscan: false

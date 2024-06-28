@@ -1,0 +1,8 @@
+description: cp_verify BIAS calibration verification
+instrument: lsst.obs.rubinGenericCamera.StarTrackerFast
+imports:
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyBias.yaml
+verifyBiasIsr:
+  class: lsst.ip.isr.IsrTask
+  config:
+    doOverscan: false
