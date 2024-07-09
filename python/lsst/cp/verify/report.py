@@ -113,7 +113,39 @@ class CpvReporter():
         'verifyPtcResults': "Catalog of PTC verification results."
     }
 
-    if False:
+    REPO = "/repo/embargo"
+    OPRE = 4
+    INST = 'LSSTComCamSim'
+    # INST = 'LATISS'
+    if (OPRE == 4) and (INST == 'LATISS'):
+        DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/PREOPS-5261"
+        COLLECTIONS = [
+            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyBias.20240625a",
+            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyDark.20240625a",
+            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-r.20240625a",
+            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-g.20240625a",
+            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-z.20240625a",
+            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-y.20240625a",
+            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-empty.20240625a",
+            "u/huanlin/PREOPS-5261/OR4_LATISS/ptcGen.20240625a.A",
+            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyBias.20240626a",
+            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyDark.20240626a",
+            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-r.20240626a",
+            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-g.20240626a",
+            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-z.20240626a",
+            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-y.20240626a",
+            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-white.20240626a",
+            "u/huanlin/PREOPS-5261/OR4_LATISS/ptcGen.20240626a.B",
+        ]
+    elif (OPRE == 4) and (INST == 'LSSTComCamSim'):
+        REPO = 'embargo_or4'
+        DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/PREOPS-5262"
+        COLLECTIONS = [
+            "u/huanlin/PREOPS-5262/OR4_LSSTComCamSim/verifyBias.20240625a",
+            "u/huanlin/PREOPS-5262/OR4_LSSTComCamSim/verifyDark.20240625a",
+            "u/huanlin/PREOPS-5262/OR4_LSSTComCamSim/verifyFlat-i06.20240625a",
+        ]
+    elif (OPRE == 'cal') and (INST == 'LATISS'):
         DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/PREOPS-5181/"
         COLLECTIONS = [
             "u/huanlin/PREOPS-5181/CR1_LATISS/verifyBias.20240529a",
@@ -140,7 +172,7 @@ class CpvReporter():
             "u/huanlin/PREOPS-5181/CR1_LATISS/ptcGen.20240530a",
             "u/huanlin/PREOPS-5181/CR1_LATISS/ptcGen.20240530a.ABC",
         ]
-    else:
+    elif (OPRE == 'cal') and (INST == 'LSSTComCamSim'):
         DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/PREOPS-5182/"
         COLLECTIONS = [
             "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyBias.20240528a",
@@ -150,9 +182,11 @@ class CpvReporter():
             "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyDark.20240530a",
             "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyFlat-i06.20240530a",
         ]
+
     DO_COPY = True
     DO_OVERWRITE = False
-    def __init__(self, repo="/repo/embargo", **kwargs):
+    
+    def __init__(self, repo=REPO, **kwargs):
         super().__init__()
         self.datasets = []
         self.out_files = {
@@ -215,16 +249,15 @@ class CpvReporter():
 
                         if willCopy:
                             data = self.butler.get(ref)
-                            self.fits_to_png(data, png_uri.path, f"{ref.datasetType.name} {ref.dataId}")
-                    elif target_uri.getExtension().lower() == ".parq" and \
-                         dataset['storage_class'] in ('ArrowAstropy', ):
+                            self.fits_to_png(data, png_uri, f"{ref.datasetType.name} {ref.dataId}")
+                    elif target_uri.getExtension().lower() == ".parq" and dataset['storage_class'] in ('ArrowAstropy', ):
                         # Let's convert the table for now
                         html_uri = target_uri.updatedExtension("html")
                         dataset['uri'] = html_uri
                         if os.path.exists(html_uri.path):
                             if willCopy and not doOverwrite:
                                 willCopy = False
-                        willCopy=True
+                        willCopy = True
                         if willCopy:
                             data = self.butler.get(ref)
                             files_created = self.parq_to_html(data, html_uri)
@@ -317,7 +350,6 @@ class CpvReporter():
                          f"<td>{ds['dataId']}</td>", f"<td>{ds['collection']}</td>",
                          "</tr>"])
 
-
     def write_pages(self):
         for ff, contents in self.out_files.items():
             reportOut = os.path.join(self.DESTINATION, ff)
@@ -332,7 +364,7 @@ class CpvReporter():
             "<html>", "<head>", "<style> ",
             " * { margin: 0; padding: 0;}",
             " .imgbox { display: grid; height: 100%; }",
-            " .center-fit { max-width: 100%; max-height: 100vh; margin:auto; }",
+            # " .center-fit { max-width: 100%; max-height: 100vh; margin:auto; }",
             " .pre-comment { color: red; }",
             " td { padding: 0 15px; }",
             " .ctable { display: table; }",
@@ -343,6 +375,7 @@ class CpvReporter():
             '<base target="_parent">',
             "</head>",
             "<body>",
+
             '<map name="atools_comcam">',
             '<area shape="rect" coords="325,1600,780,1155" alt="S00" href="S00.html">',
             '<area shape="rect" coords="325,1130,780,685" alt="S01" href="S01.html">',
@@ -352,21 +385,58 @@ class CpvReporter():
             '<area shape="rect" coords="795,660,1250,215" alt="S02" href="S12.html">',
             '<area shape="rect" coords="1265,1600,1720,1155" alt="S00" href="S20.html">',
             '<area shape="rect" coords="1265,1130,1720,685" alt="S01" href="S21.html">',
-            '<area shape="rect" coords="1265,660,1720,215" alt="S02' href="S22.html'>',
+            '<area shape="rect" coords="1265,660,1720,215" alt="S02" href="S22.html">',
             '</map>',
+
             '<map name="atools_latiss">',
-            '<area shape="rect" coords="
- <!-- (317,1600) @ 490, 670, 845, 1020, 1197, 1375, 1550, 1725 -->
- <!--            @ 909, 1380 -->
-</map>
-<map name="mosaic_latiss">
- <!-- (115, 431) - (500, 50) // 8, 2 -->
-</map>
-<map name="mosaic_comcam">
- <!-- (111, 437) - (240, 313) , (244, 437) - (372, 314), (376, 438) - (503, 313) -->
- <!--                                                          306) - (504, 180) -->
- <!-- 							       175) - (504, 47)  -->
-</map>
+            '<area shape="rect" coords="317,1400,490,1380" alt="C10" href="C10.html">',
+            '<area shape="rect" coords="490,1600,670,1380" alt="C11" href="C11.html">',
+            '<area shape="rect" coords="670,1600,845,1380" alt="C12" href="C12.html">',
+            '<area shape="rect" coords="845,1600,1020,1380" alt="C13" href="C13.html">',
+            '<area shape="rect" coords="1020,1600,1197,1380" alt="C14" href="C14.html">',
+            '<area shape="rect" coords="1197,1600,1376,1380" alt="C15" href="C15.html">',
+            '<area shape="rect" coords="1375,1600,1550,1380" alt="C16" href="C16.html">',
+            '<area shape="rect" coords="1550,1600,1725,1380" alt="C17" href="C17.html">',
+            '<area shape="rect" coords="317,1380,490,909" alt="C00" href="C00.html">',
+            '<area shape="rect" coords="490,1380,670,909" alt="C01" href="C01.html">',
+            '<area shape="rect" coords="670,1380,845,909" alt="C02" href="C02.html">',
+            '<area shape="rect" coords="845,1380,1020,909" alt="C03" href="C03.html">',
+            '<area shape="rect" coords="1020,1380,1197,909" alt="C04" href="C04.html">',
+            '<area shape="rect" coords="1197,1380,1376,909" alt="C05" href="C05.html">',
+            '<area shape="rect" coords="1375,1380,1550,909" alt="C06" href="C06.html">',
+            '<area shape="rect" coords="1550,1380,1725,909" alt="C07" href="C07.html">',
+            '</map>'
+
+            '<map name="mosaic_latiss">',
+            '<area shape="rect" coords="115,431,163,241" alt="C10" href="C10.html">',
+            '<area shape="rect" coords="163,431,211,241" alt="C11" href="C11.html">',
+            '<area shape="rect" coords="211,431,260,241" alt="C12" href="C12.html">',
+            '<area shape="rect" coords="260,431,307,241" alt="C13" href="C13.html">',
+            '<area shape="rect" coords="307,431,356,241" alt="C14" href="C14.html">',
+            '<area shape="rect" coords="356,431,404,241" alt="C15" href="C15.html">',
+            '<area shape="rect" coords="404,431,451,241" alt="C16" href="C16.html">',
+            '<area shape="rect" coords="451,431,500,241" alt="C17" href="C17.html">',
+            '<area shape="rect" coords="115,241,163,50" alt="C00" href="C00.html">',
+            '<area shape="rect" coords="163,241,211,50" alt="C01" href="C01.html">',
+            '<area shape="rect" coords="211,241,260,50" alt="C02" href="C02.html">',
+            '<area shape="rect" coords="260,241,307,50" alt="C03" href="C03.html">',
+            '<area shape="rect" coords="307,241,356,50" alt="C04" href="C04.html">',
+            '<area shape="rect" coords="356,241,404,50" alt="C05" href="C05.html">',
+            '<area shape="rect" coords="404,241,451,50" alt="C06" href="C06.html">',
+            '<area shape="rect" coords="451,241,500,50" alt="C07" href="C07.html">',
+            '</map>'
+
+            '<map name="mosaic_comcam">',
+            '<area shape="rect" coords="111,175,240,47" alt="S00" href="S00.html">',
+            '<area shape="rect" coords="111,175,240,47" alt="S01" href="S01.html">',
+            '<area shape="rect" coords="111,175,240,47" alt="S02" href="S02.html">',
+            '<area shape="rect" coords="244,306,372,180" alt="S00" href="S10.html">',
+            '<area shape="rect" coords="244,306,372,180" alt="S01" href="S11.html">',
+            '<area shape="rect" coords="244,306,372,180" alt="S02" href="S12.html">',
+            '<area shape="rect" coords="376,438,503,313" alt="S00" href="S20.html">',
+            '<area shape="rect" coords="376,438,503,313" alt="S01" href="S21.html">',
+            '<area shape="rect" coords="376,438,503,313" alt="S02" href="S22.html">',
+            '</map>',
         ]
 
     @staticmethod
@@ -378,14 +448,104 @@ class CpvReporter():
     def relative_file(filename):
         return re.sub(r"^.*/src/", "./src/", filename)
 
+    def svg_atools_latiss(self, relative_file, page):
+        """This handles image maps:"""
+        page.extend(['<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 3600 1800">',
+                     f'<image width="3600" height="1800" xlink:href="{relative_file}"></image>',
+                     '<a xlink:href="./c10.html"> <rect x="317" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c11.html"> <rect x="490" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c12.html"> <rect x="670" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c13.html"> <rect x="845" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c14.html"> <rect x="1020" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c15.html"> <rect x="1197" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c16.html"> <rect x="1375" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c17.html"> <rect x="1550" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c07.html"> <rect x="1550" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c06.html"> <rect x="1375" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c05.html"> <rect x="1197" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c04.html"> <rect x="1020" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c03.html"> <rect x="845" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c02.html"> <rect x="670" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c01.html"> <rect x="490" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c00.html"> <rect x="317" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '</svg>'])
+
+    def svg_atools_comcam(self, relative_file, page):
+        page.extend(['<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 3600 1800">',
+                     f'<image width="3600" height="1800" xlink:href="{relative_file}"></image>',
+                     '<a xlink:href="./S00.html"> <rect x="317" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S01.html"> <rect x="490" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S02.html"> <rect x="670" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S10.html"> <rect x="845" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S11.html"> <rect x="1020" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S12.html"> <rect x="1197" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S20.html"> <rect x="1375" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S21.html"> <rect x="1550" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S22.html"> <rect x="1550" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '</svg>'])
+
+    def svg_mosaic_latiss(self, relative_file, page):
+        page.extend(['<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 3600 1800">',
+                     f'<image width="3600" height="1800" xlink:href="{relative_file}"></image>',
+                     '<a xlink:href="./c10.html"> <rect x="317" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c11.html"> <rect x="490" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c12.html"> <rect x="670" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c13.html"> <rect x="845" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c14.html"> <rect x="1020" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c15.html"> <rect x="1197" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c16.html"> <rect x="1375" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c17.html"> <rect x="1550" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c07.html"> <rect x="1550" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c06.html"> <rect x="1375" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c05.html"> <rect x="1197" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c04.html"> <rect x="1020" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c03.html"> <rect x="845" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c02.html"> <rect x="670" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c01.html"> <rect x="490" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c00.html"> <rect x="317" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '</svg>'])
+
+    def svg_mosaic_comcam(self, relative_file, page):
+        page.extend(['<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 640 480">',
+                     f'<image width="640" height="480" xlink:href="{relative_file}"></image>',
+                     '<a xlink:href="./S00.html"> <rect x="111" y="306" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S01.html"> <rect x="111" y="175" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S02.html"> <rect x="111" y="50" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S10.html"> <rect x="244" y="306" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S11.html"> <rect x="244" y="175" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S12.html"> <rect x="244" y="50" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S20.html"> <rect x="376" y="306" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S21.html"> <rect x="376" y="175" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S22.html"> <rect x="376" y="50" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
+                     '</svg>'])
+
+
     def image_handler(self, image_filename, page):
         """Handle images."""
         relative_file = self.relative_file(image_filename)
+        do_simple = True
         if "Mosaic64" not in relative_file:
-            page.append(f'<a href="{relative_file}">')
-            page.append(f'<img class="center-fit" src="{relative_file}">')
-            page.append('</a>')
+            # Skip Mosaic64
+            useMap = ''
+            if self.INST == 'LATISS':
+                if "Mosaic" in relative_file:
+                    # This is a fits_to_png thing
+                    useMap = f"usemap='#mosaic_latiss'"
+                else:
+                    self.svg_atools_latiss(relative_file, page)
+                    do_simple = False
+            elif self.INST in ('LSSTComCam', 'LSSTComCamSim'):
+                if "Mosaic" in relative_file:
+                    # This is a fits_to_png thing
+                    self.svg_mosaic_comcam(relative_file, page)
+                    do_simple = False
+                else:
+                    useMap = f"usemap='#atools_comcam'"
 
+            # page.append(f'<a href="{relative_file}">')
+            if do_simple:
+                page.append(f'<img class="center-fit" {useMap} src="{relative_file}">')
+            # page.append('</a>')
 
     def block(self, dataset, page, link=None, doc=None):
         if doc is None:
@@ -460,7 +620,7 @@ class CpvReporter():
             array = data.array
 
         # This should be available in lsst.utils.plotting, as of DM-44725.
-        fig =  Figure()
+        fig = Figure()
         canvas = FigureCanvasAgg(fig)
         ax = fig.gca()
         ax.clear()
@@ -542,7 +702,7 @@ class CpvReporter():
                 print(line, file=ff)
                 # import pdb; pdb.set_trace()
             for line in data.saveToString().split("\n"):
-                if len(line) > 0 and  line[0] == '#':
+                if len(line) > 0 and line[0] == '#':
                     print("<pre class='pre-comment'>", line, "</pre>", file=ff)
                 else:
                     print("<pre>", line, "</pre>", file=ff)
