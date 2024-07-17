@@ -22,31 +22,74 @@ tasks:
       growSaturationFootprintSize: 0
       doCalculateStatistics: true
       isrStats.doCopyCalibDistributionStatistics: true
+  verifyDefectsIndividualChar:
+    class: lsst.pipe.tasks.characterizeImage.CharacterizeImageTask
+    config:
+      connections.exposure: "verifyDefectsIndividualIsrExp"
+      connections.characterized: "verifyDefectsIndividualIcExp"
+      connections.sourceCat: "verifyDefectsIndividualIcSrc"
+      doApCorr: false
+      doDeblend: false
+      doNormalizedCalibration: false
+  verifyUncorrectedDefectsIndividualIsr:
+    class: lsst.ip.isr.IsrTask
+    config:
+      connections.ccdExposure: "raw"
+      connections.outputExposure: "verifyUncorrectedDefectsIndividualIsrExp"
+      doDefect: false
+      doCrosstalk: true
+  verifyUncorrectedDefectsIndividualChar:
+    class: lsst.pipe.tasks.characterizeImage.CharacterizeImageTask
+    config:
+      connections.exposure: "verifyUncorrectedDefectsIndividualIsrExp"
+      connections.characterized: "verifyUncorrectedDefectsIndividualIcExp"
+      connections.sourceCat: "verifyUncorrectedDefectsIndividualIcSrc"
+      connections.backgroundModel: "verifyUncorrectedDefectsIndividualBackground"
+      connections.outputSchema: "verifyUncorrectedDefectsIndividual_schema"
+      doApCorr: false
+      doDeblend: false
+      doMeasurePsf: false
+      doNormalizedCalibration: false
   verifyDefectsIndividualDet:
     class: lsst.cp.verify.CpVerifyDefectsTask
     config:
-      connections.inputExp: "verifyDefectsIndividualIsrExp"
+      connections.inputExp: "verifyDefectsIndividualIcExp"
+      connections.uncorrectedExp: "verifyUncorrectedDefectsIndividualIcExp"
+      connections.inputCatalog: "verifyDefectsIndividualIcSrc"
+      connections.uncorrectedCatalog: "verifyUncorrectedDefectsIndividualIcSrc"
       connections.outputStats: "verifyDefectsIndividualDetStats"
       connections.outputResults: "verifyDefectsIndividualDetResults"
       doVignette: false
       useReadNoise: false
       useIsrStatistics: true
+      hasMatrixCatalog: false
   verifyDefectsIndividualExp:
-    class: lsst.cp.verify.CpVerifyExpMergeTask
+    class: lsst.cp.verify.CpVerifyVisitExpMergeTask
     config:
       connections.inputStats: "verifyDefectsIndividualDetStats"
       connections.inputResults: "verifyDefectsIndividualDetResults"
       connections.outputStats: "verifyDefectsIndividualExpStats"
       connections.outputResults: "verifyDefectsIndividualExpResults"
+      mergeDimension: "visit"
+      hasInputResults: true
+      hasMatrixCatalog: false
   verifyDefectsIndividual:
-    class: lsst.cp.verify.CpVerifyRunMergeTask
+    class: lsst.cp.verify.CpVerifyVisitRunMergeTask
     config:
       connections.inputStats: "verifyDefectsIndividualExpStats"
       connections.inputResults: "verifyDefectsIndividualExpResults"
-      connections.outputStats: "verifyDefectsIndividualStats"
+      connections.outputStats: "verifyDefectsPostsFlatStats"
       connections.outputResults: "verifyDefectsIndividualResults"
+      mergeDimension: "visit"
+      hasInputResults: true
+      hasMatrixCatalog: false
 contracts:
-  - verifyDefectsIndividualDet.connections.inputExp == verifyDefectsIndividualIsr.connections.outputExposure
+  - verifyDefectsIndividualChar.connections.exposure == verifyDefectsIndividualIsr.connections.outputExposure
+  - verifyUncorrectedDefectsIndividualChar.connections.exposure == verifyUncorrectedDefectsIndividualIsr.connections.outputExposure
+  - verifyDefectsIndividualDet.connections.inputExp == verifyDefectsIndividualChar.connections.characterized
+  - verifyDefectsIndividualDet.connections.uncorrectedExp == verifyUncorrectedDefectsIndividualChar.connections.characterized
+  - verifyDefectsIndividualDet.connections.inputCatalog == verifyDefectsIndividualChar.connections.sourceCat
+  - verifyDefectsIndividualDet.connections.uncorrectedCatalog == verifyUncorrectedDefectsIndividualChar.connections.sourceCat
   - verifyDefectsIndividualExp.connections.inputStats == verifyDefectsIndividualDet.connections.outputStats
   - verifyDefectsIndividualExp.connections.inputResults == verifyDefectsIndividualDet.connections.outputResults
   - verifyDefectsIndividual.connections.inputStats == verifyDefectsIndividualExp.connections.outputStats
