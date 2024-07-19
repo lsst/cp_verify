@@ -60,6 +60,7 @@ class CpVerifyStatsConnections(
         doc="Input task metadata to extract statistics from.",
         storageClass="TaskMetadata",
         dimensions=["instrument", "exposure", "detector"],
+        deprecated="This connection is deprecated and will be removed after v28.",
     )
     inputCatalog = cT.Input(
         name="src",
@@ -512,25 +513,60 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
         metadataStats = {}
         keywordDict = self.config.metadataStatKeywords
 
-        if taskMetadata:
-            for key, value in keywordDict.items():
-                if value == "AMP":
-                    metadataStats[key] = {}
-                    for ampIdx, amp in enumerate(exposure.getDetector()):
+        # Changing how we're handling this: keywordDict contains (key,
+        # storeKey) pairs, where `key` is what we're trying to find,
+        # and `storeKey` is the name we'll use to store the value we
+        # find from `key`.
+        expMD = exposure.getMetadata()
+        for key, storeKey in keywordDict.items():
+            found = False
+            expectedKey = key
+            # Try to find this in the exposure metadata first:
+            if expectedKey in expMD:
+                metadataStats[storeKey] = expMD[expectedKey]
+                found = True
+            else:
+                # Maybe this is a per-amp quantity:
+                results = {}
+                for amp in exposure.getDetector():
+                    ampName = amp.getName()
+                    expectedKey = f"{key} {ampName}"
+                    if expectedKey in expMD:
+                        results[ampName] = expMD[expectedKey]
+                if len(results) != 0:
+                    for amp in exposure.getDetector():
+                        ampName = amp.getName()
+                        if ampName not in results:
+                            results[ampName] = np.nan
+                    metadataStats[storeKey] = results
+                    found = True
+
+            if not found and taskMetadata is not None:
+                # Try to find this in the task metadata.  The values
+                # will be in a nested dict.
+                expectedKey = key
+                for sectionKey in taskMetadata.keys():
+                    if expectedKey in taskMetadata[sectionKey]:
+                        metadataStats[storeKey] = taskMetadata[sectionKey][expectedKey]
+                        found = True
+            if not found and taskMetadata is not None:
+                # Try again, but using per-amp keys:
+                results = {}
+                for sectionKey in taskMetadata:
+                    for amp in exposure.getDetector():
                         ampName = amp.getName()
                         expectedKey = f"{key} {ampName}"
-                        metadataStats[key][ampName] = None
-                        for name in taskMetadata:
-                            if expectedKey in taskMetadata[name]:
-                                metadataStats[key][ampName] = taskMetadata[name][
-                                    expectedKey
-                                ]
-                else:
-                    # Assume it's detector-wide.
-                    expectedKey = key
-                    for name in taskMetadata:
-                        if expectedKey in taskMetadata[name]:
-                            metadataStats[key] = taskMetadata[name][expectedKey]
+                        if expectedKey in taskMetadata[sectionKey]:
+                            results[ampName] = taskMetadata[sectionKey][expectedKey]
+                    if len(results) != 0:
+                        for amp in exposure.getDetector():
+                            ampName = amp.getName()
+                            if ampName not in results:
+                                results[ampName] = np.nan
+                        metadataStats[storeKey] = results
+                        found = True
+            if not found:
+                self.log.debug(f"Could not find expected key: {key}")
         return metadataStats
 
     def amplifierStats(self, exposure, keywordDict, statControl, failAll=False):
