@@ -118,7 +118,7 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
 
             # DMTN-101 Test 4.3: Clipped mean matches readNoise.  This
             # test should use the nominal detector read noise.  The
-            # f"RESIDUAL STDEV {ampName}" metadata entry contains the
+            # f"READ_NOISE {ampName}" metadata entry contains the
             # measured dispersion in the overscan-corrected overscan
             # region, which should provide an estimate of the read
             # noise.  However, directly using this value will cause
@@ -194,7 +194,7 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
                 rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
 
         # METADATA results
-        if 'RESIDUAL STDEV' in statisticsDict["METADATA"]:
+        if 'READ_NOISE' in statisticsDict["METADATA"]:
             for ampName, value in statisticsDict["METADATA"]["READ_NOISE"].items():
                 rows[ampName][f"{self.config.stageName}_READ_NOISE"] = value
 
