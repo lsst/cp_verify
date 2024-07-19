@@ -202,14 +202,16 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
             if "AMPCORR" in statisticsDict["ISR"]:
                 matrixRowList = statisticsDict["ISR"]["AMPCORR"]
 
-            for ampName, stats in statisticsDict["ISR"]["BIASSHIFT"].items():
-                rows[ampName][f"{self.config.stageName}_BIAS_SHIFT_COUNT"] = len(stats['BIAS_SHIFTS'])
-                rows[ampName][F"{self.config.stageName}_BIAS_SHIFT_NOISE"] = stats['LOCAL_NOISE']
+            if "BIASSHIFT" in statisticsDict["ISR"]:
+                for ampName, stats in statisticsDict["ISR"]["BIASSHIFT"].items():
+                    rows[ampName][f"{self.config.stageName}_BIAS_SHIFT_COUNT"] = len(stats['BIAS_SHIFTS'])
+                    rows[ampName][F"{self.config.stageName}_BIAS_SHIFT_NOISE"] = stats['LOCAL_NOISE']
 
-            for ampName, stats in statisticsDict["ISR"]["CALIBDIST"].items():
-                for level in self.config.expectedDistributionLevels:
-                    key = f"LSST CALIB {self.config.stageName.upper()} {ampName} DISTRIBUTION {level}-PCT"
-                    rows[ampName][f"{self.config.stageName}_BIAS_DIST_{level}_PCT"] = stats[key]
+            if "CALIBDIST" in statisticsDict["ISR"]:
+                for ampName, stats in statisticsDict["ISR"]["CALIBDIST"].items():
+                    for level in self.config.expectedDistributionLevels:
+                        key = f"LSST CALIB {self.config.stageName.upper()} {ampName} DISTRIBUTION {level}-PCT"
+                        rows[ampName][f"{self.config.stageName}_BIAS_DIST_{level}_PCT"] = stats[key]
 
             if "PROJECTION" in statisticsDict["ISR"]:
                 # We need all rows of biasParallelProfile and
