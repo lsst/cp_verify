@@ -6,3 +6,7 @@ verifyBiasIsr:
   class: lsst.ip.isr.IsrTask
   config:
     doOverscan: false
+    doDefect: false
+    doCrosstalk: false
+    isrStats.doBiasShiftStatistics: false
+    isrStats.doAmplifierCorrelationStatistics: false
