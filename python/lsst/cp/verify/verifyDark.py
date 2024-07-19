@@ -22,7 +22,6 @@ import numpy as np
 
 from .verifyStats import CpVerifyStatsConfig, CpVerifyStatsTask, CpVerifyStatsConnections
 
-
 __all__ = ['CpVerifyDarkConfig', 'CpVerifyDarkTask']
 
 
