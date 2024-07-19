@@ -151,10 +151,18 @@ class VerifyBiasTestCase(lsst.utils.tests.TestCase):
         updateMockExp(self.inputExp)
 
         self.camera = isrMock.IsrMock().getCamera()
+        detector = self.camera[20]
+        self.inputExp.setDetector(detector)
         self.dimensions = {'instrument': self.camera.getName(),
                            'exposure': 1234,
-                           'detector': self.camera[10].getName(),
+                           'detector': detector.getName(),
                            }
+
+        # This is here to test accessing metadata info from the
+        # exposure header.
+        md = self.inputExp.getMetadata()
+        for amp in detector.getAmplifiers():
+            md[f"LSST ISR OVERSCAN RESIDUAL SERIAL STDEV {amp.getName()}"] = 4.25
 
     def test_bias(self):
         """Test a subset of the output values to identify that the
@@ -170,6 +178,8 @@ class VerifyBiasTestCase(lsst.utils.tests.TestCase):
         self.assertAlmostEqual(biasStats['AMP']['C:0,0']['MEAN'], 2.08672, 4)
         self.assertAlmostEqual(biasStats['AMP']['C:0,0']['NOISE'], 13.99547, 4)
         self.assertAlmostEqual(biasStats['AMP']['C:0,0']['CR_NOISE'], 14.11526, 4)
+        # This order swap in intended. :sad-panda-emoji:
+        self.assertAlmostEqual(biasStats['METADATA']['READ_NOISE']['C:0,0'], 4.25)
 
         self.assertIn(biasStats['SUCCESS'], [True, False])
 
@@ -193,19 +203,20 @@ class VerifyDarkTestCase(lsst.utils.tests.TestCase):
         mi.scaledMinus(1.0, fakeDark.getMaskedImage())
         updateMockExp(self.inputExp)
 
-        # Use this to test the metadataStats code, as this is the case
-        # it's designed to fix.
-        metadataContents = TaskMetadata()
-        metadataContents["RESIDUAL STDEV C:0,0"] = 12.0
-        metadataContents["RESIDUAL STDEV"] = 24.0
-        self.metadata = TaskMetadata()
-        self.metadata["subGroup"] = metadataContents
-
         self.camera = isrMock.IsrMock().getCamera()
+        detector = self.camera[20]
+        self.inputExp.setDetector(detector)
         self.dimensions = {'instrument': self.camera.getName(),
                            'exposure': 1234,
-                           'detector': self.camera[10].getName(),
+                           'detector': detector.getName(),
                            }
+
+        # Use this to test accessing info from the TaskMetadata:
+        metadataContents = TaskMetadata()
+        for amp in detector.getAmplifiers():
+            metadataContents[f"RESIDUAL STDEV {amp.getName()}"] = 5.24
+        self.metadata = TaskMetadata()
+        self.metadata["isr"] = metadataContents
 
     def test_dark(self):
         """Test a subset of the output values to identify that the
@@ -223,6 +234,8 @@ class VerifyDarkTestCase(lsst.utils.tests.TestCase):
         self.assertAlmostEqual(darkStats['AMP']['C:0,0']['MEAN'], 2.0043, 4)
         self.assertAlmostEqual(darkStats['AMP']['C:0,0']['NOISE'], 3.12948, 4)
         self.assertAlmostEqual(darkStats['AMP']['C:0,0']['CR_NOISE'], 3.15946, 4)
+        # This order swap in intended. :sad-panda-emoji:
+        self.assertAlmostEqual(darkStats['METADATA']['READ_NOISE']['C:0,0'], 5.24)
 
         self.assertIn(darkStats['SUCCESS'], [True, False])
 
