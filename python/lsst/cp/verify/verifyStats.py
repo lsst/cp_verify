@@ -283,8 +283,6 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
 
         # Pass the full dataId, as we want to retain filter info.
         inputs["dimensions"] = dict(inputRefs.inputExp.dataId.mapping)
-        print("CZW", inputs["dimensions"], dict(inputRefs.inputExp.dataId.mapping))
-        # import pdb; pdb.set_trace()
         outputs = self.run(**inputs)
         butlerQC.put(outputs, outputRefs)
 
