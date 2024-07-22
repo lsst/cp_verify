@@ -22,7 +22,6 @@ import numpy as np
 
 from .verifyStats import CpVerifyStatsConfig, CpVerifyStatsTask, CpVerifyStatsConnections
 
-
 __all__ = ['CpVerifyDarkConfig', 'CpVerifyDarkTask']
 
 
@@ -37,7 +36,10 @@ class CpVerifyDarkConfig(CpVerifyStatsConfig,
         self.imageStatKeywords = {'MEAN': 'MEAN',  # noqa F841
                                   'NOISE': 'STDEVCLIP', }
         self.crImageStatKeywords = {'CR_NOISE': 'STDEV', }  # noqa F841
-        self.metadataStatKeywords = {'RESIDUAL STDEV': 'AMP', }  # noqa F841
+        self.metadataStatKeywords = {
+            'RESIDUAL STDEV': 'READ_NOISE',
+            'LSST ISR OVERSCAN RESIDUAL SERIAL STDEV': 'READ_NOISE',
+        }  # noqa F841
 
 
 class CpVerifyDarkTask(CpVerifyStatsTask):
@@ -81,7 +83,7 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
 
             # DMTN-101 Test 5.3: Clipped mean matches readNoise.  This
             # test should use the nominal detector read noise.  The
-            # f"RESIDUAL STDEV {ampName}" metadata entry contains the
+            # f"READ_NOISE" metadata entry contains the
             # measured dispersion in the overscan-corrected overscan
             # region, which should provide an estimate of the read
             # noise.  However, directly using this value will cause
@@ -115,12 +117,10 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
             # used in that test may be incorrect, and the nominal read
             # noise may need recalculation.  Only perform this check
             # if the metadataStats contain the required entry.
-            if 'RESIDUAL STDEV' in metadataStats and ampName in metadataStats['RESIDUAL STDEV']:
-                verify['READ_NOISE_CONSISTENT'] = True
-                overscanReadNoise = metadataStats['RESIDUAL STDEV'][ampName]
-                if overscanReadNoise:
-                    if ((overscanReadNoise - readNoise)/readNoise > 0.05):
-                        verify['READ_NOISE_CONSISTENT'] = False
+            overscanReadNoise = metadataStats['READ_NOISE'][ampName]
+            if overscanReadNoise:
+                if ((overscanReadNoise - readNoise)/readNoise > 0.05) or not np.isfinite(overscanReadNoise):
+                    verify['READ_NOISE_CONSISTENT'] = False
 
             verifyStats[ampName] = verify
 
@@ -158,7 +158,7 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
                 rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
 
         # METADATA results
-        for ampName, value in statisticsDict["METADATA"]["RESIDUAL STDEV"].items():
+        for ampName, value in statisticsDict["METADATA"]["READ_NOISE"].items():
             rows[ampName][f"{self.config.stageName}_READ_NOISE"] = value
 
         # ISR results
