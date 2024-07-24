@@ -24,14 +24,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import argparse
+import logging
 import matplotlib.colors as colors
-import matplotlib.pyplot as plt
+import numpy as np
 import os
 import re
+import yaml
 
 from matplotlib import cm
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_agg import FigureCanvasAgg
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from lsst.daf.butler import Butler
@@ -39,203 +40,114 @@ from lsst.daf.butler.datastores.file_datastore.retrieve_artifacts import (
     determine_destination_for_retrieved_artifact,
 )
 from lsst.resources import ResourcePath
-from lsst.summit.utils import getQuantiles
+from lsst.utils import getPackageDir
+from lsst.utils.plotting import make_figure
 
 
 class CpvReporter():
-    DATASET_MAP = {
-        'bias': [
-            'bias',
-            'biasMosaic8',
-            'verifyBiasResults',
-            'verifyBiasResidual8',
-            'cpBiasCore_metrics',
-            'cpBiasCore_biasReadNoisePerAmp_FocalPlaneGeometryPlot',
-            'cpBiasCore_biasMeanPerAmp_FocalPlaneGeometryPlot',
-            'cpBiasCore_biasNoisePerAmp_FocalPlaneGeometryPlot',
-            'cpBiasCore_biasCrNoisePerAmp_FocalPlaneGeometryPlot',
-            'cpBiasCore_biasCornerMeanPerAmp_FocalPlaneGeometryPlot',
-            'biasIsr_config',
-            'verifyBiasApply_config'
-        ],
-        'dark': [
-            'dark',
-            'darkMosaic8',
-            'verifyDarkResults',
-            'verifyDarkResidual8',
-            'darkIsr_config',
-            'verifyDarkApply_config',
-        ],
-        'flat': [
-            'flat',
-            'flatMosaic8',
-            'verifyFlatResults',
-            'verifyFlatResidual8',
-            'flatIsr_config',
-            'verifyFlatApply_config',
-        ],
-        'defects': [
-            'defects',
-            'verifyDefectsResults',
-        ],
+    """A class to generate calibration verification reports.
 
-        'ptc': [
-            'ptc',
-            'verifyPtcResults',
-            'cpPtcCore_metrics',
-            'cpPtcCore_ptcGainPerAmp_FocalPlaneGeometryPlot',
-            'cpPtcCore_ptcNoisePerAmp_FocalPlaneGeometryPlot',
-            'cpPtcCore_ptcA00PerAmp_FocalPlaneGeometryPlot',
-            'cpPtcCore_ptcTurnoffPerAmp_FocalPlaneGeometryPlot',
-            'cpPtcCore_ptcTurnoffPerAmp_FocalPlaneGeometryPlot',
-            'cpPtcCore_ptcRowMeanVarianceSlopePerAmp_FocalPlaneGeometryPlot',
-            'cpPtcDetCore_ptcPlot_GridPlot',
+    Parameters
+    ----------
+    repo : `str`
+        The location of the butler repository to retrieve results
+        from.
+    instrument : `str`
+        The instrument associated with this data.
+    output_path : `str`
+        The location the report will be written to.
+    collections : `list` [`str`]
+        A list of collections to search.
+    **kwargs :
+        Other keyword parameters.  Currently parsed values:
 
-        ],
-        'linearity': [],
-        'crosstalk': [],
-        'bfk': [],
-        'cti': [],
-    }
+        - ``do_copy``: Should files be copied from butler (`bool`).
+        - ``do_overwrite``: Should pre-existing files be overwritten (`bool`).
+    """
 
-    DOC_MAP = {
-        'bias': "The combined bias calibration.",
-        'biasMosaic8': "Mosaic of combined bias calibration.",
-        'verifyBiasResults': "Catalog of combined bias verification results.",
-        'verifyBiasResidual8': "Mosaic of bias residuals (bias exposure corrected up through bias application).",
-        'cpBiasCore_metrics': "Core metric bundle for bias calibration.",
-        'cpBiasCore_biasCornerMeanPerAmp_FocalPlaneGeometryPlot': "The bias mean in 200x200 box at amp readout corner.",
-        'cpBiasCore_biasCrNoisePerAmp_FocalPlaneGeometryPlot': "The image noise measured after cosmic ray rejection.",
-        'cpBiasCore_biasMeanPerAmp_FocalPlaneGeometryPlot': "The image mean.",
-        'cpBiasCore_biasNoisePerAmp_FocalPlaneGeometryPlot': "The image noise.",
-        'cpBiasCore_biasReadNoisePerAmp_FocalPlaneGeometryPlot': "The noise in the serial overscan after overscan correction.",
-        'dark': "The combined dark calibration.",
-        'darkMosaic8': "Mosaic of combined dark calibration.",
-        'verifyDarkResults': "Catalog of combined dark verification results.",
-        'verifyDarkResidual8': "Mosaic of dark residuals (dark exposure corrected up through dark application).",
-        'flat': "The combined flat calibration.",
-        'flatMosaic8': "Mosaic of combined flat calibration.",
-        'verifyFlatResults': "Catalog of combined flat verification results.",
-        'verifyFlatResidual8': "Mosaic of flat residuals (flat exposure corrected up through flat application).",
-        'defects': "The combined defects calibration.",
-        'verifyDefectsResults': "Catalog of combined defect verification results.",
-        'ptc': "The photon transfer curve calibration.",
-        'verifyPtcResults': "Catalog of PTC verification results.",
-        'cpPtcCore_metrics': "Core metric bundle for ptc calibration.",
-        'cpPtcCore_ptcGainPerAmp_FocalPlaneGeometryPlot': "TBA",
-        'cpPtcCore_ptcNoisePerAmp_FocalPlaneGeometryPlot': "TBA",
-        'cpPtcCore_ptcA00PerAmp_FocalPlaneGeometryPlot': "TBA",
-        'cpPtcCore_ptcTurnoffPerAmp_FocalPlaneGeometryPlot': "TBA",
-        'cpPtcCore_ptcTurnoffPerAmp_FocalPlaneGeometryPlot': "TBA",
-        'cpPtcCore_ptcRowMeanVarianceSlopePerAmp_FocalPlaneGeometryPlot': "TBA",
-        'cpPtcDetCore_ptcPlot': "TBA",
-        'cpPtcDetCore_ptcPlot_GridPlot': "TBA",
-    }
-
-    REPO = "/repo/embargo"
-    OPRE = 4
-    INST = 'LSSTComCamSim'
-    # INST = 'LATISS'
-    if (OPRE == 4) and (INST == 'LATISS'):
-        DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/PREOPS-5261"
-        COLLECTIONS = [
-            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyBias.20240625a",
-            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyDark.20240625a",
-            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-r.20240625a",
-            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-g.20240625a",
-            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-z.20240625a",
-            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-y.20240625a",
-            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-empty.20240625a",
-            "u/huanlin/PREOPS-5261/OR4_LATISS/ptcGen.20240625a.A",
-            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyBias.20240626a",
-            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyDark.20240626a",
-            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-r.20240626a",
-            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-g.20240626a",
-            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-z.20240626a",
-            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-y.20240626a",
-            "u/huanlin/PREOPS-5261/OR4_LATISS/verifyFlat-white.20240626a",
-            "u/huanlin/PREOPS-5261/OR4_LATISS/ptcGen.20240626a.B",
-        ]
-    elif (OPRE == 4) and (INST == 'LSSTComCamSim'):
-        REPO = 'embargo_or4'
-        DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/PREOPS-5262"
-        COLLECTIONS = [
-            "u/huanlin/PREOPS-5262/OR4_LSSTComCamSim/verifyBias.20240625a",
-            "u/huanlin/PREOPS-5262/OR4_LSSTComCamSim/verifyDark.20240625a",
-            "u/huanlin/PREOPS-5262/OR4_LSSTComCamSim/verifyFlat-i06.20240625a",
-        ]
-    elif (OPRE == 'cal') and (INST == 'LATISS'):
-        DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/PREOPS-5181/"
-        COLLECTIONS = [
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyBias.20240529a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyDark.20240529a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-r.20240529a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-g.20240529a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-z.20240529a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-y.20240529a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-white.20240529a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyBias.20240528a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyDark.20240528a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-r.20240528a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-g.20240528a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-z.20240528a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-y.20240528a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-empty.20240528a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/ptcGen.20240528a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyDark.20240530a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-r.20240530a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-g.20240530a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-z.20240530a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-y.20240530a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/verifyFlat-white.20240530a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/ptcGen.20240530a",
-            "u/huanlin/PREOPS-5181/CR1_LATISS/ptcGen.20240530a.ABC",
-        ]
-    elif (OPRE == 'cal') and (INST == 'LSSTComCamSim'):
-        DESTINATION = "/sdf/home/c/czw/public_html/cpv_reports/PREOPS-5182/"
-        COLLECTIONS = [
-            "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyBias.20240528a",
-            "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyDark.20240528a",
-            "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyFlat-i06.20240528a",
-            "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyBias.20240530a",
-            "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyDark.20240530a",
-            "u/huanlin/PREOPS-5182/CR1_LSSTComCamSim/verifyFlat-i06.20240530a",
-        ]
-
-    DO_COPY = True
-    DO_OVERWRITE = False
-    
-    def __init__(self, repo=REPO, **kwargs):
+    def __init__(self, repo, output_path, collections=[], **kwargs):
         super().__init__()
+        # Set source and destination information.
+        self.repo = repo
+        self.output_path = output_path
+        self.src_dir = os.path.join(self.output_path, "src")
+        self.collections = collections
+
+        # We need a log
+        self.log = logging.getLogger(__name__) if "log" not in kwargs else kwargs["log"]
+        # List of the datasets we need to process.  The datasets are
+        # dictionaries of parameters, including the dataset_type_name,
+        # the source collection, the butler dataIds, file locations,
+        # etc.
         self.datasets = []
+
+        # A dictionary of output html files that will be created.
+        # These are dictionaries with the key being the filename, and
+        # the values being arrays of strings that will be written
+        # one-per-line in the output html page.
         self.out_files = {
             'index.html': self._init_page(),
         }
-        self.repo = repo
+
+        # Instantiate a butler for our repository.
         self.butler = Butler(repo)
 
-    def generate_report(self):
-        src_dir = os.path.join(self.DESTINATION, "src")
-        os.makedirs(src_dir, exist_ok=True)
+        # Configure behavior from kwargs:
+        self.do_copy = kwargs['do_copy'] if 'do_copy' in kwargs else True
+        self.do_overwrite = kwargs['do_overwrite'] if 'do_overwrite' in kwargs else False
 
-        self.copy_datasets(doCopy=self.DO_COPY)
+        # Read dataset configuration yaml:
+        self.dataset_map = self._read_dataset_map()
+
+    def _read_dataset_map(self):
+        """Read dataset information from source yaml."""
+        filename = os.path.join(getPackageDir("cp_verify"),
+                                "python", "lsst", "cp", "verify", "configs", "report.yaml")
+        with open(filename) as in_file:
+            return yaml.safe_load(in_file)
+
+    def run(self):
+        """Generate the report"""
+        # Generate directories that will hold the output products.
+        os.makedirs(self.src_dir, exist_ok=True)
+
+        # Copy datasets:  This populates self.datasets.
+        self.copy_datasets()
+
+        # Parse datasets:  This determines what report pages should be made.
         self.parse_datasets()
+
+        # Write pages:  This saves the information to disk.
         self.write_pages()
 
-    def copy_datasets(self, doCopy=None, doOverwrite=None,
-                      collections=None,
-                      ):
-        doCopy = self.DO_COPY
-        doOverwrite = self.DO_OVERWRITE
-        collections = self.COLLECTIONS
-        # Based on https://github.com/lsst/daf_butler/blob/main/python/lsst/daf/butler/datastores/fileDatastore.py#L1978 # noqa W505
-        for stage, dataset_types in self.DATASET_MAP.items():
-            refs = self.butler.registry.queryDatasets(datasetType=dataset_types,
-                                                      collections=collections,
+    def copy_datasets(self):
+        """Copy datasets, similar to butler retrieve-artifacts.
+
+        See Also
+        --------
+        self.fits_to_png
+        self.parq_to_html
+        self.py_to_html
+        """
+        # Based on daf_butler fileDatastore.py#L1978
+        for stage, dataset_types in self.dataset_map['stages'].items():
+            # Iterate over each stage, getting all of that stage's datasets.
+            # Convert dict dataset_types to a list of strings:
+            if not dataset_types:
+                continue
+            dataset_type_names = list(dataset_types.keys())
+
+            # Find all the references to these datasets in our collections
+            refs = self.butler.registry.queryDatasets(datasetType=dataset_type_names,
+                                                      collections=self.collections,
                                                       where=None, findFirst=True)
+
             for ref in refs:
+                # Iterate over each reference
                 locations = self.butler._datastore._get_dataset_locations_info(ref)
-                print(f"Found {stage} {ref}")
+                self.log.warn(f"Found {stage} {ref}")
+
+                # This is our dataset information:
                 dataset = {'stage': stage,
                            'ref': ref,
                            'type': ref.datasetType.name,
@@ -247,76 +159,95 @@ class CpvReporter():
                            'physical_filter': ref.dataId.get('physical_filter', None),
                            'collection': ref.run,
                            }
+
+                # Do the actual copy.  This may convert the butler
+                # product to something more web-accessible.
                 for location, _ in locations:
                     source_uri = location.uri
                     target_uri = determine_destination_for_retrieved_artifact(
-                        ResourcePath(os.path.join(self.DESTINATION, "src")),
+                        ResourcePath(self.src_dir),
                         location.pathInStore,
                         False
                     )
                     dataset['uri'] = target_uri
-                    willCopy = doCopy
+                    willCopy = self.do_copy
 
-                    if target_uri.getExtension().lower() == ".fits" and \
-                       dataset['storage_class'] in ('ImageF', 'ExposureF', 'ImageD', 'ExposureD'):
-                        # We need a PNG at that location.
+                    if ((target_uri.getExtension().lower() == ".fits"
+                         and dataset['storage_class'] in ('ImageF', 'ExposureF', 'ImageD', 'ExposureD'))):
+                        # Convert this to a PNG image.
                         png_uri = target_uri.updatedExtension("png")
                         dataset['uri'] = png_uri
                         if os.path.exists(png_uri.path):
-                            if willCopy and not doOverwrite:
+                            if willCopy and not self.do_overwrite:
                                 willCopy = False
 
                         if willCopy:
                             data = self.butler.get(ref)
                             self.fits_to_png(data, png_uri, f"{ref.datasetType.name} {ref.dataId}")
-                    elif target_uri.getExtension().lower() == ".parq" and dataset['storage_class'] in ('ArrowAstropy', ):
-                        # Let's convert the table for now
+                    elif (target_uri.getExtension().lower() == ".parq"
+                          and dataset['storage_class'] in ('ArrowAstropy', )):
+                        # Convert to html table.
                         html_uri = target_uri.updatedExtension("html")
                         dataset['uri'] = html_uri
                         if os.path.exists(html_uri.path):
-                            if willCopy and not doOverwrite:
+                            if willCopy and not self.do_overwrite:
                                 willCopy = False
-                        willCopy = True
+
                         if willCopy:
                             data = self.butler.get(ref)
-                            files_created = self.parq_to_html(data, html_uri)
-                    elif target_uri.getExtension().lower() == ".py":
-                        # These should be config files
+                            self.parq_to_html(data, html_uri)
+                    elif (target_uri.getExtension().lower() == ".py"
+                          and dataset['storage_class'] in ('Config', )):
+                        # Convert configs to html.
                         html_uri = target_uri.updatedExtension("html")
                         dataset['uri'] = html_uri
+
                         if willCopy:
                             data = self.butler.get(ref)
                             self.py_to_html(data, html_uri)
-                    elif os.path.exists(target_uri.path):
-                        if willCopy and doOverwrite:
-                            # Otherwise just copy directly.
-                            target_uri.transfer_from(source_uri, transfer="copy", overwrite=True)
                     else:
                         if willCopy:
                             # Otherwise just copy directly.
-                            target_uri.transfer_from(source_uri, transfer="copy", overwrite=True)
+                            target_uri.transfer_from(source_uri, transfer="copy",
+                                                     overwrite=self.do_overwrite)
 
+                # Add this dataset to our list.
                 self.datasets.append(dataset)
 
     def parse_datasets(self):
+        """Analyze datasets, and add information to report pages.
+
+        See Also
+        --------
+        self._init_page
+        self.include
+        self.navigation_init
+        self.navigation_append
+        self.title
+        self.link
+        """
         populated_stages_list = []
 
         # Make navigation page.
         self.out_files["navigation.html"] = self._init_page("Navigation")
         self.navigation_init()
         self.include("navigation.html", "index.html")
+
+        # Make manifest page:
         self.out_files["manifest.html"] = self._init_page("Manifest")
 
         tag = self.link(self.out_files["index.html"], "Parent", "./..")
         self.navigation_append("index.html", "Parent", tag, newColumn=True)
         self.navigation_append("manifest.html", "Manifest", "", newColumn=False)
 
-        for stage in ['bias', 'dark', 'flat', 'ptc', 'defects', 'crosstalk', 'cti']:
+        for stage in self.dataset_map['stages'].keys():
+            # Filter datasets to only those for this stage
             dss = [x for x in self.datasets if x['stage'] == stage]
             if len(dss) > 0:
                 populated_stages_list.append(stage)
             else:
                 continue
+            self.log.warn(f"Parsing data for {stage}")
             self.title(self.out_files["index.html"], stage)
 
             self.out_files[f"{stage}_exp.html"] = self._init_page()
@@ -324,20 +255,22 @@ class CpvReporter():
             self.out_files[f"{stage}_det.html"] = self._init_page()
             self.include("navigation.html", f"{stage}_det.html")
 
+            # Get dimension information we'll want to use to put
+            # things on appropriate pages.
             exps = [x for x in dss if x['exposure'] is not None]
             dets = [x for x in dss if x['detector'] is not None]
 
             for ds in sorted(exps, key=lambda x: x['exposure']):
                 self.block(ds, self.out_files[f"{stage}_exp.html"])
                 if ('.png' in ds['uri'].path):
-                    self.image_handler(ds['uri'].path, self.out_files[f"{stage}_exp.html"])
+                    self.image_handler(ds['uri'].path, ds['instrument'], self.out_files[f"{stage}_exp.html"])
             tag = self.link(self.out_files["index.html"], f"{stage} exposures", f"./{stage}_exp.html")
             self.navigation_append("index.html", f"{stage} exposures", tag)
 
             for ds in sorted(dets, key=lambda x: x['detector']):
                 self.block(ds, self.out_files[f"{stage}_det.html"])
                 if ('.png' in ds['uri'].path):
-                    self.image_handler(ds['uri'].path, self.out_files[f"{stage}_det.html"])
+                    self.image_handler(ds['uri'].path, ds['instrument'], self.out_files[f"{stage}_det.html"])
             tag = self.link(self.out_files["index.html"], f"{stage} detectors", f"./{stage}_det.html")
             self.navigation_append("index.html", f"{stage} detectors", tag)
 
@@ -349,7 +282,7 @@ class CpvReporter():
                 elif ds['exposure'] is None and ds['detector'] is None:
                     self.block(ds, self.out_files["index.html"])
                     if ".png" in ds['uri'].path:
-                        self.image_handler(ds['uri'].path, self.out_files["index.html"])
+                        self.image_handler(ds['uri'].path, ds['instrument'], self.out_files["index.html"])
                     else:
                         self.include(ds['uri'].path, "index.html")
 
@@ -369,21 +302,133 @@ class CpvReporter():
                          f"<td>{ds['dataId']}</td>", f"<td>{ds['collection']}</td>",
                          "</tr>"])
 
+    # File conversion utilities:
+    @staticmethod
+    def fits_to_png(data, target_uri, title):
+        """Convert FITS to PNG, using the same scaling as on RubinTV.
+
+        Parameters
+        ----------
+        data : `lsst.afw.Image`, `lsst.afw.MaskedImage` or `lsst.afw.Exposure`
+            The fits image data to convert.
+        target_uri : `str`
+            Path to the PNG file to write.
+        title : `str`
+            Title to add to the figure.
+
+        See Also
+        --------
+        rubintv_production / mosaicing.py
+        """
+        # Get array from either an Image or an Exposure:
+        try:
+            array = data.image.array
+        except AttributeError:
+            array = data.array
+
+        fig = make_figure()
+        ax = fig.gca()
+        ax.clear()
+        cmap = cm.gray
+        # This was using summit_utils.getQuantiles, but that
+        # was blowing out the scaling more than I wanted.
+        q25, q50, q75 = np.nanpercentile(array, [25, 50, 75])
+        scale = 3.0 * 0.74 * (q75 - q25)
+        quantiles = np.arange(q50 - scale, q50 + scale, 2.0 * scale / cmap.N)
+        norm = colors.BoundaryNorm(quantiles, cmap.N)
+
+        im = ax.imshow(array, norm=norm, interpolation='None', cmap=cmap, origin='lower')
+
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        fig.suptitle(title)
+        fig.colorbar(im, cax=cax)
+        fig.tight_layout()
+        fig.savefig(target_uri.path)
+
+    @staticmethod
+    def parq_to_html(data, target_uri):
+        """Convert catalogs to html tables.
+
+        Parameters
+        ----------
+        data : `astropy.Table`
+            The table to convert to html.
+        target_uri : `str`
+            Path to the HTML file to write.
+        """
+        format_dict = {}
+        # Remove vectors, as they will be too big.
+        # Build up format dictionary.
+        columns_to_remove = []
+        for index, name in enumerate(data.dtype.names):
+            if len(data.dtype[index].shape) != 0:
+                columns_to_remove.append(name)
+                continue
+            if data.dtype[index].kind in ('f', 'c'):
+                # is float
+                format_dict[name] = "%.4g"
+                if name == 'mjd':
+                    # Let's let these be long
+                    format_dict[name] = "12.10f"
+            elif data.dtype[index].kind in ('i', 'u'):
+                # is int
+                format_dict[name] = "%d"
+            else:
+                format_dict[name] = "%s"
+
+        # Actually remove the vectors:
+        data.remove_columns(columns_to_remove)
+
+        # Write full table:
+        data.write(target_uri.path,
+                   format='ascii.html',
+                   overwrite=True,
+                   formats=format_dict)
+
+        # TODO: Write subset tables, filtered by exposure and by detector.
+        # files_created[f"{filename_base}_exp{exp}.html"] = {'exposure': exp}
+        # files_created[f"{filename_base}_det{det}.html"] = {'detector': det}
+
+    def py_to_html(self, data, target_uri):
+        """Convert python configs to html.
+
+        Parameters
+        ----------
+        data : `Config`
+            The python file contents to write.
+        target_uri : `str`
+            Path to the HTML file to write.
+        """
+        with open(target_uri.path, 'w') as ff:
+            for line in self._init_page():
+                print(line, file=ff)
+            for line in data.saveToString().split("\n"):
+                if len(line) > 0 and line[0] == '#':
+                    print("<pre class='pre-comment'>", line, "</pre>", file=ff)
+                else:
+                    print("<pre>", line, "</pre>", file=ff)
+            for line in self._close_page():
+                print(line, file=ff)
+
     def write_pages(self):
+        """Write all page arrays to files."""
         for ff, contents in self.out_files.items():
-            reportOut = os.path.join(self.DESTINATION, ff)
+            reportOut = os.path.join(self.output_path, ff)
             contents.extend(self._close_page())
             with open(reportOut, 'w') as ff:
                 for line in contents:
                     print(line, file=ff)
 
+    # Page construction methods.  These all return arrays of strings
+    # that can be appended to until we write to disk.
     @staticmethod
     def _init_page(title=""):
+        """Write boilerplate html for the start of a page."""
         return [
             "<html>", "<head>", "<style> ",
             " * { margin: 0; padding: 0;}",
             " .imgbox { display: grid; height: 100%; }",
-            # " .center-fit { max-width: 100%; max-height: 100vh; margin:auto; }",
             " .pre-comment { color: red; }",
             " td { padding: 0 15px; }",
             " .ctable { display: table; }",
@@ -394,181 +439,263 @@ class CpvReporter():
             '<base target="_parent">',
             "</head>",
             "<body>",
-
-            '<map name="atools_comcam">',
-            '<area shape="rect" coords="325,1600,780,1155" alt="S00" href="S00.html">',
-            '<area shape="rect" coords="325,1130,780,685" alt="S01" href="S01.html">',
-            '<area shape="rect" coords="325,660,780,215" alt="S02" href="S02.html">',
-            '<area shape="rect" coords="795,1600,1250,1155" alt="S00" href="S10.html">',
-            '<area shape="rect" coords="795,1130,1250,685" alt="S01" href="S11.html">',
-            '<area shape="rect" coords="795,660,1250,215" alt="S02" href="S12.html">',
-            '<area shape="rect" coords="1265,1600,1720,1155" alt="S00" href="S20.html">',
-            '<area shape="rect" coords="1265,1130,1720,685" alt="S01" href="S21.html">',
-            '<area shape="rect" coords="1265,660,1720,215" alt="S02" href="S22.html">',
-            '</map>',
-
-            '<map name="atools_latiss">',
-            '<area shape="rect" coords="317,1400,490,1380" alt="C10" href="C10.html">',
-            '<area shape="rect" coords="490,1600,670,1380" alt="C11" href="C11.html">',
-            '<area shape="rect" coords="670,1600,845,1380" alt="C12" href="C12.html">',
-            '<area shape="rect" coords="845,1600,1020,1380" alt="C13" href="C13.html">',
-            '<area shape="rect" coords="1020,1600,1197,1380" alt="C14" href="C14.html">',
-            '<area shape="rect" coords="1197,1600,1376,1380" alt="C15" href="C15.html">',
-            '<area shape="rect" coords="1375,1600,1550,1380" alt="C16" href="C16.html">',
-            '<area shape="rect" coords="1550,1600,1725,1380" alt="C17" href="C17.html">',
-            '<area shape="rect" coords="317,1380,490,909" alt="C00" href="C00.html">',
-            '<area shape="rect" coords="490,1380,670,909" alt="C01" href="C01.html">',
-            '<area shape="rect" coords="670,1380,845,909" alt="C02" href="C02.html">',
-            '<area shape="rect" coords="845,1380,1020,909" alt="C03" href="C03.html">',
-            '<area shape="rect" coords="1020,1380,1197,909" alt="C04" href="C04.html">',
-            '<area shape="rect" coords="1197,1380,1376,909" alt="C05" href="C05.html">',
-            '<area shape="rect" coords="1375,1380,1550,909" alt="C06" href="C06.html">',
-            '<area shape="rect" coords="1550,1380,1725,909" alt="C07" href="C07.html">',
-            '</map>'
-
-            '<map name="mosaic_latiss">',
-            '<area shape="rect" coords="115,431,163,241" alt="C10" href="C10.html">',
-            '<area shape="rect" coords="163,431,211,241" alt="C11" href="C11.html">',
-            '<area shape="rect" coords="211,431,260,241" alt="C12" href="C12.html">',
-            '<area shape="rect" coords="260,431,307,241" alt="C13" href="C13.html">',
-            '<area shape="rect" coords="307,431,356,241" alt="C14" href="C14.html">',
-            '<area shape="rect" coords="356,431,404,241" alt="C15" href="C15.html">',
-            '<area shape="rect" coords="404,431,451,241" alt="C16" href="C16.html">',
-            '<area shape="rect" coords="451,431,500,241" alt="C17" href="C17.html">',
-            '<area shape="rect" coords="115,241,163,50" alt="C00" href="C00.html">',
-            '<area shape="rect" coords="163,241,211,50" alt="C01" href="C01.html">',
-            '<area shape="rect" coords="211,241,260,50" alt="C02" href="C02.html">',
-            '<area shape="rect" coords="260,241,307,50" alt="C03" href="C03.html">',
-            '<area shape="rect" coords="307,241,356,50" alt="C04" href="C04.html">',
-            '<area shape="rect" coords="356,241,404,50" alt="C05" href="C05.html">',
-            '<area shape="rect" coords="404,241,451,50" alt="C06" href="C06.html">',
-            '<area shape="rect" coords="451,241,500,50" alt="C07" href="C07.html">',
-            '</map>'
-
-            '<map name="mosaic_comcam">',
-            '<area shape="rect" coords="111,175,240,47" alt="S00" href="S00.html">',
-            '<area shape="rect" coords="111,175,240,47" alt="S01" href="S01.html">',
-            '<area shape="rect" coords="111,175,240,47" alt="S02" href="S02.html">',
-            '<area shape="rect" coords="244,306,372,180" alt="S00" href="S10.html">',
-            '<area shape="rect" coords="244,306,372,180" alt="S01" href="S11.html">',
-            '<area shape="rect" coords="244,306,372,180" alt="S02" href="S12.html">',
-            '<area shape="rect" coords="376,438,503,313" alt="S00" href="S20.html">',
-            '<area shape="rect" coords="376,438,503,313" alt="S01" href="S21.html">',
-            '<area shape="rect" coords="376,438,503,313" alt="S02" href="S22.html">',
-            '</map>',
         ]
 
     @staticmethod
     def _close_page():
+        """Write boilerplate html for the end of a page."""
         return ["</body>",
                 "</html>"]
 
     @staticmethod
     def relative_file(filename):
+        """Convert absolute paths to the relative format needed for the html.
+        """
         return re.sub(r"^.*/src/", "./src/", filename)
 
     def svg_atools_latiss(self, relative_file, page):
-        """This handles image maps:"""
-        page.extend(['<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 3600 1800">',
+        """This adds an image to the html, with an SVG overlay for LATISS.
+
+        Parameters
+        ----------
+        relative_file : `str`
+            Relative location of the image to be added.
+        page : `list` [`str`]
+            The page to append to.
+
+        Notes
+        -----
+        This method assumes the image is made by analysis_tools, and
+        displays a focal plane plot for LATISS.  Under these
+        assumptions, the boxes defined in SVG map to the amplifier
+        segments of the single detector.
+        """
+        page.extend(['<svg version="1.1" xmlns="http://www.w3.org/2000/svg" '
+                     'xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 3600 1800">',
                      f'<image width="3600" height="1800" xlink:href="{relative_file}"></image>',
-                     '<a xlink:href="./c10.html"> <rect x="317" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c11.html"> <rect x="490" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c12.html"> <rect x="670" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c13.html"> <rect x="845" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c14.html"> <rect x="1020" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c15.html"> <rect x="1197" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c16.html"> <rect x="1375" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c17.html"> <rect x="1550" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c07.html"> <rect x="1550" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c06.html"> <rect x="1375" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c05.html"> <rect x="1197" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c04.html"> <rect x="1020" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c03.html"> <rect x="845" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c02.html"> <rect x="670" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c01.html"> <rect x="490" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c00.html"> <rect x="317" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c10.html"> <rect x="317" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c11.html"> <rect x="490" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c12.html"> <rect x="670" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c13.html"> <rect x="845" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c14.html"> <rect x="1020" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c15.html"> <rect x="1197" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c16.html"> <rect x="1375" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c17.html"> <rect x="1550" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c07.html"> <rect x="1550" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c06.html"> <rect x="1375" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c05.html"> <rect x="1197" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c04.html"> <rect x="1020" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c03.html"> <rect x="845" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c02.html"> <rect x="670" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c01.html"> <rect x="490" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c00.html"> <rect x="317" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
                      '</svg>'])
 
     def svg_atools_comcam(self, relative_file, page):
-        page.extend(['<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 3600 1800">',
+        """This adds an image to the html, with an SVG overlay for ComCam.
+
+        Parameters
+        ----------
+        relative_file : `str`
+            Relative location of the image to be added.
+        page : `list` [`str`]
+            The page to append to.
+
+        Notes
+        -----
+        This method assumes the image is made by analysis_tools, and
+        displays a focal plane plot for LSSTComCam.  Under these
+        assumptions, the boxes defined in SVG map map to the detectors
+        in the single raft.
+        """
+        page.extend(['<svg version="1.1" xmlns="http://www.w3.org/2000/svg" '
+                     'xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 3600 1800">',
                      f'<image width="3600" height="1800" xlink:href="{relative_file}"></image>',
-                     '<a xlink:href="./S00.html"> <rect x="317" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./S01.html"> <rect x="490" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./S02.html"> <rect x="670" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./S10.html"> <rect x="845" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./S11.html"> <rect x="1020" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./S12.html"> <rect x="1197" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./S20.html"> <rect x="1375" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./S21.html"> <rect x="1550" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./S22.html"> <rect x="1550" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S00.html"> <rect x="317" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S01.html"> <rect x="490" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S02.html"> <rect x="670" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S10.html"> <rect x="845" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S11.html"> <rect x="1020" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S12.html"> <rect x="1197" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S20.html"> <rect x="1375" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S21.html"> <rect x="1550" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./S22.html"> <rect x="1550" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
                      '</svg>'])
 
     def svg_mosaic_latiss(self, relative_file, page):
-        page.extend(['<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 3600 1800">',
+        """This adds an image to the html, with an SVG overlay for LATISS.
+
+        Parameters
+        ----------
+        relative_file : `str`
+            Relative location of the image to be added.
+        page : `list` [`str`]
+            The page to append to.
+
+        Notes
+        -----
+        This method assumes the image is a 8x8 binned focal plane
+        mosaic of a LATISS exposure made by one of the VisualizeVisit
+        tasks.  Under these assumptions, the boxes defined in SVG map
+        to the amplifiers of the single detector.
+        """
+        page.extend(['<svg version="1.1" xmlns="http://www.w3.org/2000/svg" '
+                     'xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 3600 1800">',
                      f'<image width="3600" height="1800" xlink:href="{relative_file}"></image>',
-                     '<a xlink:href="./c10.html"> <rect x="317" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c11.html"> <rect x="490" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c12.html"> <rect x="670" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c13.html"> <rect x="845" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c14.html"> <rect x="1020" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c15.html"> <rect x="1197" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c16.html"> <rect x="1375" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c17.html"> <rect x="1550" y="216" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c07.html"> <rect x="1550" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c06.html"> <rect x="1375" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c05.html"> <rect x="1197" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c04.html"> <rect x="1020" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c03.html"> <rect x="845" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c02.html"> <rect x="670" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c01.html"> <rect x="490" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
-                     '<a xlink:href="./c00.html"> <rect x="317" y="911" fill="#fff" opacity="0" width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c10.html"> <rect x="317" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c11.html"> <rect x="490" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c12.html"> <rect x="670" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c13.html"> <rect x="845" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c14.html"> <rect x="1020" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c15.html"> <rect x="1197" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c16.html"> <rect x="1375" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c17.html"> <rect x="1550" y="216" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c07.html"> <rect x="1550" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c06.html"> <rect x="1375" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c05.html"> <rect x="1197" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c04.html"> <rect x="1020" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c03.html"> <rect x="845" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c02.html"> <rect x="670" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c01.html"> <rect x="490" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
+                     '<a xlink:href="./c00.html"> <rect x="317" y="911" fill="#fff" opacity="0" '
+                     'width="176" height="692"></rect> </a>',
                      '</svg>'])
 
     def svg_mosaic_comcam(self, relative_file, page):
-        page.extend(['<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 640 480">',
+        """This adds an image to the html, with an SVG overlay for ComCam.
+
+        Parameters
+        ----------
+        relative_file : `str`
+            Relative location of the image to be added.
+        page : `list` [`str`]
+            The page to append to.
+
+        Notes
+        -----
+        This method assumes the image is a 8x8 binned focal plane
+        mosaic of a ComCam exposure made by one of the VisualizeVisit
+        tasks.  Under these assumptions, the boxes defined in SVG map
+        to the detectors in the single raft.
+        """
+        page.extend(['<svg version="1.1" xmlns="http://www.w3.org/2000/svg" '
+                     'xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 640 480">',
                      f'<image width="640" height="480" xlink:href="{relative_file}"></image>',
-                     '<a xlink:href="./S00.html"> <rect x="111" y="306" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
-                     '<a xlink:href="./S01.html"> <rect x="111" y="175" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
-                     '<a xlink:href="./S02.html"> <rect x="111" y="50" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
-                     '<a xlink:href="./S10.html"> <rect x="244" y="306" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
-                     '<a xlink:href="./S11.html"> <rect x="244" y="175" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
-                     '<a xlink:href="./S12.html"> <rect x="244" y="50" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
-                     '<a xlink:href="./S20.html"> <rect x="376" y="306" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
-                     '<a xlink:href="./S21.html"> <rect x="376" y="175" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
-                     '<a xlink:href="./S22.html"> <rect x="376" y="50" fill="#fff" opacity="0" width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S00.html"> <rect x="111" y="306" fill="#fff" opacity="0"'
+                     'width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S01.html"> <rect x="111" y="175" fill="#fff" opacity="0"'
+                     'width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S02.html"> <rect x="111" y="50" fill="#fff" opacity="0" '
+                     'width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S10.html"> <rect x="244" y="306" fill="#fff" opacity="0" '
+                     'width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S11.html"> <rect x="244" y="175" fill="#fff" opacity="0" '
+                     'width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S12.html"> <rect x="244" y="50" fill="#fff" opacity="0" '
+                     'width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S20.html"> <rect x="376" y="306" fill="#fff" opacity="0" '
+                     'width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S21.html"> <rect x="376" y="175" fill="#fff" opacity="0" '
+                     'width="128" height="128"></rect> </a>',
+                     '<a xlink:href="./S22.html"> <rect x="376" y="50" fill="#fff" opacity="0" '
+                     'width="128" height="128"></rect> </a>',
                      '</svg>'])
 
+    def image_handler(self, image_filename, instrument, page):
+        """Handle images.
 
-    def image_handler(self, image_filename, page):
-        """Handle images."""
+        This method attempts to find the correct way to add an image
+        to a page, with the appropriate SVG subregion information.
+
+        Parameters
+        ----------
+        image_filename : `str`
+            Full path to the image file to be added to a page.
+        instrument : `str`
+            Instrument name to use to identify special handling.
+        page : `list`
+            The page to append to.
+
+        """
         relative_file = self.relative_file(image_filename)
-        do_simple = True
         if "Mosaic64" not in relative_file:
-            # Skip Mosaic64
-            useMap = ''
-            if self.INST == 'LATISS':
+            # Skip Mosaic64 products.
+            if instrument == 'LATISS':
                 if "Mosaic" in relative_file:
-                    # This is a fits_to_png thing
-                    useMap = f"usemap='#mosaic_latiss'"
+                    self.svg_mosaic_latiss(relative_file, page)
                 else:
                     self.svg_atools_latiss(relative_file, page)
-                    do_simple = False
-            elif self.INST in ('LSSTComCam', 'LSSTComCamSim'):
+            elif instrument in ('LSSTComCam', 'LSSTComCamSim'):
                 if "Mosaic" in relative_file:
                     # This is a fits_to_png thing
                     self.svg_mosaic_comcam(relative_file, page)
-                    do_simple = False
                 else:
-                    useMap = f"usemap='#atools_comcam'"
-
-            # page.append(f'<a href="{relative_file}">')
-            if do_simple:
-                page.append(f'<img class="center-fit" {useMap} src="{relative_file}">')
-            # page.append('</a>')
+                    self.svg_atools_comcam(relative_file, page)
+            else:
+                # We couldn't find a magic handler, so add it
+                # manually.
+                page.append(f'<img class="center-fit" src="{relative_file}">')
 
     def block(self, dataset, page, link=None, doc=None):
+        """Add a block of information, containing the dataId and collections
+        for a particular dataset.
+
+        Parameters
+        ----------
+        dataset : `dict`
+           The dataset containing dataId information.
+        page : `list`
+           The page to append to.
+        link : `str`, optional
+           A link to apply to the dataset type name.
+        doc : `str`, optional
+           A documentation string.  If not supplied, the documentation
+           in the configuration is used.
+        """
         if doc is None:
-            doc = self.DOC_MAP.get(dataset['type'], "Undocumented.")
+            stage = dataset['stage']
+            dsType = dataset['type']
+            doc = self.dataset_map['stages'][stage][dsType].get("description", "Undocumented.")
         page.extend(["<table width='100%'>",
                      "<tr>",
                      "<th colspan='2' align='center'>DataId:</th>",
@@ -582,11 +709,10 @@ class CpvReporter():
                      "<td align='right'>Stage</td>", f"<td>{dataset['stage']}</td>", "</tr>"])
         page.extend(["<tr>",
                      "<td align='right'>Detector</td>", f"<td>{dataset['detector']}</td>"]),
-        if link:
-            page.extend(["<a href='" + f"{link}" + "'>",])
+
+        page.extend(["<a href='" + f"{link}" + "'>" if link else ""])
         page.extend(["<td align='right'>Dataset type</td>", f"<td>{dataset['type']} ", "</td>"])
-        if link:
-            page.extend(["</a>"])
+        page.extend(["</a>" if link else ""])
         page.extend(["</tr>"])
         page.extend(["<tr>",
                      "<td align='right'>Physical Filter</td>", f"<td>{dataset['physical_filter']}</td>",
@@ -628,107 +754,27 @@ class CpvReporter():
         target_page.extend([f"<iframe width='100%' src='./{relative_file}'>",
                             "</iframe>"])
 
-    @staticmethod
-    def fits_to_png(data, target_uri, title):
-        # Taken from
-        # https://github.com/lsst-sitcom/rubintv_production/blob/main/python/lsst/rubintv/production/slac/mosaicing.py  # noqa W505
-        # _plotFpMosaic()
-        try:
-            array = data.image.array
-        except AttributeError:
-            array = data.array
-
-        # This should be available in lsst.utils.plotting, as of DM-44725.
-        fig = Figure()
-        canvas = FigureCanvasAgg(fig)
-        ax = fig.gca()
-        ax.clear()
-        cmap = cm.gray
-        quantiles = getQuantiles(array, cmap.N)
-        norm = colors.BoundaryNorm(quantiles, cmap.N)
-
-        im = ax.imshow(array, norm=norm, interpolation='None', cmap=cmap, origin='lower')
-
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.05)
-        fig.suptitle(title)
-        fig.colorbar(im, cax=cax)
-        fig.tight_layout()
-        fig.savefig(target_uri.path)
-        plt.close()
-
-    @staticmethod
-    def parq_to_html(data, target_uri):
-        format_dict = {}
-
-        files_created = {}
-        # Remove vectors, as they will be too big.
-        # Build up format dictionary.
-        columns_to_remove = []
-        for index, name in enumerate(data.dtype.names):
-            if len(data.dtype[index].shape) != 0:
-                columns_to_remove.append(name)
-                continue
-            if data.dtype[index].kind in ('f', 'c'):
-                # is float
-                format_dict[name] = "%.4g"
-                if name == 'mjd':
-                    # Let's let these be long
-                    format_dict[name] = "12.10f"
-            elif data.dtype[index].kind in ('i', 'u'):
-                # is int
-                format_dict[name] = "%d"
-            else:
-                format_dict[name] = "%s"
-
-        # Actually remove the vectors:
-        data.remove_columns(columns_to_remove)
-        # Write full table:
-        data.write(target_uri.path,
-                   format='ascii.html',
-                   overwrite=True,
-                   formats=format_dict)
-        # files_created[f"{filename_base}.html"] = {}
-
-        if False:
-            # Write subset tables:
-            if 'exposure' in data.columns:
-                exposures = set(data['exposure'])
-                for exp in exposures:
-                    mask = data['exposure'] == exp
-                    subset = data[mask]
-                    data.write(f"{filename_base}_exp{exp}.html",
-                               format='ascii.html',
-                               overwrite=True,
-                    formats=format_dict)
-                    files_created[f"{filename_base}_exp{exp}.html"] = {'exposure': exp}
-
-                    if 'detector' in data.columns:
-                        detectors = set(data['exposure'])
-                        for det in detectors:
-                            mask = data['detector'] == det
-                            subset = data[mask]
-                            data.write(f"{filename_base}_det{det}.html",
-                                       format='ascii.html',
-                                       overwrite=True,
-                                       formats=format_dict)
-                            files_created[f"{filename_base}_det{det}.html"] = {'detector': det}
-
-    def py_to_html(self, data, target_uri):
-        # For configs and such.
-        with open(target_uri.path, 'w') as ff:
-            for line in self._init_page():
-                print(line, file=ff)
-                # import pdb; pdb.set_trace()
-            for line in data.saveToString().split("\n"):
-                if len(line) > 0 and line[0] == '#':
-                    print("<pre class='pre-comment'>", line, "</pre>", file=ff)
-                else:
-                    print("<pre>", line, "</pre>", file=ff)
-            for line in self._close_page():
-                print(line, file=ff)
-
 
 def main():
-    reporter = CpvReporter()
-    reporter.generate_report()
+    # Could these use the click/daf_butler CLI tools?
+    parser = argparse.ArgumentParser(description="Construct a cp_verify metric report.")
+    parser.add_argument("-r", "--repository", dest="repository", default="",
+                        help="Butler repository to pull results from.")
+    parser.add_argument("-O", "--output_path", dest="output_path", default="",
+                        help="Output path to write report to.")
+    parser.add_argument("-c", "--collections", dest="collections", action="append", default=[],
+                        help="Collections to search for results.")
+    parser.add_argument("--no_copy", dest="do_copy", action="store_false", default=True,
+                        help="Skip copying files for debugging purposes.")
+    parser.add_argument("--do_overwrite", dest="do_overwrite", action="store_true", default=False,
+                        help="Allow existing files to be overwritten?")
+    args = parser.parse_args()
+
+    reporter = CpvReporter(
+        repo=args.repository,
+        output_path=args.output_path,
+        collections=args.collections,
+        do_copy=args.do_copy,
+        do_overwrite=args.do_overwrite,
+    )
+    reporter.run()

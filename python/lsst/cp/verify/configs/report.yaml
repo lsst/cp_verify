@@ -1,0 +1,81 @@
+description: This document defines the dataset types to search for in making a calibration report.
+stages:
+  bias:
+    bias:
+      description: "The combined bias calibration."
+    biasMosaic8:
+      description: "Focal plane mosaic of the combined bias calibration."
+    verifyBiasResults:
+      description: "Catalog of combined bias verification results."
+    verifyBiasResidual8:
+      description: "Focal plane mosaic of the per-exposure bias residuals."
+    cpBiasCore_metrics:
+      description: "Core metric bundle for bias calibration."
+    cpBiasCore_biasReadNoisePerAmp_FocalPlaneGeometryPlot:
+      description: "The bias mean in 200x200 box at amp readout corner."
+    cpBiasCore_biasMeanPerAmp_FocalPlaneGeometryPlot:
+      description: "The image noise measured after cosmic ray rejection."
+    cpBiasCore_biasNoisePerAmp_FocalPlaneGeometryPlot:
+      description: "The image mean."
+    cpBiasCore_biasCrNoisePerAmp_FocalPlaneGeometryPlot:
+      description: "The image noise."
+    cpBiasCore_biasCornerMeanPerAmp_FocalPlaneGeometryPlot:
+      description: "The noise in the serial overscan after overscan correction."
+    biasIsr_config:
+      description: "Processing configuration for combined bias construction."
+    verifyBiasApply_config:
+      description: "Processing configuration for combined bias verification."
+  dark:
+    dark:
+      description: "The combined dark calibration."
+    darkMosaic8:
+      description: "Focal plane mosaic of the combined dark calibration."
+    verifyDarkResults:
+      description: "Catalog of combined dark verification results."
+    verifyDarkResidual8:
+      description: "Focal plane mosaic of the per-exposure dark residuals."
+    darkIsr_config:
+      description: "Processing configuration for the combined dark construction."
+    verifyDarkApply_config:
+      description: "Processing configuration for combined dark verification."
+  flat:
+    flat:
+      description: "The combined flat calibration."
+    flatMosaic8:
+      description: "Focal plane mosaic of the combined flat calibration."
+    verifyFlatResults:
+      description: "Catalog of combined flat verification results."
+    verifyFlatResidual8:
+      description: "Focal plane mosaic of the per-exposure flat residuals."
+    flatIsr_config:
+      description: "Processing configuration for the combined flat construction."
+    verifyFlatApply_config:
+      description: "Processing configuration for combined flat verification."
+  defects:
+    defects:
+      description: "The combined defects calibration."
+    verifyDefectsResults:
+      description: "Catalog of combined defect verification results."
+  ptc:
+    ptc:
+      description: "The photon transfer curve calibration."
+    verifyPtcResults:
+      description: "Catalog of PTC verification results."
+    cpPtcCore_metrics:
+      description: "Core metric bundle for PTC calibration."
+    cpPtcCore_ptcGainPerAmp_FocalPlaneGeometryPlot:
+      description: "Measured gains."
+    cpPtcCore_ptcNoisePerAmp_FocalPlaneGeometryPlot:
+      description: "Measured read noise values."
+    cpPtcCore_ptcA00PerAmp_FocalPlaneGeometryPlot:
+      description: "Measured a00 correlation value."
+    cpPtcCore_ptcTurnoffPerAmp_FocalPlaneGeometryPlot:
+      description: "Measured PTC turnoff values."
+    cpPtcCore_ptcRowMeanVarianceSlopePerAmp_FocalPlaneGeometryPlot:
+      description: "TBA."
+    cpPtcDetCore_ptcPlot_GridPlot:
+      description: "TBA."
+  linearity:
+  crosstalk:
+  bfk:
+  cti:
