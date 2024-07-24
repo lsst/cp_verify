@@ -78,9 +78,19 @@ class CpvReporter():
             'defects',
             'verifyDefectsResults',
         ],
+
         'ptc': [
             'ptc',
             'verifyPtcResults',
+            'cpPtcCore_metrics',
+            'cpPtcCore_ptcGainPerAmp_FocalPlaneGeometryPlot',
+            'cpPtcCore_ptcNoisePerAmp_FocalPlaneGeometryPlot',
+            'cpPtcCore_ptcA00PerAmp_FocalPlaneGeometryPlot',
+            'cpPtcCore_ptcTurnoffPerAmp_FocalPlaneGeometryPlot',
+            'cpPtcCore_ptcTurnoffPerAmp_FocalPlaneGeometryPlot',
+            'cpPtcCore_ptcRowMeanVarianceSlopePerAmp_FocalPlaneGeometryPlot',
+            'cpPtcDetCore_ptcPlot_GridPlot',
+
         ],
         'linearity': [],
         'crosstalk': [],
@@ -110,7 +120,16 @@ class CpvReporter():
         'defects': "The combined defects calibration.",
         'verifyDefectsResults': "Catalog of combined defect verification results.",
         'ptc': "The photon transfer curve calibration.",
-        'verifyPtcResults': "Catalog of PTC verification results."
+        'verifyPtcResults': "Catalog of PTC verification results.",
+        'cpPtcCore_metrics': "Core metric bundle for ptc calibration.",
+        'cpPtcCore_ptcGainPerAmp_FocalPlaneGeometryPlot': "TBA",
+        'cpPtcCore_ptcNoisePerAmp_FocalPlaneGeometryPlot': "TBA",
+        'cpPtcCore_ptcA00PerAmp_FocalPlaneGeometryPlot': "TBA",
+        'cpPtcCore_ptcTurnoffPerAmp_FocalPlaneGeometryPlot': "TBA",
+        'cpPtcCore_ptcTurnoffPerAmp_FocalPlaneGeometryPlot': "TBA",
+        'cpPtcCore_ptcRowMeanVarianceSlopePerAmp_FocalPlaneGeometryPlot': "TBA",
+        'cpPtcDetCore_ptcPlot': "TBA",
+        'cpPtcDetCore_ptcPlot_GridPlot': "TBA",
     }
 
     REPO = "/repo/embargo"
