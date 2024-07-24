@@ -149,6 +149,8 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             # To plot Covs[ij] vs flux
             rawFlux = inputCalib.rawMeans[ampName].tolist()
             outputStatistics[ampName]['PTC_RAW_MEANS'] = rawFlux
+            rawVars = inputCalib.rawVars[ampName].tolist()
+            outputStatistics[ampName]['PTC_RAW_VARIANCE'] = rawVars
             mask = inputCalib.expIdMask[ampName].tolist()
             outputStatistics[ampName]['PTC_EXP_ID_MASK'] = mask
             covs = inputCalib.covariances[ampName]
