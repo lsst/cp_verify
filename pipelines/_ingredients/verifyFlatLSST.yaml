@@ -1,0 +1,61 @@
+description: cp_verify FLAT calibration verification (LSST ISR task).
+tasks:
+  verifyFlatIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      connections.ccdExposure: "raw"
+      connections.outputExposure: "verifyFlatIsrExp"
+      doFlat: true
+      expectWcs: false
+      doDefect: false
+      doBias: true
+      doDark: true
+      doDiffNonLinearCorrection: false
+      doBootstrap: false
+      doDeferredCharge: false
+      doLinearize: true
+      doCorrectGains: false
+      doApplyGains: true
+      doVariance: true
+      doSaturation: false
+      doSuspect: false
+      doCrosstalk: true
+      doWidenSaturationTrails: false
+      doInterpolate: false
+      maskNegativeVariance: false
+      doSetBadRegions: false
+      doBrighterFatter: false
+      isrStats.doCopyCalibDistributionStatistics: true
+  verifyFlatDet:
+    class: lsst.cp.verify.CpVerifyFlatTask
+    config:
+      connections.inputExp: "verifyFlatIsrExp"
+      connections.outputStats: "verifyFlatDetStats"
+      connections.outputResults: "verifyFlatDetResults"
+      useIsrStatistics: true
+  verifyFlatExp:
+    class: lsst.cp.verify.CpVerifyFlatExpMergeTask
+    config:
+      connections.inputStats: "verifyFlatDetStats"
+      connections.inputResults: "verifyFlatDetResults"
+      connections.outputStats: "verifyFlatExpStats"
+      connections.outputResults: "verifyFlatExpResults"
+      hasInputResults: true
+      hasMatrixCatalog: false
+      stageName: "flat"
+  verifyFlatX:
+    class: lsst.cp.verify.CpVerifyRunMergeByFilterTask
+    config:
+      connections.inputStats: "verifyFlatExpStats"
+      connections.inputResults: "verifyFlatExpResults"
+      connections.outputStats: "verifyFlatStats"
+      connections.outputResults: "verifyFlatResults"
+      doDropStats: true
+      hasInputResults: true
+      hasMatrixCatalog: false
+contracts:
+  - verifyFlatDet.connections.inputExp == verifyFlatIsr.connections.outputExposure
+  - verifyFlatExp.connections.inputStats == verifyFlatDet.connections.outputStats
+  - verifyFlatExp.connections.inputResults == verifyFlatDet.connections.outputResults
+  - verifyFlatX.connections.inputStats == verifyFlatExp.connections.outputStats
+  - verifyFlatX.connections.inputResults == verifyFlatExp.connections.outputResults
