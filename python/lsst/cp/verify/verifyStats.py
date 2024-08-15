@@ -55,6 +55,7 @@ class CpVerifyStatsConnections(
         storageClass="ExposureF",
         dimensions=["instrument", "visit", "detector"],
     )
+    # TODO DM-45802: Remove deprecated taskMetadata connection.
     taskMetadata = cT.Input(
         name="isrTask_metadata",
         doc="Input task metadata to extract statistics from.",
@@ -110,8 +111,8 @@ class CpVerifyStatsConnections(
     def __init__(self, *, config=None):
         super().__init__(config=config)
 
-        if len(config.metadataStatKeywords) < 1:
-            self.inputs.discard("taskMetadata")
+        # TODO DM-45802: Remove deprecated taskMetadata connection.
+        self.inputs.discard("taskMetadata")
 
         if len(config.catalogStatKeywords) < 1:
             self.inputs.discard("inputCatalog")
@@ -492,15 +493,16 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
 
         return statisticToRun, statAccessor
 
-    def metadataStatistics(self, exposure, taskMetadata):
+    def metadataStatistics(self, exposure, taskMetadata=None):
         """Extract task metadata information for verification.
 
         Parameters
         ----------
         exposure : `lsst.afw.image.Exposure`
             The exposure to measure.
-        taskMetadata : `lsst.pipe.base.TaskMetadata`
-            The metadata to extract values from.
+        taskMetadata : `lsst.pipe.base.TaskMetadata`, optional
+            The metadata to extract values from.This is not used,
+            and will be completely removed on DM-45802.
 
         Returns
         -------
@@ -539,30 +541,6 @@ class CpVerifyStatsTask(pipeBase.PipelineTask):
                     metadataStats[storeKey] = results
                     found = True
 
-            if not found and taskMetadata is not None:
-                # Try to find this in the task metadata.  The values
-                # will be in a nested dict.
-                expectedKey = key
-                for sectionKey in taskMetadata.keys():
-                    if expectedKey in taskMetadata[sectionKey]:
-                        metadataStats[storeKey] = taskMetadata[sectionKey][expectedKey]
-                        found = True
-            if not found and taskMetadata is not None:
-                # Try again, but using per-amp keys:
-                results = {}
-                for sectionKey in taskMetadata:
-                    for amp in exposure.getDetector():
-                        ampName = amp.getName()
-                        expectedKey = f"{key} {ampName}"
-                        if expectedKey in taskMetadata[sectionKey]:
-                            results[ampName] = taskMetadata[sectionKey][expectedKey]
-                    if len(results) != 0:
-                        for amp in exposure.getDetector():
-                            ampName = amp.getName()
-                            if ampName not in results:
-                                results[ampName] = np.nan
-                        metadataStats[storeKey] = results
-                        found = True
             if not found:
                 self.log.debug(f"Could not find expected key: {key}")
         return metadataStats

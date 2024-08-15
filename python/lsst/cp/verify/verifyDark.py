@@ -37,7 +37,6 @@ class CpVerifyDarkConfig(CpVerifyStatsConfig,
                                   'NOISE': 'STDEVCLIP', }
         self.crImageStatKeywords = {'CR_NOISE': 'STDEV', }  # noqa F841
         self.metadataStatKeywords = {
-            'RESIDUAL STDEV': 'READ_NOISE',
             'LSST ISR OVERSCAN RESIDUAL SERIAL STDEV': 'READ_NOISE',
         }  # noqa F841
 
