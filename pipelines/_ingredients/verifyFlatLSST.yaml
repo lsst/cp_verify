@@ -50,7 +50,6 @@ tasks:
       connections.inputResults: "verifyFlatExpResults"
       connections.outputStats: "verifyFlatStats"
       connections.outputResults: "verifyFlatResults"
-      doDropStats: true
       hasInputResults: true
       hasMatrixCatalog: false
 contracts:
