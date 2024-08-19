@@ -27,8 +27,6 @@ import lsst.ip.isr.isrMock as isrMock
 import lsst.cp.verify as cpVerify
 import lsst.ip.isr.isrFunctions as isrFunctions
 
-from lsst.pipe.base import TaskMetadata
-
 
 def updateMockExp(exposure, addCR=True):
     """Update an exposure with a mask and variance plane.
@@ -211,12 +209,10 @@ class VerifyDarkTestCase(lsst.utils.tests.TestCase):
                            'detector': detector.getName(),
                            }
 
-        # Use this to test accessing info from the TaskMetadata:
-        metadataContents = TaskMetadata()
+        # Populate the READ_NOISE into the exposure header
+        md = self.inputExp.getMetadata()
         for amp in detector.getAmplifiers():
-            metadataContents[f"RESIDUAL STDEV {amp.getName()}"] = 5.24
-        self.metadata = TaskMetadata()
-        self.metadata["isr"] = metadataContents
+            md[f"LSST ISR OVERSCAN RESIDUAL SERIAL STDEV {amp.getName()}"] = 5.24
 
     def test_dark(self):
         """Test a subset of the output values to identify that the
@@ -227,7 +223,6 @@ class VerifyDarkTestCase(lsst.utils.tests.TestCase):
         task = cpVerify.CpVerifyDarkTask(config=config)
         results = task.run(self.inputExp,
                            camera=self.camera,
-                           taskMetadata=self.metadata,
                            dimensions=self.dimensions)
         darkStats = results.outputStats
 

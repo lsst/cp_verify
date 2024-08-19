@@ -34,7 +34,6 @@ tasks:
     class: lsst.cp.verify.CpVerifyBiasTask
     config:
       connections.inputExp: "verifyBiasIsrExp"
-      connections.taskMetadata: "verifyBiasIsr_metadata"
       connections.outputStats: "verifyBiasDetStats"
       connections.outputResults: "verifyBiasDetResults"
       connections.outputMatrix: "verifyBiasDetMatrix"
