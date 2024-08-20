@@ -32,7 +32,6 @@ tasks:
     class: lsst.cp.pipe.PhotonTransferCurveExtractTask
     config:
       connections.inputExp: "verifyLinearizerIsrExp"
-      connections.taskMetadata: "verifyLinearizerIsr_metadata"
       connections.outputCovariances: "verifyLinearizerPtcPartial"
       maximumRangeCovariancesAstier: 1
       numEdgeSuspect: 20

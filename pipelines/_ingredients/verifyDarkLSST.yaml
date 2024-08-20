@@ -30,7 +30,6 @@ tasks:
     class: lsst.cp.verify.CpVerifyDarkTask
     config:
       connections.inputExp: "verifyDarkIsrExp"
-      connections.taskMetadata: "verifyDarkIsr_metadata"
       connections.outputStats: "verifyDarkDetStats"
       connections.outputResults: "verifyDarkDetResults"
       useIsrStatistics: true
