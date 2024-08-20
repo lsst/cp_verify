@@ -1,13 +1,18 @@
 description: cp_verify LINEARITY calibration verification
 instrument: lsst.obs.lsst.LsstCam
 imports:
-  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyLinearizer.yaml
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyLinearizerLSST.yaml
 tasks:
-  verifyLinearitySecondLinearizer:
+  verifyLinearizerPtcExtract:
+    class: lsst.cp.pipe.PhotonTransferCurveExtractTask
+    config:
+      useEfdPhotodiodeData: false
+      doExtractPhotodiodeData: true
+      auxiliaryHeaderKeys: ["CCOBCURR", "CCOBFLUX", "TEMP6"]
+      matchExposuresType: FLUX
+  verifyLinearizerSecondLinearizer:
     class: lsst.cp.verify.CpvLinearitySolveTask
     config:
-      linearityType: Spline
-      usePhotodiode: true
       splineGroupingColumn: CCOBCURR
       maxLinearAdu: 120000
       splineFitTemperatureColumn: TEMP6
