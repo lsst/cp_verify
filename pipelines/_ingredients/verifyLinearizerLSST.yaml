@@ -52,7 +52,7 @@ tasks:
       linearityType: "Spline"
       splineKnots: 10
       trimmedState: false
-      usePhotodiode: false
+      usePhotodiode: true
   verifyLinearizerCalib:
     class: lsst.cp.verify.CpVerifyLinearityTask
     config:
