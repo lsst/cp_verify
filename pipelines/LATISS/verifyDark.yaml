@@ -2,3 +2,8 @@ description: cp_verify DARK calibration verification
 instrument: lsst.obs.lsst.Latiss
 imports:
   - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyDarkLSST.yaml
+tasks:
+  verifyDarkIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      crosstalk.doQuadraticCrosstalkCorrection: false
