@@ -44,7 +44,7 @@ tasks:
       hasInputResults: true
       hasMatrixCatalog: false
       stageName: "flat"
-  verifyFlatX:
+  verifyFlat:
     class: lsst.cp.verify.CpVerifyRunMergeByFilterTask
     config:
       connections.inputStats: "verifyFlatExpStats"
@@ -57,5 +57,5 @@ contracts:
   - verifyFlatDet.connections.inputExp == verifyFlatIsr.connections.outputExposure
   - verifyFlatExp.connections.inputStats == verifyFlatDet.connections.outputStats
   - verifyFlatExp.connections.inputResults == verifyFlatDet.connections.outputResults
-  - verifyFlatX.connections.inputStats == verifyFlatExp.connections.outputStats
-  - verifyFlatX.connections.inputResults == verifyFlatExp.connections.outputResults
+  - verifyFlat.connections.inputStats == verifyFlatExp.connections.outputStats
+  - verifyFlat.connections.inputResults == verifyFlatExp.connections.outputResults
