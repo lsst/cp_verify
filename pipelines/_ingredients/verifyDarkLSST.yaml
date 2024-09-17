@@ -1,0 +1,51 @@
+description: cp_verify DARK calibration verification (LSST isr task)
+tasks:
+  verifyDarkIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      connections.ccdExposure: "raw"
+      connections.outputExposure: "verifyDarkIsrExp"
+      python: |
+        from lsst.cp.pipe import configureIsrTaskLSSTForCalibrations
+
+        configureIsrTaskLSSTForCalibrations(config)
+
+        config.doCrosstalk = True
+        config.crosstalk.doQuadraticCrosstalkCorrection = True
+        config.doApplyGains = True
+        config.doLinearize = True
+        config.doBias = True
+        config.doDark = True
+        config.doDefect = True
+        config.isrStats.doCopyCalibDistributionStatistics = True
+  verifyDarkDet:
+    class: lsst.cp.verify.CpVerifyDarkTask
+    config:
+      connections.inputExp: "verifyDarkIsrExp"
+      connections.outputStats: "verifyDarkDetStats"
+      connections.outputResults: "verifyDarkDetResults"
+      useIsrStatistics: true
+  verifyDarkExp:
+    class: lsst.cp.verify.CpVerifyExpMergeTask
+    config:
+      connections.inputStats: "verifyDarkDetStats"
+      connections.inputResults: "verifyDarkDetResults"
+      connections.outputStats: "verifyDarkExpStats"
+      connections.outputResults: "verifyDarkExpResults"
+      hasInputResults: true
+      hasMatrixCatalog: false
+  verifyDark:
+    class: lsst.cp.verify.CpVerifyRunMergeTask
+    config:
+      connections.inputStats: "verifyDarkExpStats"
+      connections.inputResults: "verifyDarkExpResults"
+      connections.outputStats: "verifyDarkStats"
+      connections.outputResults: "verifyDarkResults"
+      hasInputResults: true
+      hasMatrixCatalog: false
+contracts:
+  - verifyDarkDet.connections.inputExp == verifyDarkIsr.connections.outputExposure
+  - verifyDarkExp.connections.inputStats == verifyDarkDet.connections.outputStats
+  - verifyDarkExp.connections.inputResults == verifyDarkDet.connections.outputResults
+  - verifyDark.connections.inputStats == verifyDarkExp.connections.outputStats
+  - verifyDark.connections.inputResults == verifyDarkExp.connections.outputResults
