@@ -1,0 +1,90 @@
+description: cp_verify BIAS calibration verification (LSST style).
+imports:
+  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+    include:
+      - analyzeBiasCore
+tasks:
+  verifyBiasIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      connections.ccdExposure: "raw"
+      connections.outputExposure: "verifyBiasIsrExp"
+      connections.outputBin1Exposure: "verifyBiasIsrExpBin8"
+      connections.outputBin2Exposure: "verifyBiasIsrExpBin64"
+      python: |
+        from lsst.cp.pipe import configureIsrTaskLSSTForCalibrations
+
+        configureIsrTaskLSSTForCalibrations(config)
+
+        config.doCrosstalk = True
+        config.crosstalk.doQuadraticCrosstalkCorrection = True
+        config.doApplyGains = True
+        config.doLinearize = True
+        config.doBias = True
+        config.doDefect = True
+        config.doInterpolate = True
+        config.isrStats.doCopyCalibDistributionStatistics = True
+        config.isrStats.doProjectionStatistics = True
+        config.isrStats.doBiasShiftStatistics = True
+        config.isrStats.doAmplifierCorrelationStatistics = True
+        config.doBinnedExposures = True
+        config.binFactor1 = 8
+        config.binFactor2 = 64
+  verifyBiasDet:
+    class: lsst.cp.verify.CpVerifyBiasTask
+    config:
+      connections.inputExp: "verifyBiasIsrExp"
+      connections.outputStats: "verifyBiasDetStats"
+      connections.outputResults: "verifyBiasDetResults"
+      connections.outputMatrix: "verifyBiasDetMatrix"
+      doVignette: false
+      useReadNoise: true
+      useIsrStatistics: true
+      hasMatrixCatalog: true
+  verifyBiasExp:
+    class: lsst.cp.verify.CpVerifyExpMergeTask
+    config:
+      connections.inputStats: "verifyBiasDetStats"
+      connections.inputResults: "verifyBiasDetResults"
+      connections.inputMatrix: "verifyBiasDetMatrix"
+      connections.outputStats: "verifyBiasExpStats"
+      connections.outputResults: "verifyBiasExpResults"
+      connections.outputMatrix: "verifyBiasExpMatrix"
+      hasInputResults: true
+      hasMatrixCatalog: true
+  verifyBias:
+    class: lsst.cp.verify.CpVerifyRunMergeTask
+    config:
+      connections.inputStats: "verifyBiasExpStats"
+      connections.inputResults: "verifyBiasExpResults"
+      connections.inputMatrix: "verifyBiasExpMatrix"
+      connections.outputStats: "verifyBiasStats"
+      connections.outputResults: "verifyBiasResults"
+      connections.outputMatrix: "verifyBiasMatrix"
+      hasInputResults: true
+      hasMatrixCatalog: true
+  analyzeBiasCore: lsst.analysis.tools.tasks.VerifyCalibAnalysisTask
+  mosaicExp8:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExps: 'verifyBiasIsrExpBin8'
+      connections.outputData: 'verifyBiasResidual8'
+      binning: 8
+  mosaicExp64:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExps: 'verifyBiasIsrExpBin64'
+      connections.outputData: 'verifyBiasResidual64'
+      binning: 64
+contracts:
+  - verifyBiasIsr.binFactor1 == mosaicExp8.binning
+  - verifyBiasIsr.binFactor2 == mosaicExp64.binning
+  - verifyBiasDet.connections.inputExp == verifyBiasIsr.connections.outputExposure
+  - verifyBiasExp.connections.inputStats == verifyBiasDet.connections.outputStats
+  - verifyBiasExp.connections.inputResults == verifyBiasDet.connections.outputResults
+  - verifyBiasExp.connections.inputMatrix == verifyBiasDet.connections.outputMatrix
+  - verifyBias.connections.inputStats == verifyBiasExp.connections.outputStats
+  - verifyBias.connections.inputResults == verifyBiasExp.connections.outputResults
+  - verifyBias.connections.inputMatrix == verifyBiasExp.connections.outputMatrix
+  - mosaicExp8.connections.inputExps == verifyBiasIsr.connections.outputBin1Exposure
+  - mosaicExp64.connections.inputExps == verifyBiasIsr.connections.outputBin2Exposure
