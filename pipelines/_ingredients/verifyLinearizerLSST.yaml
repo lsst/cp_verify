@@ -1,0 +1,65 @@
+description: cp_verify LINEARITY calibration verification
+tasks:
+  verifyLinearizerIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      connections.ccdExposure: "raw"
+      connections.outputExposure: "verifyLinearizerIsrExp"
+      connections.linearizer: "linearizer"
+      python: |
+        from lsst.cp.pipe import configureIsrTaskLSSTForCalibrations
+
+        configureIsrTaskLSSTForCalibrations(config)
+
+        config.doBootstrap = True
+        config.doCrosstalk = True
+        config.crosstalk.doQuadraticCrosstalkCorrection = False
+        config.doLinearize = True
+        config.doDefect = True
+  verifyLinearizerPtcExtract:
+    class: lsst.cp.pipe.PhotonTransferCurveExtractTask
+    config:
+      connections.inputExp: "verifyLinearizerIsrExp"
+      connections.outputCovariances: "verifyLinearizerPtcPartial"
+      maximumRangeCovariancesAstier: 1
+      numEdgeSuspect: 20
+      edgeMaskLevel: "AMP"
+      useEfdPhotodiodeData: true
+  verifyLinearizerPtcSolve:
+    class: lsst.cp.pipe.PhotonTransferCurveSolveTask
+    config:
+      connections.inputCovariances: "verifyLinearizerPtcPartial"
+      connections.outputPtcDataset: "verifyLinearizerPtc"
+      ptcFitType: EXPAPPROXIMATION
+      maximumRangeCovariancesAstier: 1
+  verifyLinearizerSecondLinearizer:
+    class: lsst.cp.verify.CpvLinearitySolveTask
+    config:
+      connections.inputPtc: "verifyLinearizerPtc"
+      connections.outputLinearizer: "verifyLinearizerSecondLinearizer"
+      linearityType: "Spline"
+      splineKnots: 10
+      trimmedState: false
+      usePhotodiode: true
+  verifyLinearizerCalib:
+    class: lsst.cp.verify.CpVerifyLinearityTask
+    config:
+      connections.inputCalib: "verifyLinearizerSecondLinearizer"
+      connections.outputStats: "verifyLinearizerDetStats"
+      connections.outputResults: "verifyLinearizerDetResults"
+  verifyLinearizer:
+    class: lsst.cp.verify.CpVerifyCalibMergeTask
+    config:
+      connections.inputStats: "verifyLinearizerDetStats"
+      connections.inputResults: "verifyLinearizerDetResults"
+      connections.outputStats: "verifyLinearizerStats"
+      connections.outputResults: "verifyLinearizerResults"
+      mergeDimension: "detector"
+      hasInputResults: true
+contracts:
+  - verifyLinearizerPtcExtract.connections.inputExp == verifyLinearizerIsr.connections.outputExposure
+  - verifyLinearizerPtcSolve.connections.inputCovariances == verifyLinearizerPtcExtract.connections.outputCovariances
+  - verifyLinearizerSecondLinearizer.connections.inputPtc == verifyLinearizerPtcSolve.connections.outputPtcDataset
+  - verifyLinearizerCalib.connections.inputCalib == verifyLinearizerSecondLinearizer.connections.outputLinearizer
+  - verifyLinearizer.connections.inputStats == verifyLinearizerCalib.connections.outputStats
+  - verifyLinearizer.connections.inputResults == verifyLinearizerCalib.connections.outputResults
