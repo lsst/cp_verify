@@ -1,0 +1,14 @@
+description: cp_verify LATISS linearizer calibration verification
+instrument: lsst.obs.lsst.Latiss
+imports:
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyLinearizerLSST.yaml
+tasks:
+  verifyLinearizerPtcExtract:
+    class: lsst.cp.pipe.PhotonTransferCurveExtractTask
+    config:
+      efdSalIndex: 201
+  verifyLinearizerSecondLinearizer:
+    class: lsst.cp.verify.CpvLinearitySolveTask
+    config:
+      maxLinearAdu: 120000
+      usePhotodiode: false
