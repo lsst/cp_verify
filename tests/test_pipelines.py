@@ -64,7 +64,6 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
             "verifyCrosstalk.yaml",
             "verifyDark.yaml",
             "verifyDefectsIndividual.yaml",
-            "verifyDefectsPostFlat.yaml",
             "verifyDefects.yaml",
             "verifyFlat.yaml",
             "verifyGain.yaml",
