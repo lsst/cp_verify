@@ -66,7 +66,10 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
             "verifyDefectsIndividual.yaml",
             "verifyDefects.yaml",
             "verifyFlat.yaml",
+            # Old pipeline name.
             "verifyGain.yaml",
+            # New pipeline name.
+            "verifyGainFromFlatPairs.yaml",
             "verifyLinearizer.yaml",
             "verifyPtc.yaml",
         }
@@ -99,6 +102,9 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
             [os.path.basename(pipeline) for pipeline in glob.glob(glob_str) if "LSST.yaml" not in pipeline]
         )
         expected = self._get_pipelines()
+        # The _ingredients/verifyGainFromFlatPairs.yaml becomes
+        # verifyGain.yaml in older pipelines for compatibility.
+        expected.remove("verifyGain.yaml")
         self.assertEqual(ingredients, expected)
 
     def test_cameras(self):
@@ -122,37 +128,41 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
 
     @unittest.skipIf(not has_obs_lsst, reason="Cannot test LATISS pipelines without obs_lsst")
     def test_latiss_pipelines(self):
-        for pipeline in self._get_pipelines():
+        # TODO DM-46356: Change exclusion to verifyGain.yaml
+        for pipeline in self._get_pipelines(exclude=["verifyGainFromFlatPairs.yaml"]):
             self._check_pipeline(os.path.join(self.pipeline_path, "LATISS", pipeline))
 
     @unittest.skipIf(not has_obs_lsst, reason="Cannot test LSSTCam pipelines without obs_lsst")
     def test_lsstcam_pipelines(self):
-        for pipeline in self._get_pipelines(exclude=[]):
+        # TODO DM-46358: Change exclusion to verifyGain.yaml
+        for pipeline in self._get_pipelines(exclude=["verifyGainFromFlatPairs.yaml"]):
             self._check_pipeline(os.path.join(self.pipeline_path, "LSSTCam", pipeline))
 
     @unittest.skipIf(not has_obs_lsst, reason="Cannot test LSSTCam-imSim pipelines without obs_lsst")
     def test_lsstcam_imsim_pipelines(self):
-        for pipeline in self._get_pipelines(exclude=[]):
+        for pipeline in self._get_pipelines(exclude=["verifyGainFromFlatPairs.yaml"]):
             self._check_pipeline(os.path.join(self.pipeline_path, "LSSTCam-imSim", pipeline))
 
     @unittest.skipIf(not has_obs_lsst, reason="Cannot test LSSTComCam pipelines without obs_lsst")
     def test_lsstcomcam_pipelines(self):
-        for pipeline in self._get_pipelines(exclude=[]):
+        # TODO DM-46357: Change exclusion to verifyGain.yaml
+        for pipeline in self._get_pipelines(exclude=["verifyGainFromFlatPairs.yaml"]):
             self._check_pipeline(os.path.join(self.pipeline_path, "LSSTComCam", pipeline))
 
     @unittest.skipIf(not has_obs_lsst, reason="Cannot test LSSTComCamSim pipelines without obs_lsst")
     def test_lsstcomcamsim_pipelines(self):
-        for pipeline in self._get_pipelines(exclude=[]):
+        # TODO DM-46357: Change exclusion to verifyGain.yaml
+        for pipeline in self._get_pipelines(exclude=["verifyGainFromFlatPairs.yaml"]):
             self._check_pipeline(os.path.join(self.pipeline_path, "LSSTComCamSim", pipeline))
 
     @unittest.skipIf(not has_obs_decam, reason="Cannot test DECam pipelines without obs_decam")
     def test_decam_pipelines(self):
-        for pipeline in self._get_pipelines(exclude=[]):
+        for pipeline in self._get_pipelines(exclude=["verifyGainFromFlatPairs.yaml"]):
             self._check_pipeline(os.path.join(self.pipeline_path, "DECam", pipeline))
 
     @unittest.skipIf(not has_obs_subaru, reason="Cannot test HSC pipelines without obs_subaru")
     def test_hsc_pipelines(self):
-        for pipeline in self._get_pipelines(exclude=[]):
+        for pipeline in self._get_pipelines(exclude=["verifyGainFromFlatPairs.yaml"]):
             self._check_pipeline(os.path.join(self.pipeline_path, "HSC", pipeline))
 
 
