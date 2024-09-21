@@ -101,6 +101,8 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
         ingredients = set(
             [os.path.basename(pipeline) for pipeline in glob.glob(glob_str) if "LSST.yaml" not in pipeline]
         )
+        # The _ingredients/verifyGainFromFlatPairs.yaml becomes
+        # verifyGain.yaml in older pipelines for compatibility.
         expected = self._get_pipelines()
         # The _ingredients/verifyGainFromFlatPairs.yaml becomes
         # verifyGain.yaml in older pipelines for compatibility.
