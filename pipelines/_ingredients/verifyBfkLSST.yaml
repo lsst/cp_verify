@@ -1,0 +1,77 @@
+description: cp_verify BFK calibration verification
+# TODO DM-46445: This pipeline is a draft, but does not fully work
+# and will be fixed on that ticket.
+tasks:
+  verifyBfkIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      connections.ccdExposure: "raw"
+      connections.outputExposure: "verifyBfkIsrExp"
+      connections.outputStatistics: "verifyBfkIsrStatistics"
+      crosstalk.doQuadraticCrosstalkCorrection: true
+      # TODO DM-46426: Add cpCtiLSST pipeline so this can be true.
+      doDeferredCharge: false
+      doBrighterFatter: true
+  verifyBfkChar:
+    class: lsst.pipe.tasks.characterizeImage.CharacterizeImageTask
+    config:
+      connections.exposure: "verifyBfkIsrExp"
+      connections.characterized: "verifyBfkIcExp"
+      connections.sourceCat: "verifyBfkIcSrc"
+      doApCorr: false
+      doDeblend: false
+      doMeasurePsf: false
+      doNormalizedCalibration: false
+  verifyUncorrectedBfkIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      connections.ccdExposure: "raw"
+      connections.outputExposure: "verifyUncorrectedBfkIsrExp"
+      connections.outputStatistics: "verifyUncorrectedBfkIsrStatistics"
+      crosstalk.doQuadraticCrosstalkCorrection: true
+      # TODO DM-46426: Add cpCtiLSST pipeline so this can be true.
+      doDeferredCharge: false
+      doBrighterFatter: false
+  verifyUncorrectedBfkChar:
+    class: lsst.pipe.tasks.characterizeImage.CharacterizeImageTask
+    config:
+      connections.exposure: "verifyUncorrectedBfkIsrExp"
+      connections.characterized: "verifyUncorrectedBfkIcExp"
+      connections.sourceCat: "verifyUncorrectedBfkIcSrc"
+      connections.backgroundModel: "verifyUncorrectedBfkBackground"
+      connections.outputSchema: "verifyUncorrectedBfk_schema"
+      doApCorr: false
+      doDeblend: false
+      doMeasurePsf: false
+      doNormalizedCalibration: false
+  verifyBfkDet:
+    class: lsst.cp.verify.CpVerifyBfkTask
+    config:
+      connections.inputExp: "verifyBfkIcExp"
+      connections.inputCatalog: "verifyBfkIcSrc"
+      connections.uncorrectedCatalog: "verifyUncorrectedBfkIcSrc"
+      connections.outputStats: "verifyBfkDetStats"
+      connections.outputResults: "verifyBfkDetResults"
+  verifyBfkExp:
+    class: lsst.cp.verify.CpVerifyVisitExpMergeTask
+    config:
+      connections.inputStats: "verifyBfkDetStats"
+      connections.inputResults: "verifyBfkDetResults"
+      connections.outputStats: "verifyBfkExpStats"
+      connections.outputResults: "verifyBfkExpResults"
+  verifyBfk:
+    class: lsst.cp.verify.CpVerifyVisitRunMergeTask
+    config:
+      connections.inputStats: "verifyBfkExpStats"
+      connections.inputResults: "verifyBfkExpResults"
+      connections.outputStats: "verifyBfkStats"
+      connections.outputResults: "verifyBfkResults"
+contracts:
+  - verifyBfkChar.connections.exposure == verifyBfkIsr.connections.outputExposure
+  - verifyUncorrectedBfkChar.connections.exposure == verifyUncorrectedBfkIsr.connections.outputExposure
+  - verifyBfkDet.connections.inputCatalog == verifyBfkChar.connections.sourceCat
+  - verifyBfkDet.connections.uncorrectedCatalog == verifyUncorrectedBfkChar.connections.sourceCat
+  - verifyBfkExp.connections.inputStats == verifyBfkDet.connections.outputStats
+  - verifyBfkExp.connections.inputResults == verifyBfkDet.connections.outputResults
+  - verifyBfk.connections.inputStats == verifyBfkExp.connections.outputStats
+  - verifyBfk.connections.inputResults == verifyBfkExp.connections.outputResults
