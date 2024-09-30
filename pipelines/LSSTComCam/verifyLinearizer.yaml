@@ -1,0 +1,9 @@
+description: cp_verify LINEARITY calibration verification
+instrument: lsst.obs.lsst.LsstComCam
+imports:
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyLinearizerLSST.yaml
+tasks:
+  verifyLinearizerPtcExtract:
+    class: lsst.cp.pipe.PhotonTransferCurveExtractTask
+    config:
+      efdSalIndex: 101
