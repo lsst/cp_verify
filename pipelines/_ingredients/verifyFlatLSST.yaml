@@ -18,8 +18,10 @@ tasks:
         config.doDeferredCharge = False
         config.doBias = True
         config.doDark = True
+        config.doDefect = True
         config.doBrighterFatter = True
         config.doFlat = True
+        config.doInterpolate = True
         config.isrStats.doCopyCalibDistributionStatistics = True
   verifyFlatDet:
     class: lsst.cp.verify.CpVerifyFlatTask

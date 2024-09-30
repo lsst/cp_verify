@@ -1,9 +1,9 @@
-description: cp_verify DARK calibration verification
+description: cp_verify LATISS dark calibration verification
 instrument: lsst.obs.lsst.Latiss
 imports:
-  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyDark.yaml
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyDarkLSST.yaml
 tasks:
   verifyDarkIsr:
-    class: lsst.ip.isr.IsrTask
+    class: lsst.ip.isr.IsrTaskLSST
     config:
-      overscan.fitType: "MEDIAN_PER_ROW"
+      crosstalk.doQuadraticCrosstalkCorrection: false
