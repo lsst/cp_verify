@@ -1,0 +1,17 @@
+description: cp_verify for Defects measured from combined calibrations.
+instrument: lsst.obs.lsst.LsstComCamSim
+imports:
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyDefectsLSST.yaml
+tasks:
+  verifyDefectsIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      doCrosstalk: false
+      doLinearize: false
+      doDeferredCharge: false
+  verifyUncorrectedDefectsIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      doCrosstalk: false
+      doLinearize: false
+      doDeferredCharge: false
