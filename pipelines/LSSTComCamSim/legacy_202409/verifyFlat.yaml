@@ -1,0 +1,4 @@
+description: cp_verify FLAT calibration verification
+instrument: lsst.obs.lsst.LsstComCamSim
+imports:
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyFlat.yaml
