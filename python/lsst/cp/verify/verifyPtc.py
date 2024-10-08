@@ -151,6 +151,10 @@ class CpVerifyPtcTask(CpVerifyCalibTask):
             outputStatistics[ampName]['PTC_RAW_MEANS'] = rawFlux
             rawVars = inputCalib.rawVars[ampName].tolist()
             outputStatistics[ampName]['PTC_RAW_VARIANCE'] = rawVars
+            finalFlux = inputCalib.finalMeans[ampName].tolist()
+            outputStatistics[ampName]['PTC_FINAL_MEANS'] = finalFlux
+            finalVars = inputCalib.finalVars[ampName].tolist()
+            outputStatistics[ampName]['PTC_FINAL_VARIANCE'] = finalVars
             mask = inputCalib.expIdMask[ampName].tolist()
             outputStatistics[ampName]['PTC_EXP_ID_MASK'] = mask
             covs = inputCalib.covariances[ampName]
