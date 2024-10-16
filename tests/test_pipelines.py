@@ -194,11 +194,11 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
             "verifyBfk.yaml",
             "verifyCrosstalk.yaml",
             "verifyDefectsIndividual.yaml",
-            "verifyDefectsPostFlat.yaml",
             "verifyFlat.yaml",
             "verifyGain.yaml",
             "verifyLinearizer.yaml",
             "verifyPtc.yaml",
+            "verifyGainFromFlatPairs.yaml"
         ]):
             self._check_pipeline(os.path.join(self.pipeline_path, "StarTrackerFast", pipeline))
 
