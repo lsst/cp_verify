@@ -1,4 +1,15 @@
-description: cp_verify BFK calibration verification
+description: cp_verify LATISS BFK calibration verification
+# TODO DM-46445: This pipeline is a draft, but does not fully work
+# and will be fixed on that ticket.
 instrument: lsst.obs.lsst.Latiss
 imports:
-  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyBfk.yaml
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyBfkLSST.yaml
+tasks:
+  verifyBfkIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      crosstalk.doQuadraticCrosstalkCorrection: false
+  verifyUncorrectedBfkIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      crosstalk.doQuadraticCrosstalkCorrection: false

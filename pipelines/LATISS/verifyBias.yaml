@@ -1,9 +1,9 @@
-description: cp_verify BIAS calibration verification
+description: cp_verify LATISS bias calibration verification
 instrument: lsst.obs.lsst.Latiss
 imports:
-  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyBias.yaml
+  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyBiasLSST.yaml
 tasks:
   verifyBiasIsr:
-    class: lsst.ip.isr.IsrTask
+    class: lsst.ip.isr.IsrTaskLSST
     config:
-      overscan.fitType: "MEDIAN_PER_ROW"
+      crosstalk.doQuadraticCrosstalkCorrection: false
