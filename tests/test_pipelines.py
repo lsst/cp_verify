@@ -101,6 +101,8 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
         ingredients = set(
             [os.path.basename(pipeline) for pipeline in glob.glob(glob_str) if "LSST.yaml" not in pipeline]
         )
+        # The _ingredients/verifyGainFromFlatPairs.yaml becomes
+        # verifyGain.yaml in older pipelines for compatibility.
         expected = self._get_pipelines()
         # The _ingredients/verifyGainFromFlatPairs.yaml becomes
         # verifyGain.yaml in older pipelines for compatibility.
@@ -128,8 +130,15 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
 
     @unittest.skipIf(not has_obs_lsst, reason="Cannot test LATISS pipelines without obs_lsst")
     def test_latiss_pipelines(self):
-        # TODO DM-46356: Change exclusion to verifyGain.yaml
-        for pipeline in self._get_pipelines(exclude=["verifyGainFromFlatPairs.yaml"]):
+        for pipeline in self._get_pipelines(exclude=[
+                # The old pipeline name should be excluded.
+                "verifyGain.yaml",
+                # The following tasks are not part of the new pipelines.
+                "verifyDefectsIndividual.yaml",
+                # The following tasks will be added in the future.
+                "verifyCrosstalk.yaml",
+                "verifyBfk.yaml",
+        ]):
             self._check_pipeline(os.path.join(self.pipeline_path, "LATISS", pipeline))
 
     @unittest.skipIf(not has_obs_lsst, reason="Cannot test LSSTCam pipelines without obs_lsst")
