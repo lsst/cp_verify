@@ -143,8 +143,14 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
 
     @unittest.skipIf(not has_obs_lsst, reason="Cannot test LSSTCam pipelines without obs_lsst")
     def test_lsstcam_pipelines(self):
-        # TODO DM-46358: Change exclusion to verifyGain.yaml
-        for pipeline in self._get_pipelines(exclude=["verifyGainFromFlatPairs.yaml"]):
+        for pipeline in self._get_pipelines(
+                exclude=[
+                    # These are renamed/not used in the new pipelines.
+                    "verifyGain.yaml",
+                    "verifyDefectsIndividual.yaml",
+                    # These are not used yet.
+                    "verifyCrosstalk.yaml",
+                ]):
             self._check_pipeline(os.path.join(self.pipeline_path, "LSSTCam", pipeline))
 
     @unittest.skipIf(not has_obs_lsst, reason="Cannot test LSSTCam-imSim pipelines without obs_lsst")
