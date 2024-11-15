@@ -1,4 +1,9 @@
 description: cp_verify FLAT calibration verification
+imports:
+  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+    include:
+      - analyzeFlatCore
+      - analyzeFlatDetCore
 tasks:
   verifyFlatIsr:
     class: lsst.ip.isr.IsrTask
@@ -36,6 +41,16 @@ tasks:
       connections.outputResults: "verifyFlatResults"
       hasInputResults: true
       hasMatrixCatalog: false
+  analyzeFlatCore:
+    class: lsst.analysis.tools.tasks.VerifyCalibAnalysisTask
+    config:
+      connections.data: "verifyFlatResults"
+      connections.outputName: "verifyFlatAnalysis"
+  analyzeFlatDetCore:
+    class: lsst.analysis.tools.tasks.VerifyCalibAnalysisTask
+    config:
+      connections.data: "verifyFlatDetResults"
+      connections.outputName: "verifyFlatDetAnalysis"
 contracts:
   - verifyFlatDet.connections.inputExp == verifyFlatIsr.connections.outputExposure
   - verifyFlatExp.connections.inputStats == verifyFlatDet.connections.outputStats
