@@ -46,7 +46,7 @@ tasks:
       hasMatrixCatalog: false
       stageName: "flat"
   verifyFlat:
-    class: lsst.cp.verify.CpVerifyRunMergeByFilterTask
+    class: lsst.cp.verify.CpVerifyRunMergeByFilterTaskByFilter
     config:
       connections.inputStats: "verifyFlatExpStats"
       connections.inputResults: "verifyFlatExpResults"
@@ -55,12 +55,12 @@ tasks:
       hasInputResults: true
       hasMatrixCatalog: false
   analyzeFlatCore:
-    class: lsst.analysis.tools.tasks.VerifyCalibAnalysisTask
+    class: lsst.analysis.tools.tasks.VerifyCalibAnalysisTaskByFilter
     config:
       connections.data: "verifyFlatResults"
       connections.outputName: "verifyFlatAnalysis"
   analyzeFlatDetCore:
-    class: lsst.analysis.tools.tasks.VerifyCalibAnalysisTask
+    class: lsst.analysis.tools.tasks.VerifyCalibAnalysisTaskByFilter
     config:
       connections.data: "verifyFlatDetResults"
       connections.outputName: "verifyFlatDetAnalysis"
