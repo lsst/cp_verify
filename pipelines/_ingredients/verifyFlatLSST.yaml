@@ -3,7 +3,7 @@ imports:
   - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
     include:
       - analyzeFlatCore
-      - analyzeFlatDetCore
+      - analyzeFlatDetMergeCore
 tasks:
   verifyFlatIsr:
     class: lsst.ip.isr.IsrTaskLSST
@@ -35,6 +35,16 @@ tasks:
       connections.outputStats: "verifyFlatDetStats"
       connections.outputResults: "verifyFlatDetResults"
       useIsrStatistics: true
+  verifyFlatDetMerge:
+    class: lsst.cp.verify.CpVerifyDetMergeByFilterTask
+    config:
+      connections.inputStats: "verifyFlatDetStats"
+      connections.inputResults: "verifyFlatDetResults"
+      connections.outputStats: "verifyFlatDetMergeStats"
+      connections.outputResults: "verifyFlatDetMergeResults"
+      hasInputResults: true
+      hasMatrixCatalog: false
+      stageName: "flat"
   verifyFlatExp:
     class: lsst.cp.verify.CpVerifyFlatExpMergeTask
     config:
@@ -46,7 +56,7 @@ tasks:
       hasMatrixCatalog: false
       stageName: "flat"
   verifyFlat:
-    class: lsst.cp.verify.CpVerifyRunMergeByFilterTaskByFilter
+    class: lsst.cp.verify.CpVerifyRunMergeByFilterTask
     config:
       connections.inputStats: "verifyFlatExpStats"
       connections.inputResults: "verifyFlatExpResults"
@@ -59,14 +69,16 @@ tasks:
     config:
       connections.data: "verifyFlatResults"
       connections.outputName: "verifyFlatAnalysis"
-  analyzeFlatDetCore:
+  analyzeFlatDetMergeCore:
     class: lsst.analysis.tools.tasks.VerifyCalibAnalysisTaskByFilter
     config:
-      connections.data: "verifyFlatDetResults"
-      connections.outputName: "verifyFlatDetAnalysis"
+      connections.data: "verifyFlatDetMergeResults"
+      connections.outputName: "verifyFlatDetMergeAnalysis"
 contracts:
   - verifyFlatDet.connections.inputExp == verifyFlatIsr.connections.outputExposure
   - verifyFlatExp.connections.inputStats == verifyFlatDet.connections.outputStats
   - verifyFlatExp.connections.inputResults == verifyFlatDet.connections.outputResults
   - verifyFlat.connections.inputStats == verifyFlatExp.connections.outputStats
   - verifyFlat.connections.inputResults == verifyFlatExp.connections.outputResults
+  - analyzeFlatCore.connections.data == verifyFlat.connections.outputResults
+  - analyzeFlatDetMergeCore.connections.data == verifyFlatDetMerge.connections.outputResults
