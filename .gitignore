@@ -22,3 +22,4 @@ bin/
 .pytest_cache
 pytest_session.txt
 notebooks/.ipynb_checkpoints
+python/*.dist-info/
