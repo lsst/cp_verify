@@ -6,4 +6,5 @@ tasks:
   verifyFlatIsr:
     class: lsst.ip.isr.IsrTaskLSST
     config:
+      doBrighterFatter: false
       crosstalk.doQuadraticCrosstalkCorrection: false
