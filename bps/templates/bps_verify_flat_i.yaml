@@ -1,0 +1,11 @@
+pipelineYaml: "${CP_VERIFY_DIR}/pipelines/${INSTRUMENT}/verifyFlat.yaml"
+
+project: "${TICKET}"
+campaign: "${TICKET}"
+
+payload:
+  payloadName: "${INSTRUMENT}_${TICKET}_verify_flat_i"
+  output: "${USER_CALIB_PREFIX}${INSTRUMENT}/calib/${TICKET}/${TAG}/verifyFlat-i.${VERIFY_RERUN}"
+  butlerConfig: "${REPO}"
+  inCollection: "${USER_CALIB_PREFIX}${INSTRUMENT}/calib/${TICKET}/${TAG},${RAW_COLLECTION},${CALIB_COLLECTIONS}"
+  dataQuery: "${SELECTION_FLAT_i_V} and band='i'"
