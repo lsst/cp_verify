@@ -64,23 +64,23 @@ tasks:
       hasInputResults: true
       hasMatrixCatalog: true
   analyzeBiasCore: lsst.analysis.tools.tasks.VerifyCalibAnalysisTask
-  mosaicExp8:
+  mosaicBiasExp8:
     class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
     config:
-      connections.inputExps: 'verifyBiasIsrExpBin8'
-      connections.outputData: 'verifyBiasResidual8'
-      dimensions: '("instrument", "exposure")'
+      connections.inputExps: "verifyBiasIsrExpBin8"
+      connections.outputData: "verifyBiasResidual8"
+      dimensions: "('instrument', 'exposure')"
       binning: 8
-  mosaicExp64:
+  mosaicBiasExp64:
     class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
     config:
-      connections.inputExps: 'verifyBiasIsrExpBin64'
-      connections.outputData: 'verifyBiasResidual64'
-      dimensions: '("instrument", "exposure")'
+      connections.inputExps: "verifyBiasIsrExpBin64"
+      connections.outputData: "verifyBiasResidual64"
+      dimensions: "('instrument', 'exposure')"
       binning: 64
 contracts:
-  - verifyBiasIsr.binFactor1 == mosaicExp8.binning
-  - verifyBiasIsr.binFactor2 == mosaicExp64.binning
+  - verifyBiasIsr.binFactor1 == mosaicBiasExp8.binning
+  - verifyBiasIsr.binFactor2 == mosaicBiasExp64.binning
   - verifyBiasDet.connections.inputExp == verifyBiasIsr.connections.outputExposure
   - verifyBiasExp.connections.inputStats == verifyBiasDet.connections.outputStats
   - verifyBiasExp.connections.inputResults == verifyBiasDet.connections.outputResults
@@ -88,5 +88,5 @@ contracts:
   - verifyBias.connections.inputStats == verifyBiasExp.connections.outputStats
   - verifyBias.connections.inputResults == verifyBiasExp.connections.outputResults
   - verifyBias.connections.inputMatrix == verifyBiasExp.connections.outputMatrix
-  - mosaicExp8.connections.inputExps == verifyBiasIsr.connections.outputBin1Exposure
-  - mosaicExp64.connections.inputExps == verifyBiasIsr.connections.outputBin2Exposure
+  - mosaicBiasExp8.connections.inputExps == verifyBiasIsr.connections.outputBin1Exposure
+  - mosaicBiasExp64.connections.inputExps == verifyBiasIsr.connections.outputBin2Exposure
