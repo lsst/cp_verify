@@ -5,6 +5,8 @@ tasks:
     config:
       connections.ccdExposure: "raw"
       connections.outputExposure: "verifyFlatIsrExp"
+      connections.outputBin1Exposure: "verifyFlatIsrExpBin8"
+      connections.outputBin2Exposure: "verifyFlatIsrExpBin64"
       python: |
         from lsst.cp.pipe import configureIsrTaskLSSTForCalibrations
 
@@ -23,6 +25,9 @@ tasks:
         config.doFlat = True
         config.doInterpolate = True
         config.isrStats.doCopyCalibDistributionStatistics = True
+        config.doBinnedExposures = True
+        config.binFactor1 = 8
+        config.binFactor2 = 64
   verifyFlatDet:
     class: lsst.cp.verify.CpVerifyFlatTask
     config:
@@ -49,9 +54,27 @@ tasks:
       connections.outputResults: "verifyFlatResults"
       hasInputResults: true
       hasMatrixCatalog: false
+  mosaicFlatExp8:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExps: "verifyFlatIsrExpBin8"
+      connections.outputData: "verifyFlatResidual8"
+      dimensions: "('instrument', 'exposure', 'physical_filter')"
+      binning: 8
+  mosaicFlatExp64:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExps: "verifyFlatIsrExpBin64"
+      connections.outputData: "verifyFlatResidual64"
+      dimensions: "('instrument', 'exposure', 'physical_filter')"
+      binning: 64
 contracts:
+  - verifyFlatIsr.binFactor1 == mosaicFlatExp8.binning
+  - verifyFlatIsr.binFactor2 == mosaicFlatExp64.binning
   - verifyFlatDet.connections.inputExp == verifyFlatIsr.connections.outputExposure
   - verifyFlatExp.connections.inputStats == verifyFlatDet.connections.outputStats
   - verifyFlatExp.connections.inputResults == verifyFlatDet.connections.outputResults
   - verifyFlat.connections.inputStats == verifyFlatExp.connections.outputStats
   - verifyFlat.connections.inputResults == verifyFlatExp.connections.outputResults
+  - mosaicFlatExp8.connections.inputExps == verifyFlatIsr.connections.outputBin1Exposure
+  - mosaicFlatExp64.connections.inputExps == verifyFlatIsr.connections.outputBin2Exposure
