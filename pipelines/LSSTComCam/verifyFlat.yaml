@@ -2,3 +2,8 @@ description: cp_verify FLAT calibration verification
 instrument: lsst.obs.lsst.LsstComCam
 imports:
   - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyFlatLSST.yaml
+tasks:
+  verifyFlatIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      doDeferredCharge: true
