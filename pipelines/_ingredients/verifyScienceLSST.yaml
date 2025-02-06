@@ -1,0 +1,31 @@
+description: cp_verify for science images.
+tasks:
+  verifyScienceIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      # This should use the default LSST ISR configuration.
+      connections.outputExposure: "verifyScienceIsrExp"
+      connections.outputBin1Exposure: "verifyScienceIsrExpBin8"
+      connections.outputBin2Exposure: "verifyScienceIsrExpBin64"
+      doBinnedExposures: true
+      binFactor1: 8
+      binFactor2: 64
+  mosaicScienceExp8:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExps: "verifyScienceIsrExpBin8"
+      connections.outputData: "verifyScience8"
+      dimensions: "('instrument', 'exposure')"
+      binning: 8
+  mosaicScienceExp64:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExps: "verifyScienceIsrExpBin64"
+      connections.outputData: "verifyScience64"
+      dimensions: "('instrument', 'exposure')"
+      binning: 64
+contracts:
+  - verifyScienceIsr.binFactor1 == mosaicScienceExp8.binning
+  - verifyScienceIsr.binFactor2 == mosaicScienceExp64.binning
+  - mosaicScienceExp8.connections.inputExps == verifyScienceIsr.connections.outputBin1Exposure
+  - mosaicScienceExp64.connections.inputExps == verifyScienceIsr.connections.outputBin2Exposure
