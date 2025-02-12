@@ -5,6 +5,8 @@ tasks:
     config:
       connections.ccdExposure: "raw"
       connections.outputExposure: "verifyDarkIsrExp"
+      connections.outputBin1Exposure: "verifyDarkIsrExpBin8"
+      connections.outputBin2Exposure: "verifyDarkIsrExpBin64"
       python: |
         from lsst.cp.pipe import configureIsrTaskLSSTForCalibrations
 
@@ -18,6 +20,9 @@ tasks:
         config.doDark = True
         config.doDefect = True
         config.isrStats.doCopyCalibDistributionStatistics = True
+        config.doBinnedExposures = True
+        config.binFactor1 = 8
+        config.binFactor2 = 64
   verifyDarkDet:
     class: lsst.cp.verify.CpVerifyDarkTask
     config:
@@ -43,9 +48,27 @@ tasks:
       connections.outputResults: "verifyDarkResults"
       hasInputResults: true
       hasMatrixCatalog: false
+  mosaicDarkExp8:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExps: "verifyDarkIsrExpBin8"
+      connections.outputData: "verifyDarkResidual8"
+      dimensions: "('instrument', 'exposure')"
+      binning: 8
+  mosaicDarkExp64:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
+    config:
+      connections.inputExps: "verifyDarkIsrExpBin64"
+      connections.outputData: "verifyDarkResidual64"
+      dimensions: "('instrument', 'exposure')"
+      binning: 64
 contracts:
+  - verifyDarkIsr.binFactor1 == mosaicDarkExp8.binning
+  - verifyDarkIsr.binFactor2 == mosaicDarkExp64.binning
   - verifyDarkDet.connections.inputExp == verifyDarkIsr.connections.outputExposure
   - verifyDarkExp.connections.inputStats == verifyDarkDet.connections.outputStats
   - verifyDarkExp.connections.inputResults == verifyDarkDet.connections.outputResults
   - verifyDark.connections.inputStats == verifyDarkExp.connections.outputStats
   - verifyDark.connections.inputResults == verifyDarkExp.connections.outputResults
+  - mosaicDarkExp8.connections.inputExps == verifyDarkIsr.connections.outputBin1Exposure
+  - mosaicDarkExp64.connections.inputExps == verifyDarkIsr.connections.outputBin2Exposure

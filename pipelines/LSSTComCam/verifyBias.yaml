@@ -2,3 +2,8 @@ description: cp_verify BIAS calibration verification
 instrument: lsst.obs.lsst.LsstComCam
 imports:
   - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyBiasLSST.yaml
+tasks:
+  verifyBiasIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      doDeferredCharge: true
