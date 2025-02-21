@@ -56,6 +56,8 @@ stages:
       description: "The combined defects calibration."
     verifyDefectsResults:
       description: "Catalog of combined defect verification results."
+    cpDefectCore_defectsPixels_FocalPlaneGeometryPlot:
+      description: "Number of defects."
   ptc:
     ptc:
       description: "The photon transfer curve calibration."
