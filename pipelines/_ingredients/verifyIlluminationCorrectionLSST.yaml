@@ -1,0 +1,82 @@
+description: cp_verify illumination correction calibration verification.
+tasks:
+  verifyIlluminationCorrectionIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      doAmpOffset: false
+      connections.outputExposure: "postISRCCD"
+  verifyIlluminationCorrectionCalibrateImage:
+    class: lsst.pipe.tasks.calibrateImage.CalibrateImageTask
+    config:
+      connections.exposures: "postISRCCD"
+      connections.initial_stars_schema: "src_schema"
+      connections.stars_footprints: "src"
+      connections.stars: "preSource"
+      connections.exposure: "calexp"
+      connections.background: "calexpBackground"
+      do_calibrate_pixels: false
+      # Ensure that all illumination correction parameters are turned
+      # on when verifying them.
+      do_illumination_correction: true
+      psf_subtract_background.doApplyFlatBackgroundRatio: true
+      psf_detection.doApplyFlatBackgroundRatio: true
+      star_detection.doApplyFlatBackgroundRatio: true
+      python: |
+        config.star_detection.includeThresholdMultiplier = 1.0
+        config.star_selector["science"].doUnresolved = False
+        config.star_selector["science"].doSignalToNoise = False
+        config.star_measurement.plugins["base_CircularApertureFlux"].radii = [
+            12.0, 17.0, 35.0, 50.0,
+        ]
+        config.star_measurement.plugins.names |= [
+          "base_Variance",
+          "base_Blendedness",
+          "base_Jacobian",
+        ]
+
+        # fgcmcal needs an inner and outer aperture.
+        config.star_measurement.plugins["base_CircularApertureFlux"].maxSincRadius = 12.0
+        config.star_measurement.plugins["base_CompensatedTophatFlux"].apertures = [12, 17]
+  verifyIlluminationCorrectionTransformPreSourceTable:
+    class: lsst.pipe.tasks.postprocess.TransformSourceTableTask
+    config:
+      functorFile: "$CP_PIPE_DIR/schemas/PreSourceIlluminationCorrection.yaml"
+      connections.inputCatalog: "preSource"
+      connections.outputCatalog: "preSourceTable"
+  verifyIlluminationCorrectionConsolidatePreSourceTable:
+    class: lsst.pipe.tasks.postprocess.ConsolidateSourceTableTask
+    config:
+      connections.inputCatalogs: "preSourceTable"
+      connections.outputCatalog: "preSourceTable_visit"
+  verifyIlluminationCorrectionConsolidateVisitSummary: lsst.pipe.tasks.postprocess.ConsolidateVisitSummaryTask
+  verifyIlluminationCorrectionIsolatedStarAssociation:
+    class: lsst.pipe.tasks.isolatedStarAssociation.IsolatedStarAssociationTask
+    config:
+      connections.source_table_visit: "preSourceTable_visit"
+      python: |
+        config.extra_columns = [
+          "x",
+          "y",
+          "apFlux_12_0_instFlux",
+          "apFlux_12_0_instFluxErr",
+          "apFlux_12_0_flag",
+          "apFlux_17_0_instFlux",
+          "apFlux_17_0_instFluxErr",
+          "apFlux_17_0_flag",
+        ]
+  verifyIlluminationCorrectionFgcmBuildFromIsolatedStars:
+    class: lsst.fgcmcal.fgcmBuildFromIsolatedStars.FgcmBuildFromIsolatedStarsTask
+    config:
+      doApplyWcsJacobian: false
+  verifyIlluminationCorrectionFgcmFitCycle:
+    class: lsst.fgcmcal.fgcmFitCycle.FgcmFitCycleTask
+    config:
+      doMultipleCycles: true
+      multipleCyclesFinalCycleNumber: 5
+      superStarForceZeroMean: true
+  verifyIlluminationCorrectionFgcmOutputIlluminationCorrection:
+    class: lsst.fgcmcal.fgcmOutputIlluminationCorrection.FgcmOutputIlluminationCorrectionTask
+    config:
+      connections.cycleNumber: 5
+      connections.illumination_corrections: "verifyIlluminationCorrection"
+      include_wcs_jacobian: false
