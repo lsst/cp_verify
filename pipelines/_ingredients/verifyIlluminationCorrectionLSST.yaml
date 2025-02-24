@@ -80,3 +80,38 @@ tasks:
       connections.cycleNumber: 5
       connections.illumination_corrections: "verifyIlluminationCorrection"
       include_wcs_jacobian: false
+  verifyIlluminationCorrectionBin8:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeBinCalibFilterTask
+    config:
+      connections.inputExp: "verifyIlluminationCorrection"
+      connections.outputExp: "verifyIlluminationCorrectionBin8"
+      binning: 8
+  verifyIlluminationCorrectionBin64:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeBinCalibFilterTask
+    config:
+      connections.inputExp: "verifyIlluminationCorrection"
+      connections.outputExp: "verifyIlluminationCorrectionBin64"
+      binning: 64
+  verifyIlluminationCorrectionMosaic8:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicCalibFilterTask
+    config:
+      connections.inputExps: "verifyIlluminationCorrectionBin8"
+      connections.outputData: "verifyIlluminationCorrectionMosaic8"
+      binning: 8
+  verifyIlluminationCorrectionMosaic64:
+    class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicCalibFilterTask
+    config:
+      connections.inputExps: "verifyIlluminationCorrectionBin64"
+      connections.outputData: "verifyIlluminationCorrectionMosaic64"
+      binning: 64
+contracts:
+  - verifyIlluminationCorrectionCalibrateImage.do_calibrate_pixels == False
+  - verifyIlluminationCorrectionCalibrateImage.do_illumination_correction == True
+  - verifyIlluminationCorrectionCalibrateImage.psf_subtract_background.doApplyFlatBackgroundRatio == True
+  - verifyIlluminationCorrectionCalibrateImage.psf_detection.doApplyFlatBackgroundRatio == True
+  - verifyIlluminationCorrectionCalibrateImage.star_detection.doApplyFlatBackgroundRatio == True
+  - verifyIlluminationCorrectionFgcmBuildFromIsolatedStars.doApplyWcsJacobian == False
+  - verifyIlluminationCorrectionFgcmFitCycle.superStarForceZeroMean == True
+  - verifyIlluminationCorrectionFgcmOutputIlluminationCorrection.include_wcs_jacobian == False
+  - verifyIlluminationCorrectionMosaic8.binning == verifyIlluminationCorrectionBin8.binning
+  - verifyIlluminationCorrectionMosaic64.binning == verifyIlluminationCorrectionBin64.binning
