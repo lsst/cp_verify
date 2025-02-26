@@ -80,6 +80,7 @@ tasks:
       connections.cycleNumber: 5
       connections.illumination_corrections: "verifyIlluminationCorrection"
       include_wcs_jacobian: false
+  # TODO: DM-49192 Add verification task to check verifyIlluminationCorrection frames.
   verifyIlluminationCorrectionBin8:
     class: lsst.pipe.tasks.visualizeVisit.VisualizeBinCalibFilterTask
     config:
