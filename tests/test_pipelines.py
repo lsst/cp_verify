@@ -73,6 +73,7 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
             "verifyGainFromFlatPairs.yaml",
             "verifyLinearizer.yaml",
             "verifyPtc.yaml",
+            "verifyIlluminationCorrection.yaml",
         }
 
         for ex in exclude:
@@ -110,6 +111,8 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
         expected.remove("verifyGain.yaml")
         # There is no regular verifyScience.yaml (non-LSST)
         expected.remove("verifyScience.yaml")
+        # The Illumination Correction pipeline is only an "LSST" version.
+        expected.remove("verifyIlluminationCorrection.yaml")
         self.assertEqual(ingredients, expected)
 
     def test_cameras(self):
@@ -141,6 +144,8 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
                 # The following tasks will be added in the future.
                 "verifyCrosstalk.yaml",
                 "verifyBfk.yaml",
+                "verifyIlluminationCorrection.yaml",
+
         ]):
             self._check_pipeline(os.path.join(self.pipeline_path, "LATISS", pipeline))
 
@@ -153,6 +158,7 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
                     "verifyDefectsIndividual.yaml",
                     # These are not used yet.
                     "verifyCrosstalk.yaml",
+                    "verifyIlluminationCorrection.yaml",
                 ]):
             self._check_pipeline(os.path.join(self.pipeline_path, "LSSTCam", pipeline))
 
@@ -162,6 +168,7 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
             exclude=[
                 "verifyGainFromFlatPairs.yaml",
                 "verifyScience.yaml",
+                "verifyIlluminationCorrection.yaml",
             ],
         ):
             self._check_pipeline(os.path.join(self.pipeline_path, "LSSTCam-imSim", pipeline))
@@ -189,6 +196,8 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
                 # These are not valid for LSSTComCamSim.
                 "verifyCrosstalk.yaml",
                 "verifyLinearizer.yaml",
+                "verifyIlluminationCorrection.yaml",
+
             ],
         ):
             self._check_pipeline(os.path.join(self.pipeline_path, "LSSTComCamSim", pipeline))
@@ -199,6 +208,8 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
             exclude=[
                 "verifyGainFromFlatPairs.yaml",
                 "verifyScience.yaml",
+                "verifyIlluminationCorrection.yaml",
+
             ],
         ):
             self._check_pipeline(os.path.join(self.pipeline_path, "DECam", pipeline))
@@ -209,6 +220,8 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
             exclude=[
                 "verifyGainFromFlatPairs.yaml",
                 "verifyScience.yaml",
+                "verifyIlluminationCorrection.yaml",
+
             ],
         ):
             self._check_pipeline(os.path.join(self.pipeline_path, "HSC", pipeline))

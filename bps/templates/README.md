@@ -37,6 +37,7 @@ These are the environment variables that must be used. Examples are substituted 
 * `export SELECTION_PTC_LINEARIZER_V=$SELECTION_PTC_V`: The selection of raws to verify the linearizer; usually will be the same as the PTC selection.
 * `export SELECTION_PTC_BFK_V=$SELECTION_PTC_V`: The selection of raws to verify the brighter-fatter kernel; usually will be the same as the PTC selection.
 * `export SELECTION_FLAT_g_V="instrument='LSSTComCam' and selection_string": The selection of raws to verify the g-band flat. See below for additional info.
+* `export SELECTION_ILLUMINATION_CORRECTION_V="instrument='LSSTComCam' and selection_string": The selection of raws to generate illumination correction verification. Often the same as cp_pipe inputs.
 
 Checking Environment Variables
 ------------------------------
