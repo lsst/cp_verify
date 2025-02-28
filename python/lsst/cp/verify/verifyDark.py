@@ -68,7 +68,6 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
         success : `bool`
             A boolean indicating if all tests have passed.
         """
-        detector = exposure.getDetector()
         ampStats = statisticsDict['AMP']
         metadataStats = statisticsDict['METADATA']
 
@@ -94,7 +93,7 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
             # measured on the bulk of the image as the overscan
             # correction should be an optimal fit to the overscan
             # region, but not necessarily for the image region.
-            readNoise = detector[ampName].getReadNoise()
+            readNoise = exposure.getMetadata().get(f"LSST ISR READNOISE {ampName}", np.nan)
             verify['NOISE'] = bool((stats['NOISE'] - readNoise)/readNoise <= 0.05)
 
             # DMTN-101 Test 5.4: CR rejection matches clipped mean
@@ -115,8 +114,11 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
             # consistently and significantly, then the assumptions
             # used in that test may be incorrect, and the nominal read
             # noise may need recalculation.  Only perform this check
-            # if the metadataStats contain the required entry.
-            overscanReadNoise = metadataStats['READ_NOISE'][ampName]
+            # if the metadataStats contain the required entry.  This
+            # is in ADU (the serial overscan is measured prior to gain
+            # normalization), so we need to convert to electrons here.
+            gain = exposure.getMetadata().get(f"LSST ISR GAIN {ampName}", np.nan)
+            overscanReadNoise = gain * metadataStats['READ_NOISE'][ampName]
             if overscanReadNoise:
                 if ((overscanReadNoise - readNoise)/readNoise > 0.05) or not np.isfinite(overscanReadNoise):
                     verify['READ_NOISE_CONSISTENT'] = False
