@@ -122,6 +122,8 @@ class CpVerifyDarkTask(CpVerifyStatsTask):
             if overscanReadNoise:
                 if ((overscanReadNoise - readNoise)/readNoise > 0.05) or not np.isfinite(overscanReadNoise):
                     verify['READ_NOISE_CONSISTENT'] = False
+                else:
+                    verify['READ_NOISE_CONSISTENT'] = True
 
             verifyStats[ampName] = verify
 
