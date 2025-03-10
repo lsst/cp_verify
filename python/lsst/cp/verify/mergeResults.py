@@ -27,6 +27,8 @@ import lsst.pex.config as pexConfig
 
 __all__ = ['CpVerifyExpMergeConfig', 'CpVerifyExpMergeTask',
            'CpVerifyRunMergeConfig', 'CpVerifyRunMergeTask',
+           'CpVerifyDetMergeConfig', 'CpVerifyDetMergeTask',
+           'CpVerifyDetMergeByFilterConfig', 'CpVerifyDetMergeByFilterTask',
            'CpVerifyExpMergeByFilterConfig', 'CpVerifyExpMergeByFilterTask',
            'CpVerifyRunMergeByFilterConfig', 'CpVerifyRunMergeByFilterTask',
            'CpVerifyVisitExpMergeConfig', 'CpVerifyVisitExpMergeTask',
@@ -474,7 +476,173 @@ class CpVerifyRunMergeTask(CpVerifyExpMergeTask):
     _DefaultName = 'cpVerifyRunMerge'
 
     pass
-# End ExpMerge/RunMerge
+
+
+class CpVerifyDetMergeConnections(pipeBase.PipelineTaskConnections,
+                                  dimensions={"instrument", "detector"},
+                                  defaultTemplates={}):
+    inputStats = cT.Input(
+        name="detectorStats",
+        doc="Input statistics to merge.",
+        storageClass="StructuredDataDict",
+        dimensions=["instrument", "exposure", "detector"],
+        multiple=True,
+    )
+    inputResults = cT.Input(
+        name="detectorResults",
+        doc="Input results to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure", "detector"],
+        multiple=True,
+    )
+    inputMatrix = cT.Input(
+        name="detectorMatrix",
+        doc="Input matrix to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure", "detector"],
+        multiple=True,
+    )
+    camera = cT.PrerequisiteInput(
+        name="camera",
+        storageClass="Camera",
+        doc="Input camera.",
+        dimensions=["instrument", ],
+        isCalibration=True,
+    )
+
+    outputStats = cT.Output(
+        name="exposureStats",
+        doc="Output statistics.",
+        storageClass="StructuredDataDict",
+        dimensions=["instrument", "detector"],
+    )
+    outputResults = cT.Output(
+        name="exposureResults",
+        doc="Output results.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "detector"],
+    )
+    outputMatrix = cT.Output(
+        name="exposureMatrix",
+        doc="Output matrix.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "detector"],
+    )
+
+    def __init__(self, *, config=None):
+        super().__init__(config=config)
+
+        if not self.config.hasMatrixCatalog:
+            self.inputs.remove("inputMatrix")
+            self.outputs.remove("outputMatrix")
+        if not self.config.hasInputResults:
+            self.inputs.remove("inputResults")
+        if self.config.doDropStats:
+            self.outputs.remove("outputStats")
+
+
+class CpVerifyDetMergeConfig(CpVerifyExpMergeConfig,
+                             pipelineConnections=CpVerifyDetMergeConnections):
+    """Configuration paramters for exposure stats merging.
+    """
+    mergeDimension = pexConfig.Field(
+        dtype=str,
+        doc="Dimension name for this input.",
+        default="detector",
+    )
+
+
+class CpVerifyDetMergeTask(CpVerifyExpMergeTask):
+    """Merge statistics from detectors together.
+    """
+    ConfigClass = CpVerifyDetMergeConfig
+    _DefaultName = 'cpVerifyDetMerge'
+
+    pass
+
+
+class CpVerifyDetMergeByFilterConnections(pipeBase.PipelineTaskConnections,
+                                          dimensions={"instrument", "detector", "physical_filter"},
+                                          defaultTemplates={}):
+    inputStats = cT.Input(
+        name="detectorStats",
+        doc="Input statistics to merge.",
+        storageClass="StructuredDataDict",
+        dimensions=["instrument", "exposure", "detector", "physical_filter"],
+        multiple=True,
+    )
+    inputResults = cT.Input(
+        name="detectorResults",
+        doc="Input results to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure", "detector", "physical_filter"],
+        multiple=True,
+    )
+    inputMatrix = cT.Input(
+        name="detectorMatrix",
+        doc="Input matrix to merge.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "exposure", "detector", "physical_filter"],
+        multiple=True,
+    )
+    camera = cT.PrerequisiteInput(
+        name="camera",
+        storageClass="Camera",
+        doc="Input camera.",
+        dimensions=["instrument", ],
+        isCalibration=True,
+    )
+
+    outputStats = cT.Output(
+        name="exposureStats",
+        doc="Output statistics.",
+        storageClass="StructuredDataDict",
+        dimensions=["instrument", "detector", "physical_filter"],
+    )
+    outputResults = cT.Output(
+        name="exposureResults",
+        doc="Output results.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "detector", "physical_filter"],
+    )
+    outputMatrix = cT.Output(
+        name="exposureMatrix",
+        doc="Output matrix.",
+        storageClass="ArrowAstropy",
+        dimensions=["instrument", "detector", "physical_filter"],
+    )
+
+    def __init__(self, *, config=None):
+        super().__init__(config=config)
+
+        if not self.config.hasMatrixCatalog:
+            self.inputs.remove("inputMatrix")
+            self.outputs.remove("outputMatrix")
+        if not self.config.hasInputResults:
+            self.inputs.remove("inputResults")
+        if self.config.doDropStats:
+            self.outputs.remove("outputStats")
+
+
+class CpVerifyDetMergeByFilterConfig(CpVerifyExpMergeConfig,
+                                     pipelineConnections=CpVerifyDetMergeByFilterConnections):
+    """Configuration paramters for exposure stats merging.
+    """
+    mergeDimension = pexConfig.Field(
+        dtype=str,
+        doc="Dimension name for this input.",
+        default="detector",
+    )
+
+
+class CpVerifyDetMergeByFilterTask(CpVerifyExpMergeTask):
+    """Merge statistics from detectors together.
+    """
+    ConfigClass = CpVerifyDetMergeByFilterConfig
+    _DefaultName = 'cpVerifyDetMergeByFilter'
+
+    pass
+# End merge tasks
 
 
 # Begin ExpMergeByFilter/RunMergeByFilter

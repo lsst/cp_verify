@@ -1,4 +1,9 @@
 description: cp_verify FLAT calibration verification (LSST ISR task).
+imports:
+  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+    include:
+      - analyzeFlatCore
+      - analyzeFlatDetMergeCore
 tasks:
   verifyFlatIsr:
     class: lsst.ip.isr.IsrTaskLSST
@@ -35,6 +40,16 @@ tasks:
       connections.outputStats: "verifyFlatDetStats"
       connections.outputResults: "verifyFlatDetResults"
       useIsrStatistics: true
+  verifyFlatDetMerge:
+    class: lsst.cp.verify.CpVerifyDetMergeByFilterTask
+    config:
+      connections.inputStats: "verifyFlatDetStats"
+      connections.inputResults: "verifyFlatDetResults"
+      connections.outputStats: "verifyFlatDetMergeStats"
+      connections.outputResults: "verifyFlatDetMergeResults"
+      hasInputResults: true
+      hasMatrixCatalog: false
+      stageName: "flat"
   verifyFlatExp:
     class: lsst.cp.verify.CpVerifyFlatExpMergeTask
     config:
@@ -54,6 +69,16 @@ tasks:
       connections.outputResults: "verifyFlatResults"
       hasInputResults: true
       hasMatrixCatalog: false
+  analyzeFlatCore:
+    class: lsst.analysis.tools.tasks.VerifyCalibAnalysisTaskByFilter
+    config:
+      connections.data: "verifyFlatResults"
+      connections.outputName: "verifyFlatAnalysis"
+  analyzeFlatDetMergeCore:
+    class: lsst.analysis.tools.tasks.VerifyCalibDetectorTaskByFilter
+    config:
+      connections.data: "verifyFlatDetMergeResults"
+      connections.outputName: "verifyFlatDetMergeAnalysis"
   mosaicFlatExp8:
     class: lsst.pipe.tasks.visualizeVisit.VisualizeMosaicExpTask
     config:
@@ -76,5 +101,7 @@ contracts:
   - verifyFlatExp.connections.inputResults == verifyFlatDet.connections.outputResults
   - verifyFlat.connections.inputStats == verifyFlatExp.connections.outputStats
   - verifyFlat.connections.inputResults == verifyFlatExp.connections.outputResults
+  - analyzeFlatCore.connections.data == verifyFlat.connections.outputResults
+  - analyzeFlatDetMergeCore.connections.data == verifyFlatDetMerge.connections.outputResults
   - mosaicFlatExp8.connections.inputExps == verifyFlatIsr.connections.outputBin1Exposure
   - mosaicFlatExp64.connections.inputExps == verifyFlatIsr.connections.outputBin2Exposure
