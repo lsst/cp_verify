@@ -3,7 +3,7 @@ instrument: lsst.obs.lsst.LsstComCam
 imports:
   - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyLinearizerLSST.yaml
 tasks:
-  verifyLinearizerPtcExtract:
-    class: lsst.cp.pipe.PhotonTransferCurveExtractTask
+  verifyLinearizerPtcExtractPair:
+    class: lsst.cp.pipe.PhotonTransferCurveExtractPairTask
     config:
       efdSalIndex: 101
