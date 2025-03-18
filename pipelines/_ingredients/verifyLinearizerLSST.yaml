@@ -16,11 +16,11 @@ tasks:
         config.crosstalk.doQuadraticCrosstalkCorrection = False
         config.doLinearize = True
         config.doDefect = True
-  verifyLinearizerPtcExtract:
-    class: lsst.cp.pipe.PhotonTransferCurveExtractTask
+  verifyLinearizerPtcExtractPair:
+    class: lsst.cp.pipe.PhotonTransferCurveExtractPairTask
     config:
       connections.inputExp: "verifyLinearizerIsrExp"
-      connections.outputCovariances: "verifyLinearizerPtcPartial"
+      connections.outputCovariance: "verifyLinearizerPtcPartial"
       maximumRangeCovariancesAstier: 1
       numEdgeSuspect: 20
       edgeMaskLevel: "AMP"
@@ -57,8 +57,8 @@ tasks:
       mergeDimension: "detector"
       hasInputResults: true
 contracts:
-  - verifyLinearizerPtcExtract.connections.inputExp == verifyLinearizerIsr.connections.outputExposure
-  - verifyLinearizerPtcSolve.connections.inputCovariances == verifyLinearizerPtcExtract.connections.outputCovariances
+  - verifyLinearizerPtcExtractPair.connections.inputExp == verifyLinearizerIsr.connections.outputExposure
+  - verifyLinearizerPtcSolve.connections.inputCovariances == verifyLinearizerPtcExtractPair.connections.outputCovariance
   - verifyLinearizerSecondLinearizer.connections.inputPtc == verifyLinearizerPtcSolve.connections.outputPtcDataset
   - verifyLinearizerCalib.connections.inputCalib == verifyLinearizerSecondLinearizer.connections.outputLinearizer
   - verifyLinearizer.connections.inputStats == verifyLinearizerCalib.connections.outputStats
