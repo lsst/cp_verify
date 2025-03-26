@@ -3,6 +3,12 @@ pipelineYaml: "${CP_VERIFY_DIR}/pipelines/${INSTRUMENT}/verifyIlluminationCorrec
 project: "${TICKET}"
 campaign: "${TICKET}"
 
+clusterAlgorithm: lsst.ctrl.bps.quantum_clustering_funcs.dimension_clustering
+cluster:
+  verifyIlluminationCorrectionIsrByExposure:
+    pipetasks: verifyIlluminationCorrectionIsr
+    dimensions: exposure
+
 payload:
   payloadName: "${INSTRUMENT}_${TICKET}_verify_illuminationCorrection"
   output: "${USER_CALIB_PREFIX}${INSTRUMENT}/calib/${TICKET}/${TAG}/verifyIlluminationCorrection.${VERIFY_RERUN}"

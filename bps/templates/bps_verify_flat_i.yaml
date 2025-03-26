@@ -3,6 +3,12 @@ pipelineYaml: "${CP_VERIFY_DIR}/pipelines/${INSTRUMENT}/verifyFlat.yaml"
 project: "${TICKET}"
 campaign: "${TICKET}"
 
+clusterAlgorithm: lsst.ctrl.bps.quantum_clustering_funcs.dimension_clustering
+cluster:
+  verifyFlatIsrByExposure:
+    pipetasks: verifyFlatIsr
+    dimensions: exposure
+
 payload:
   payloadName: "${INSTRUMENT}_${TICKET}_verify_flat_i"
   output: "${USER_CALIB_PREFIX}${INSTRUMENT}/calib/${TICKET}/${TAG}/verifyFlat-i.${VERIFY_RERUN}"

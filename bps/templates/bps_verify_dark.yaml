@@ -3,6 +3,12 @@ pipelineYaml: "${CP_VERIFY_DIR}/pipelines/${INSTRUMENT}/verifyDark.yaml"
 project: "${TICKET}"
 campaign: "${TICKET}"
 
+clusterAlgorithm: lsst.ctrl.bps.quantum_clustering_funcs.dimension_clustering
+cluster:
+  isrExposure:
+    pipetasks: verifyDarkIsr
+    dimensions: exposure
+
 payload:
   payloadName: "${INSTRUMENT}_${TICKET}_verify_dark"
   output: "${USER_CALIB_PREFIX}${INSTRUMENT}/calib/${TICKET}/${TAG}/verifyDark.${VERIFY_RERUN}"

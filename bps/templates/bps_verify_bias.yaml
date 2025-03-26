@@ -3,6 +3,12 @@ pipelineYaml: "${CP_VERIFY_DIR}/pipelines/${INSTRUMENT}/verifyBias.yaml"
 project: "${TICKET}"
 campaign: "${TICKET}"
 
+clusterAlgorithm: lsst.ctrl.bps.quantum_clustering_funcs.dimension_clustering
+cluster:
+  isrExposure:
+    pipetasks: verifyBiasIsr
+    dimensions: exposure
+
 payload:
   payloadName: "${INSTRUMENT}_${TICKET}_verify_bias"
   output: "${USER_CALIB_PREFIX}${INSTRUMENT}/calib/${TICKET}/${TAG}/verifyBias.${VERIFY_RERUN}"
