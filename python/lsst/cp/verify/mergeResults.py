@@ -18,7 +18,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from astropy.table import vstack, Table
+from astropy.table import vstack, Table, TableMergeError
 
 import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
@@ -300,7 +300,58 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
             return Table()
 
         if len(inputResults) > 0:
-            outputResults = vstack(inputResults)
+            try:
+                outputResults = vstack(inputResults)
+            except TableMergeError:
+                import numpy as np
+                # Ugh.
+                max_shapes = {}
+                columns_to_fix = set()
+
+                # Scan all the data
+                for result in inputResults:
+                    for column in result.columns:
+                        size = result[column].shape
+                        if column in max_shapes:
+                            max_shapes[column] = np.max([max_shapes[column], size], axis=0)
+                        else:
+                            max_shapes[column] = size
+
+                # Decide what needs fixing:
+                for result in inputResults:
+                    for column in result.columns:
+                        size = result[column].shape
+                        if column not in columns_to_fix:
+                            need_to_fix = False
+                            for counter, (lh, rh) in enumerate(zip(size, max_shapes[column])):
+                                if counter == 0:
+                                    continue
+                                if lh != rh:
+                                    need_to_fix = True
+                            if need_to_fix:
+                                columns_to_fix.add(column)
+
+                # Do the fix.
+                for result in inputResults:
+                    for column in result.columns:
+                        if column not in columns_to_fix:
+                            continue
+
+                        # The first dimension of these shapes is the
+                        # column length, which we can ignore in
+                        # vstacking.
+                        to_pad = np.subtract(max_shapes[column], result[column].shape)
+                        if len(to_pad) <= 1:
+                            continue
+                        to_pad[0] = 0
+                        padding = [[0, int(pp)] for pp in to_pad]
+                        fixed_column = np.pad(result[column], padding,
+                                              mode='constant',
+                                              constant_values=np.nan)
+                        result[column] = fixed_column
+
+                # Will it work now?  If not, die.
+                outputResults = vstack(inputResults)
         else:
             outputResults = inputResults
 
