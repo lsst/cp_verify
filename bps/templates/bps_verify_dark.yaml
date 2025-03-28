@@ -2,6 +2,7 @@ pipelineYaml: "${CP_VERIFY_DIR}/pipelines/${INSTRUMENT}/verifyDark.yaml"
 
 project: "${TICKET}"
 campaign: "${TICKET}"
+submitPath: "${SCRATCH}/submit/{outputRun}"
 
 clusterAlgorithm: lsst.ctrl.bps.quantum_clustering_funcs.dimension_clustering
 cluster:
