@@ -303,12 +303,13 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
             try:
                 outputResults = vstack(inputResults)
             except TableMergeError:
+                # astropy requires everything in a column to have the
+                # same shape.  Enforce that here.
                 import numpy as np
-                # Ugh.
                 max_shapes = {}
                 columns_to_fix = set()
 
-                # Scan all the data
+                # Scan the data we're merging to find the max sizes.
                 for result in inputResults:
                     for column in result.columns:
                         size = result[column].shape
@@ -317,12 +318,13 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
                         else:
                             max_shapes[column] = size
 
-                # Decide what needs fixing:
+                # Decide what needs fixing.
                 for result in inputResults:
                     for column in result.columns:
                         size = result[column].shape
                         if column not in columns_to_fix:
                             need_to_fix = False
+
                             for counter, (lh, rh) in enumerate(zip(size, max_shapes[column])):
                                 if counter == 0:
                                     continue
@@ -344,13 +346,14 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
                         if len(to_pad) <= 1:
                             continue
                         to_pad[0] = 0
+                        # Only pad at the end.
                         padding = [[0, int(pp)] for pp in to_pad]
                         fixed_column = np.pad(result[column], padding,
                                               mode='constant',
                                               constant_values=np.nan)
                         result[column] = fixed_column
 
-                # Will it work now?  If not, die.
+                # Will it work now?  If not, this will raise
                 outputResults = vstack(inputResults)
         else:
             outputResults = inputResults
