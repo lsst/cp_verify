@@ -268,6 +268,9 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             outliers = np.where(probability < 1.0 / probability.size, 1.0, 0.0)
             outputStatistics[ampName]["STAT_OUTLIERS"] = int(np.sum(outliers))
 
+            #outputStatistics[ampName]["FRAC"] =  outputStatistics[ampName]["NDEFECTS"]/amp size
+            # or look at exposure header to get nbadpixels.
+
         return outputStatistics
 
     def verify(self, exposure, statisticsDict):
