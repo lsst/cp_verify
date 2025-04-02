@@ -312,20 +312,20 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
                 # Scan the data we're merging to find the max sizes.
                 for result in inputResults:
                     for column in result.columns:
-                        size = result[column].shape
+                        shape = result[column].shape
                         if column in max_shapes:
-                            max_shapes[column] = np.max([max_shapes[column], size], axis=0)
+                            max_shapes[column] = np.max([max_shapes[column], shape], axis=0)
                         else:
-                            max_shapes[column] = size
+                            max_shapes[column] = shape
 
                 # Decide what needs fixing.
                 for result in inputResults:
                     for column in result.columns:
-                        size = result[column].shape
+                        shape = result[column].shape
                         if column not in columns_to_fix:
                             need_to_fix = False
 
-                            for counter, (lh, rh) in enumerate(zip(size, max_shapes[column])):
+                            for counter, (lh, rh) in enumerate(zip(shape, max_shapes[column])):
                                 if counter == 0:
                                     continue
                                 if lh != rh:
