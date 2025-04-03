@@ -18,9 +18,10 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 import numpy as np
 import unittest
+
+from astropy.table import Table
 
 import lsst.utils.tests
 import lsst.afw.cameraGeom as cameraGeom
@@ -42,7 +43,7 @@ class MergeResultsTestCase(lsst.utils.tests.TestCase):
         self.detectorResults1 = list()
         self.detectorDimensions1 = list()
         for detector in self.camera:
-            dimensions = {'exposure': 1, 'detector': detector.getId()}
+            dimensions = {'exposure': 1, 'detector': detector.getId(), 'instrument': 'testCam'}
             self.detectorDimensions1.append(dimensions)
             self.detectorResults1.append(self.generateDetectorResults(detector))
 
@@ -50,17 +51,31 @@ class MergeResultsTestCase(lsst.utils.tests.TestCase):
         self.detectorResults2 = list()
         self.detectorDimensions2 = list()
         for detector in self.camera:
-            dimensions = {'exposure': 2, 'detector': detector.getId()}
+            dimensions = {'exposure': 2, 'detector': detector.getId(), 'instrument': 'testCam'}
             self.detectorDimensions2.append(dimensions)
-            self.detectorResults2.append(self.generateDetectorResults(detector))
+            self.detectorResults2.append(self.generateDetectorResults(detector, forceFailure=True))
 
     def test_merging(self):
         """Generate simulated verify statistics, and prove they merge
         correctly.
         """
-        expMergeTask = cpVerify.CpVerifyExpMergeTask()
-        expResults1 = expMergeTask.run(self.detectorResults1, self.detectorDimensions1, self.camera)
-        expResults2 = expMergeTask.run(self.detectorResults2, self.detectorDimensions2, self.camera)
+        # Generate table versions of the detector results.
+        verifyStatsTask = cpVerify.CpVerifyStatsTask()
+        expTables1 = [Table(verifyStatsTask.repackStats(rr, dd)[0]) for rr, dd in
+                      zip(self.detectorResults1, self.detectorDimensions1)]
+        expTables2 = [Table(verifyStatsTask.repackStats(rr, dd)[0]) for rr, dd in
+                      zip(self.detectorResults2, self.detectorDimensions2)]
+
+        # Ensure we're merging the tables as well.
+        expMergeConfig = cpVerify.CpVerifyExpMergeTask.ConfigClass()
+        expMergeConfig.hasInputResults = True
+
+        # Do the merge.
+        expMergeTask = cpVerify.CpVerifyExpMergeTask(config=expMergeConfig)
+        expResults1 = expMergeTask.run(self.detectorResults1, self.detectorDimensions1,
+                                       self.camera, inputResults=expTables1)
+        expResults2 = expMergeTask.run(self.detectorResults2, self.detectorDimensions2,
+                                       self.camera, inputResults=expTables2)
         self.assertTrue(expResults1.outputStats['SUCCESS'])
         self.assertFalse(expResults2.outputStats['SUCCESS'])  # Expected to have one failure
         self.assertEqual(expResults2.outputStats['R:1,0 S:1,0']['FAILURES'][0], "C:0,2 SIGMA_TEST")
@@ -79,7 +94,7 @@ class MergeResultsTestCase(lsst.utils.tests.TestCase):
         self.assertEqual(len(failureList), 1)
         self.assertEqual(failureList[0], "R:1,0 S:1,0 C:0,2 SIGMA_TEST")
 
-    def generateDetectorResults(self, detector, mean=10.0, sigma=1.2, threshold=14.0):
+    def generateDetectorResults(self, detector, mean=10.0, sigma=1.2, forceFailure=False):
         """Make the simulated verify statistics.
 
         Parameters
@@ -91,8 +106,8 @@ class MergeResultsTestCase(lsst.utils.tests.TestCase):
             statistics from.
         sigma : `float`
             Sigma of the normal distribution.
-        threshold : `float`
-            Test threshold above which a test is a "failure".
+        forceFailure : `bool`
+            If True, force the "verify" to fail.
 
         Returns
         -------
@@ -109,8 +124,10 @@ class MergeResultsTestCase(lsst.utils.tests.TestCase):
         for amp in detector.getAmplifiers():
             ampName = amp.getName()
             ampDict[ampName] = dict()
+            ampDict[ampName]['VECTOR'] = []
             for value in valueNames:
                 ampDict[ampName][value] = np.random.normal(10.0, 1.2)
+            ampDict[ampName]['VECTOR'].append(np.random.uniform(size=len(detector)))
 
         ampVerify = dict()
         detVerify = dict()
@@ -120,13 +137,16 @@ class MergeResultsTestCase(lsst.utils.tests.TestCase):
             ampVerify[ampName] = dict()
             ampSuccess = True
             for value in valueNames:
-                if ampDict[ampName][value] < threshold:
-                    ampVerify[ampName][value + "_TEST"] = True
-                else:
+                if forceFailure and (value == "SIGMA"
+                                     and ampName == "C:0,2"
+                                     and detector.getName() == 'R:1,0 S:1,0'):
                     ampVerify[ampName][value + "_TEST"] = False
                     ampSuccess = False
                     success = False
+                else:
+                    ampVerify[ampName][value + "_TEST"] = True
             ampVerify[ampName]['SUCCESS'] = ampSuccess
+
         return {'SUCCESS': success, 'AMP': ampDict, 'DET': detDict, 'CATALOG': catDict,
                 'VERIFY': {'AMP': ampVerify, 'DET': detVerify, 'CATALOG': catVerify, 'EXP': expVerify}}
 
