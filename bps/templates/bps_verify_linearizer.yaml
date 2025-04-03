@@ -2,6 +2,16 @@ pipelineYaml: "${CP_VERIFY_DIR}/pipelines/${INSTRUMENT}/verifyLinearizer.yaml"
 
 project: "${TICKET}"
 campaign: "${TICKET}"
+submitPath: "${SCRATCH}/submit/{outputRun}"
+
+clusterAlgorithm: lsst.ctrl.bps.quantum_clustering_funcs.dimension_clustering
+cluster:
+  verifyLinearizerIsrByExposure:
+    pipetasks: verifyLinearizerIsr
+    dimensions: exposure
+  verifyLinearizerPtcExtractPairByExposure:
+    pipetasks: verifyLinearizerPtcExtractPair
+    dimensions: exposure
 
 payload:
   payloadName: "${INSTRUMENT}_${TICKET}_verify_linearizer"
