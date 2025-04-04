@@ -24,6 +24,7 @@ import lsst.afw.math as afwMath
 
 from lsst.geom import Point2I, Extent2I, Box2I
 from lsst.pex.config import Field
+from lsst.ip.isr.isrFunctions import getExposureReadNoises, getExposureGains
 from .verifyStats import CpVerifyStatsConfig, CpVerifyStatsTask, CpVerifyStatsConnections
 
 __all__ = ['CpVerifyBiasConfig', 'CpVerifyBiasTask']
@@ -103,12 +104,13 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
         success : `bool`
             A boolean indicating if all tests have passed.
         """
-        detector = exposure.getDetector()
         ampStats = statisticsDict['AMP']
         metadataStats = statisticsDict['METADATA']
 
         verifyStats = {}
         success = True
+        gains = getExposureGains(exposure)
+        readNoises = getExposureReadNoises(exposure)
         for ampName, stats in ampStats.items():
             verify = {}
 
@@ -129,7 +131,7 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
             # measured on the bulk of the image as the overscan
             # correction should be an optimal fit to the overscan
             # region, but not necessarily for the image region.
-            readNoise = detector[ampName].getReadNoise()
+            readNoise = readNoises[ampName]
             verify['NOISE'] = bool((stats['NOISE'] - readNoise)/readNoise <= 0.05)
 
             # DMTN-101 Test 4.4: CR rejection matches clipped mean.
@@ -150,11 +152,16 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
             # consistently and significantly, then the assumptions
             # used in that test may be incorrect, and the nominal read
             # noise may need recalculation.  Only perform this check
-            # if the metadataStats contain the required entry.
-            overscanReadNoise = metadataStats['READ_NOISE'][ampName]
+            # if the metadataStats contain the required entry.  This
+            # is in ADU (the serial overscan is measured prior to gain
+            # normalization), so we need to convert to electrons here.
+            gain = gains[ampName]
+            overscanReadNoise = gain * metadataStats['READ_NOISE'][ampName]
             if overscanReadNoise:
                 if ((overscanReadNoise - readNoise)/readNoise > 0.05) or not np.isfinite(overscanReadNoise):
                     verify['READ_NOISE_CONSISTENT'] = False
+                else:
+                    verify['READ_NOISE_CONSISTENT'] = True
 
             verifyStats[ampName] = verify
 
