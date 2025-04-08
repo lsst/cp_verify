@@ -177,7 +177,7 @@ class VerifyBiasTestCase(lsst.utils.tests.TestCase):
         self.assertAlmostEqual(biasStats['AMP']['C:0,0']['NOISE'], 13.99547, 4)
         self.assertAlmostEqual(biasStats['AMP']['C:0,0']['CR_NOISE'], 14.11526, 4)
         # This order swap in intended. :sad-panda-emoji:
-        self.assertAlmostEqual(biasStats['METADATA']['READ_NOISE']['C:0,0'], 4.25)
+        self.assertAlmostEqual(biasStats['METADATA']['READ_NOISE_ADU']['C:0,0'], 4.25)
 
         self.assertIn(biasStats['SUCCESS'], [True, False])
 
@@ -209,7 +209,7 @@ class VerifyDarkTestCase(lsst.utils.tests.TestCase):
                            'detector': detector.getName(),
                            }
 
-        # Populate the READ_NOISE into the exposure header
+        # Populate the READ_NOISE (in ADU) into the exposure header
         md = self.inputExp.getMetadata()
         for amp in detector.getAmplifiers():
             md[f"LSST ISR OVERSCAN RESIDUAL SERIAL STDEV {amp.getName()}"] = 5.24
@@ -230,7 +230,7 @@ class VerifyDarkTestCase(lsst.utils.tests.TestCase):
         self.assertAlmostEqual(darkStats['AMP']['C:0,0']['NOISE'], 3.12948, 4)
         self.assertAlmostEqual(darkStats['AMP']['C:0,0']['CR_NOISE'], 3.15946, 4)
         # This order swap in intended. :sad-panda-emoji:
-        self.assertAlmostEqual(darkStats['METADATA']['READ_NOISE']['C:0,0'], 5.24)
+        self.assertAlmostEqual(darkStats['METADATA']['READ_NOISE_ADU']['C:0,0'], 5.24)
 
         self.assertIn(darkStats['SUCCESS'], [True, False])
 
