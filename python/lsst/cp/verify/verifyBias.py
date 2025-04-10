@@ -24,6 +24,7 @@ import lsst.afw.math as afwMath
 
 from lsst.geom import Point2I, Extent2I, Box2I
 from lsst.pex.config import Field
+from lsst.ip.isr.isrFunctions import getExposureReadNoises, getExposureGains
 from .verifyStats import CpVerifyStatsConfig, CpVerifyStatsTask, CpVerifyStatsConnections
 
 __all__ = ['CpVerifyBiasConfig', 'CpVerifyBiasTask']
@@ -47,7 +48,7 @@ class CpVerifyBiasConfig(CpVerifyStatsConfig,
                                   'NOISE': 'STDEVCLIP', }
         self.crImageStatKeywords = {'CR_NOISE': 'STDEV', }  # noqa F841
         self.metadataStatKeywords = {
-            'LSST ISR OVERSCAN RESIDUAL SERIAL STDEV': 'READ_NOISE',
+            'LSST ISR OVERSCAN RESIDUAL SERIAL STDEV': 'READ_NOISE_ADU',
         }  # noqa F841
 
 
@@ -103,33 +104,39 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
         success : `bool`
             A boolean indicating if all tests have passed.
         """
-        detector = exposure.getDetector()
         ampStats = statisticsDict['AMP']
         metadataStats = statisticsDict['METADATA']
 
         verifyStats = {}
         success = True
+        # These are the PTC gain and RN (e-) used in constructing the
+        # variance plane:
+        gainDict = getExposureGains(exposure)
+        readNoiseDict = getExposureReadNoises(exposure)
         for ampName, stats in ampStats.items():
             verify = {}
 
-            # DMTN-101 Test 4.2: Mean is 0.0 within noise.
+            # DMTN-101 Test 4.2: Mean is 0.0 within the noise measured
+            # on the image (e-):
             verify['MEAN'] = bool(np.abs(stats['MEAN']) < stats['NOISE'])
 
-            # DMTN-101 Test 4.3: Clipped mean matches readNoise.  This
-            # test should use the nominal detector read noise.  The
-            # f"READ_NOISE {ampName}" metadata entry contains the
-            # measured dispersion in the overscan-corrected overscan
-            # region, which should provide an estimate of the read
-            # noise.  However, directly using this value will cause
-            # some fraction of verification runs to fail if the
-            # scatter in read noise values is comparable to the test
-            # threshold, as the overscan residual measured may be
-            # sampling from the low end tail of the distribution.
-            # This measurement is also likely to be smaller than that
-            # measured on the bulk of the image as the overscan
-            # correction should be an optimal fit to the overscan
-            # region, but not necessarily for the image region.
-            readNoise = detector[ampName].getReadNoise()
+            # DMTN-101 Test 4.3: Clipped mean matches nominal PTC
+            # readNoise.  This test should use the nominal detector
+            # read noise.  The f"READ_NOISE_ADU {ampName}" metadata
+            # entry contains the measured dispersion in the
+            # overscan-corrected overscan region, which should provide
+            # an estimate of the read noise (in ADU).  However,
+            # directly using this value will cause some fraction of
+            # verification runs to fail if the scatter in read noise
+            # values is comparable to the test threshold, as the
+            # overscan residual measured may be sampling from the low
+            # end tail of the distribution.  This measurement is also
+            # likely to be smaller than that measured on the bulk of
+            # the image as the overscan correction should be an
+            # optimal fit to the overscan region, but not necessarily
+            # for the image region.  We check read noise consistency
+            # below.
+            readNoise = readNoiseDict[ampName]
             verify['NOISE'] = bool((stats['NOISE'] - readNoise)/readNoise <= 0.05)
 
             # DMTN-101 Test 4.4: CR rejection matches clipped mean.
@@ -150,11 +157,16 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
             # consistently and significantly, then the assumptions
             # used in that test may be incorrect, and the nominal read
             # noise may need recalculation.  Only perform this check
-            # if the metadataStats contain the required entry.
-            overscanReadNoise = metadataStats['READ_NOISE'][ampName]
+            # if the metadataStats contain the required entry.  This
+            # is in ADU (the serial overscan is measured prior to gain
+            # normalization), so we need to convert to electrons here.
+            gain = gainDict[ampName]
+            overscanReadNoise = gain * metadataStats['READ_NOISE_ADU'][ampName]
             if overscanReadNoise:
                 if ((overscanReadNoise - readNoise)/readNoise > 0.05) or not np.isfinite(overscanReadNoise):
                     verify['READ_NOISE_CONSISTENT'] = False
+                else:
+                    verify['READ_NOISE_CONSISTENT'] = True
 
             verifyStats[ampName] = verify
 
@@ -193,9 +205,9 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
                 rows[ampName][f"{self.config.stageName}_VERIFY_{key}"] = value
 
         # METADATA results
-        if 'READ_NOISE' in statisticsDict["METADATA"]:
-            for ampName, value in statisticsDict["METADATA"]["READ_NOISE"].items():
-                rows[ampName][f"{self.config.stageName}_READ_NOISE"] = value
+        if 'READ_NOISE_ADU' in statisticsDict["METADATA"]:
+            for ampName, value in statisticsDict["METADATA"]["READ_NOISE_ADU"].items():
+                rows[ampName][f"{self.config.stageName}_READ_NOISE_ADU"] = value
 
         # ISR results
         if self.config.useIsrStatistics and "ISR" in statisticsDict:
