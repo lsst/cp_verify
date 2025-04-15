@@ -68,6 +68,7 @@ tasks:
     class: lsst.fgcmcal.fgcmBuildFromIsolatedStars.FgcmBuildFromIsolatedStarsTask
     config:
       doApplyWcsJacobian: false
+      densityCutMaxPerPixel: 1000000
   verifyIlluminationCorrectionFgcmFitCycle:
     class: lsst.fgcmcal.fgcmFitCycle.FgcmFitCycleTask
     config:
