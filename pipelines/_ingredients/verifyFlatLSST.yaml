@@ -21,7 +21,9 @@ tasks:
         config.doBias = True
         config.doDark = True
         config.doDefect = True
-        config.doBrighterFatter = True
+        # TODO DM-50363: Investigate if this can be turned on, looking
+        # at performance and quality of the BF correction.
+        config.doBrighterFatter = False
         config.doFlat = True
         config.doInterpolate = True
         config.isrStats.doCopyCalibDistributionStatistics = True
