@@ -4,12 +4,6 @@ project: "${TICKET}"
 campaign: "${TICKET}"
 submitPath: "${SCRATCH}/submit/{outputRun}"
 
-clusterAlgorithm: lsst.ctrl.bps.quantum_clustering_funcs.dimension_clustering
-cluster:
-  verifyScienceIsrByExposure:
-    pipetasks: verifyScienceIsr
-    dimensions: exposure
-
 payload:
   payloadName: "${INSTRUMENT}_${TICKET}_verify_science"
   output: "${USER_CALIB_PREFIX}${INSTRUMENT}/calib/${TICKET}/${TAG}/verifyScience.${VERIFY_RERUN}"
