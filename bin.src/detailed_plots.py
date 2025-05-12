@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # This file is part of cp_verify.
 #
 # Developed for the LSST Data Management System.
@@ -18,18 +20,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import sys
 
-from .plotting import *
-from .mergeResults import *
-from .verifyBfk import *
-from .verifyBias import *
-from .verifyCalib import *
-from .verifyCrosstalk import *
-from .verifyDark import *
-from .verifyDefects import *
-from .verifyFlat import *
-from .verifyGain import *
-from .verifyLinearity import *
-from .verifyPtc import *
-from .verifyStats import *
-from .version import *
+from lsst.cp.verify.detailedPlots import main
+
+if __name__ == '__main__':
+    sys.exit(main())
