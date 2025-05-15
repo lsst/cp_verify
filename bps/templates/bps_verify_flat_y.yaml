@@ -15,4 +15,4 @@ payload:
   output: "${USER_CALIB_PREFIX}${INSTRUMENT}/calib/${TICKET}/${TAG}/verifyFlat-y.${VERIFY_RERUN}"
   butlerConfig: "${REPO}"
   inCollection: "${USER_CALIB_PREFIX}${INSTRUMENT}/calib/${TICKET},${RAW_COLLECTION},${CALIB_COLLECTIONS}"
-  dataQuery: "${SELECTION_FLAT_y_V and band='y'}"
+  dataQuery: "${SELECTION_FLAT_y_V} and band='y'"
