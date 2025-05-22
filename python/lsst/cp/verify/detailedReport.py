@@ -37,8 +37,9 @@ from matplotlib.pyplot import cm
 from matplotlib.colors import SymLogNorm
 
 from lsst.daf.butler import Butler
+from lsst.daf.butler import EmptyQueryResultError, DatasetNotFoundError
 
-from .plotting import plot_fp_statistic
+from .utils import plot_fp_statistic
 
 
 class DetailedPlotter():
@@ -62,13 +63,16 @@ class DetailedPlotter():
         - ``do_overwrite``: Should pre-existing files be overwritten (`bool`).
     """
 
-    def __init__(self, repo, output, collections, detectorIds, doOverwrite, **kwargs):
+    def __init__(self, repo, output, collections, instrument, detectorIds,
+                 plotSummaryStats, doOverwrite, **kwargs):
         super().__init__()
         # Set source and destination information.
         self.repo = repo
         self.output = output
         self.collections = collections
+        self.instrument = instrument
         self.doOverwrite = doOverwrite
+        self.doPlotSummaryStats = plotSummaryStats
 
         # Logging
         self.log = logging.getLogger(__name__) if "log" not in kwargs else kwargs["log"]
@@ -78,13 +82,11 @@ class DetailedPlotter():
         self.registry = self.butler.registry
 
         # Get the camera associated with these calibrations
-        cameras = self.butler.query_datasets("camera", collections=self.collections)
-        if len(cameras) > 1:
-            raise RuntimeError("Multiple cameras found in input collections.")
-        if len(cameras) == 0:
-            raise RuntimeError("No cameras found in input collections.")
-        self.camera = cameras[0]
-        self.instrument = self.camera.getName()
+        self.camera = self.butler.get("camera", instrument=self.instrument, collections="LSSTCam/calib")
+
+        # Get the detector ids
+        self.detectorIds = range(len(self.camera)) if len(detectorIds) == 0 else sorted(detectorIds)
+        self.detectorIdsString = ','.join([str(_) for _ in self.detectorIds])
 
         # Start with no references to datasets and eventually
         # add the ones that exist.
@@ -163,16 +165,19 @@ class DetailedPlotter():
 
     def plotLinearizerStatistics(self):
         self.plotIdx += 1
-        if self.refs is None:
+
+        # Get datasets, if they exist
+        try:
             refs = self.butler.query_datasets(
                 "linearizer",
                 instrument=self.instrument,
+                where=f"detector in ({self.detectorIdsString})",
                 collections=self.collections,
             )
-            if len(refs) == 0:
-                return
-            else:
-                self.refs = refs
+        except EmptyQueryResultError:
+            return
+
+        self.refs = refs
 
         for ref in tqdm(self.refs, total=len(self.refs), desc="LINEARIZER"):
             lin = self.butler.get("linearizer", dataId=ref.dataId, collections=self.collections)
@@ -187,7 +192,9 @@ class DetailedPlotter():
 
                 # Save dataset information
                 self.typesDict[detName][ampName] = self.camera[ref.dataId['detector']].getPhysicalType()
-                self.linearityTurnoffsDict[detName][ampName] = lin.linearityTurnoff[ampName]
+                # Need to fix this. Why is it a zero dimensional array?
+                linTurnoff = lin.linearityTurnoff[ampName].ravel()[0]
+                self.linearityTurnoffsDict[detName][ampName] = linTurnoff
 
                 # Plot
                 ax = axs[i]
@@ -197,7 +204,7 @@ class DetailedPlotter():
 
                 ax.text(
                     2e-7, 0.25e5,
-                    f"Linearity Turnoff:\n{round(lin.linearityTurnoff[ampName], 1)} adu",
+                    f"Linearity Turnoff:\n{round(linTurnoff, 1)} adu",
                 )
 
                 ax.set_xlim(-.5e-7, 6.5e-7)
@@ -235,23 +242,27 @@ class DetailedPlotter():
             plt.close()
 
     def plotPtcStatistics(self):
-        self.self.plotIdx += 1
-        if self.refs is None:
-            refs = self.butler.query_datasets("ptc", instrument=self.instrument, collections=self.collections)
-            if len(refs) == 0:
-                return
-            else:
-                self.refs = refs
+        self.plotIdx += 1
 
-        print("PTC")
+        # Get datasets, if they exist
+        try:
+            refs = self.butler.query_datasets(
+                "ptc",
+                instrument=self.instrument,
+                where=f"detector in ({self.detectorIdsString})",
+                collections=self.collections)
+        except EmptyQueryResultError:
+            return
 
-        for ref in tqdm(self.refs, total=len(self.refs)):
+        self.refs = refs
+
+        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
             ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
 
             fig, axes = plt.subplots(4, 4, figsize=(12, 12))
             fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
             axs = axes.ravel()
-            detName = self.camera[ref.dataId['detector']]
+            detName = self.camera[ref.dataId['detector']].getName()
             for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
                 ampName = amp.getName()
 
@@ -263,13 +274,13 @@ class DetailedPlotter():
                 self.n10sDict[detName][ampName] = ptc.noiseMatrix[ampName][1][0]
                 self.gainsDict[detName][ampName] = ptc.gain[ampName]
                 self.gainsUnadjustedDict[detName][ampName] = ptc.gainUnadjusted[ampName]
-                self.gainsUnadjustedResidualsDict[detName][ampName] = ptc.gainUnadjusted[ampName] / \
-                                                                      ptc.gain[ampName] - 1
+                fracGainDiff = (ptc.gainUnadjusted[ampName] / ptc.gain[ampName]) - 1
+                self.gainsUnadjustedResidualsDict[detName][ampName] = fracGainDiff
                 self.a00sDict[detName][ampName] = ptc.aMatrix[ampName][0][0]
-                self.empiricalN00sResidualsDict[detName][ampName] = (np.nanmedian(ptc.noiseList[ampName]) * \
-                                                                    ptc.gain[ampName]) / ptc.noise[ampName] - 1
-                self.empiricalN00sDict[detName][ampName] = np.nanmedian(ptc.noiseList[ampName]) * \
-                                                           ptc.gain[ampName]
+                empiricalNoise = np.nanmedian(ptc.noiseList[ampName])
+                fracNoiseDiff = (empiricalNoise * ptc.gain[ampName]) / ptc.noise[ampName] - 1
+                self.empiricalN00sResidualsDict[detName][ampName] = fracNoiseDiff
+                self.empiricalN00sDict[detName][ampName] = fracNoiseDiff
 
                 ax = axs[i]
                 ax.set_title(ampName)
@@ -317,7 +328,7 @@ class DetailedPlotter():
                         bbox_inches='tight')
             plt.close()
 
-        for ref in tqdm(self.refs, total=len(self.refs)):
+        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
             ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
 
             fig, axes = plt.subplots(4, 4, figsize=(12, 12))
@@ -353,7 +364,7 @@ class DetailedPlotter():
                         bbox_inches='tight')
             plt.close()
 
-        for ref in tqdm(self.refs, total=len(self.refs)):
+        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
             ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
 
             fig, axes = plt.subplots(4, 4, figsize=(12, 12))
@@ -389,7 +400,7 @@ class DetailedPlotter():
                         bbox_inches='tight')
             plt.close()
 
-        for ref in tqdm(self.refs, total=len(self.refs)):
+        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
             ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
 
             fig, axes = plt.subplots(4, 4, figsize=(12, 12))
@@ -426,7 +437,7 @@ class DetailedPlotter():
                         bbox_inches='tight')
             plt.close()
 
-        for ref in tqdm(self.refs, total=len(self.refs)):
+        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
             ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
 
             fig, axes = plt.subplots(4, 4, figsize=(12, 12))
@@ -463,7 +474,7 @@ class DetailedPlotter():
                         bbox_inches='tight')
             plt.close()
 
-        for ref in tqdm(self.refs, total=len(self.refs)):
+        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
             ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
 
             fig, axes = plt.subplots(4, 4, figsize=(12, 12))
@@ -507,7 +518,7 @@ class DetailedPlotter():
                         bbox_inches='tight')
             plt.close()
 
-        for ref in tqdm(self.refs, total=len(self.refs)):
+        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
             ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
 
             fig, axes = plt.subplots(4, 4, figsize=(12, 12))
@@ -547,7 +558,7 @@ class DetailedPlotter():
                         bbox_inches='tight')
             plt.close()
 
-        for ref in tqdm(self.refs, total=len(self.refs)):
+        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
             ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
 
             fig, axes = plt.subplots(4, 4, figsize=(12, 12))
@@ -587,7 +598,7 @@ class DetailedPlotter():
                         bbox_inches='tight')
             plt.close()
 
-        for ref in tqdm(self.refs, total=len(self.refs)):
+        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
             ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
 
             fig, axes = plt.subplots(4, 4, figsize=(12, 12))
@@ -629,7 +640,7 @@ class DetailedPlotter():
                         bbox_inches='tight')
             plt.close()
 
-        for ref in tqdm(self.refs, total=len(self.refs)):
+        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
             ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
 
             fig, axes = plt.subplots(4, 4, figsize=(12, 12))
@@ -655,19 +666,22 @@ class DetailedPlotter():
             plt.close()
 
     def plotBfkStatistics(self):
-        self.self.plotIdx += 1
-        if self.refs is None:
+        self.plotIdx += 1
+
+        # Get datasets, if they exist
+        try:
             refs = self.butler.query_datasets(
                 "bfk",
                 instrument=self.instrument,
+                where=f"detector in ({self.detectorIdsString})",
                 collections=self.collections,
             )
-            if len(refs) == 0:
-                return
-            else:
-                self.refs = refs
-        print("BFK")
-        for ref in tqdm(self.refs, total=len(self.refs)):
+        except EmptyQueryResultError:
+            return
+
+        self.refs = refs
+
+        for ref in tqdm(self.refs, total=len(self.refs), desc="BFK"):
             bfk = self.butler.get("bfk", dataId=ref.dataId, collections=self.collections)
             fig, axes = plt.subplots(4, 4, figsize=(12, 12))
             fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
@@ -701,19 +715,21 @@ class DetailedPlotter():
 
     def plotCtiStatistics(self):
         self.plotIdx += 1
-        if self.refs is None:
+
+        # Get datasets, if they exist
+        try:
             refs = self.butler.query_datasets(
                 "cti",
                 instrument=self.instrument,
+                where=f"detector in ({self.detectorIdsString})",
                 collections=self.collections,
             )
-            if len(refs) == 0:
-                return
-            else:
-                self.refs = refs
-        print("CTI")
+        except EmptyQueryResultError:
+            return
 
-        for ref in tqdm(self.refs, total=len(self.refs)):
+        self.refs = refs
+
+        for ref in tqdm(self.refs, total=len(self.refs), desc="CTI"):
             cti = self.butler.get("cti", dataId=ref.dataId, collections=self.collections)
             lin = self.butler.get("linearizer", dataId=ref.dataId, collections=self.collections)
             ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
@@ -770,19 +786,21 @@ class DetailedPlotter():
 
     def plotBiasStatistics(self):
         self.plotIdx += 1
-        if self.refs is None:
+
+        # Get dataset references, if they exist
+        try:
             refs = self.butler.query_datasets(
                 "bias",
                 instrument=self.instrument,
+                where=f"detector in ({self.detectorIdsString})",
                 collections=self.collections,
             )
-            if len(refs) == 0:
-                return
-            else:
-                self.refs = refs
+        except EmptyQueryResultError:
+            return
 
-        print("BIAS")
-        for ref in tqdm(self.refs, total=len(self.refs)):
+        self.refs = refs
+
+        for ref in tqdm(self.refs, total=len(self.refs), desc="BIAS"):
             plt.figure()
             img = self.butler.get("bias", dataId=ref.dataId, collections=self.collections)
             for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
@@ -805,18 +823,21 @@ class DetailedPlotter():
 
     def plotDarkStatistics(self):
         self.plotIdx += 1
-        if self.refs is None:
+
+        # Get dataset references, if they exist
+        try:
             refs = self.butler.query_datasets(
                 "dark",
                 instrument=self.instrument,
+                where=f"detector in ({self.detectorIdsString})",
                 collections=self.collections,
             )
-            if len(refs) == 0:
-                return
-            else:
-                self.refs = refs
-        print("DARK")
-        for ref in tqdm(self.refs, total=len(self.refs)):
+        except EmptyQueryResultError:
+            return
+
+        self.refs = refs
+
+        for ref in tqdm(self.refs, total=len(self.refs), desc="DARK"):
             plt.figure()
             img = self.butler.get("dark", dataId=ref.dataId, collections=self.collections)
             for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
@@ -839,34 +860,25 @@ class DetailedPlotter():
 
     def plotBiasVsDarkStatistics(self):
         self.plotIdx += 1
-        if self.refs is None:
-            refs1 = self.butler.query_datasets(
-                "bias",
-                instrument=self.instrument,
-                collections=self.collections,
-            )
-            refs2 = self.butler.query_datasets(
-                "dark",
-                instrument=self.instrument,
-                collections=self.collections,
-            )
-            if not np.array_equal(refs1, refs2):
-                return
-            else:
-                self.refs = refs1
 
-        print("BIAS VS DARK")
-        for ref in tqdm(self.refs, total=len(self.refs)):
-            img = self.butler.get(
-                "bias",
-                dataId=ref.dataId,
-                collections=self.collections
-            )
-            img2 = self.butler.get(
-                "dark",
-                dataId=ref.dataId,
-                collections=self.collections
-            )
+        if self.refs is None:
+            self.log.warning("There are no bias and darks, skipping plotBiasVsDarkStatistics.")
+
+        for ref in tqdm(self.refs, total=len(self.refs), desc="BIAS VS DARK"):
+            try:
+                img = self.butler.get(
+                    "bias",
+                    dataId=ref.dataId,
+                    collections=self.collections
+                )
+                img2 = self.butler.get(
+                    "dark",
+                    dataId=ref.dataId,
+                    collections=self.collections
+                )
+            except DatasetNotFoundError:
+                self.log.warning(f"No matching bias and dark datasets for {ref}, skipping.")
+                continue
 
             fig, axes = plt.subplots(4, 4, figsize=(10, 10))
             fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
@@ -891,15 +903,22 @@ class DetailedPlotter():
             plt.close()
 
     def plotSummaryStatistics(self):
-        print("MOSAIC PLOTS")
+        if len(self.refs) > 0:
+            self.log.info("Plotting summary statistics")
+        else:
+            self.log.warning("No data for summary statistics, skipping.")
+            return
+
+        # Reset plot index to zero
+        self.plotIds = 0
 
         # Get the physical type masks
-        types = self.getAllDictValues(self.typesDict)
+        types = self._getAllDictValues(self.typesDict)
         e2vs = (types == "E2V")
         itls = (types == "ITL")
 
         self.plotIdx += 1
-        if np.any(self.getAllDictValues(self.n00sDict)):
+        if np.any(self._getAllDictValues(self.n00sDict)):
             plt.figure(figsize=(12, 12))
             plot_fp_statistic(plt.gca(), self.n00sDict, camera=self.camera, cm=plt.cm.hot,
                               x_range=None, y_range=None,
@@ -910,7 +929,7 @@ class DetailedPlotter():
             plt.close()
 
             plt.figure()
-            n00s = self.getAllDictValues(self.n00sDict)
+            n00s = self._getAllDictValues(self.n00sDict)
             plt.hist(n00s[e2vs], bins="fd", histtype="step", label="E2Vs")
             plt.hist(n00s[itls], bins="fd", histtype="step", label="ITLs")
             plt.legend(loc=1)
@@ -921,7 +940,7 @@ class DetailedPlotter():
             plt.close()
 
         self.plotIdx += 1
-        if np.any(self.getAllDictValues(self.empiricalN00sDict)):
+        if np.any(self._getAllDictValues(self.empiricalN00sDict)):
             plt.figure(figsize=(12, 12))
 
             plot_fp_statistic(plt.gca(), self.empiricalN00sDict, camera=self.camera, cm=plt.cm.hot,
@@ -933,7 +952,7 @@ class DetailedPlotter():
             plt.close()
 
             plt.figure()
-            empiricalN00s = self.getAllDictValues(self.empiricalN00sDict)
+            empiricalN00s = self._getAllDictValues(self.empiricalN00sDict)
             plt.hist(empiricalN00s[e2vs], bins="fd", histtype="step", label="E2Vs")
             plt.hist(empiricalN00s[itls], bins="fd", histtype="step", label="ITLs")
             plt.legend(loc=1)
@@ -944,7 +963,7 @@ class DetailedPlotter():
             plt.close()
 
         self.plotIdx += 1
-        if np.any(self.getAllDictValues(self.empiricalN00sResidualsDict)):
+        if np.any(self._getAllDictValues(self.empiricalN00sResidualsDict)):
             plt.figure(figsize=(12, 12))
             plot_fp_statistic(plt.gca(), self.empiricalN00sResidualsDict, camera=self.camera, cm=plt.cm.bwr,
                               x_range=None, y_range=None,
@@ -955,7 +974,7 @@ class DetailedPlotter():
             plt.close()
 
             plt.figure()
-            empiricalN00sResiduals = self.getAllDictValues(self.empiricalN00sResidualsDict)
+            empiricalN00sResiduals = self._getAllDictValues(self.empiricalN00sResidualsDict)
             plt.hist(empiricalN00sResiduals[e2vs], bins=100, histtype="step", label="E2Vs")
             plt.hist(empiricalN00sResiduals[itls], bins=100, histtype="step", label="ITLs")
             plt.yscale('log')
@@ -967,7 +986,7 @@ class DetailedPlotter():
             plt.close()
 
         self.plotIdx += 1
-        if np.any(self.getAllDictValues(self.gainsDict)):
+        if np.any(self._getAllDictValues(self.gainsDict)):
             plt.figure(figsize=(12, 12))
             plot_fp_statistic(plt.gca(), self.gainsDict, camera=self.camera, cm=plt.cm.hot,
                               x_range=None, y_range=None,
@@ -978,7 +997,7 @@ class DetailedPlotter():
             plt.close()
 
             plt.figure()
-            gains = self.getAllDictValues(self.gainsDict)
+            gains = self._getAllDictValues(self.gainsDict)
             plt.hist(gains[e2vs], bins="fd", histtype="step", label="E2Vs")
             plt.hist(gains[itls], bins="fd", histtype="step", label="ITLs")
             plt.yscale('log')
@@ -990,7 +1009,7 @@ class DetailedPlotter():
             plt.close()
 
         self.plotIdx += 1
-        if np.any(self.getAllDictValues(self.gainsUnadjustedDict)):
+        if np.any(self._getAllDictValues(self.gainsUnadjustedDict)):
             plt.figure(figsize=(12, 12))
             plot_fp_statistic(plt.gca(), self.gainsUnadjustedDict, camera=self.camera, cm=plt.cm.hot,
                               x_range=None, y_range=None,
@@ -1001,7 +1020,7 @@ class DetailedPlotter():
             plt.close()
 
             plt.figure()
-            gainsUnadjusted = self.getAllDictValues(self.gainsUnadjustedDict)
+            gainsUnadjusted = self._getAllDictValues(self.gainsUnadjustedDict)
             plt.hist(gainsUnadjusted[e2vs], bins="fd", histtype="step", label="E2Vs")
             plt.hist(gainsUnadjusted[itls], bins="fd", histtype="step", label="ITLs")
             plt.legend(loc=1)
@@ -1011,7 +1030,7 @@ class DetailedPlotter():
             plt.close()
 
         self.plotIdx += 1
-        if np.any(self.getAllDictValues(self.gainsUnadjustedResidualsDict)):
+        if np.any(self._getAllDictValues(self.gainsUnadjustedResidualsDict)):
             plt.figure(figsize=(12, 12))
             plot_fp_statistic(plt.gca(), self.gainsUnadjustedResidualsDict, camera=self.camera, cm=plt.cm.bwr,
                               x_range=None, y_range=None,
@@ -1022,7 +1041,7 @@ class DetailedPlotter():
             plt.close()
 
             plt.figure()
-            gainsUnadjustedResiduals = self.getAllDictValues(self.gainsUnadjustedResidualsDict)
+            gainsUnadjustedResiduals = self._getAllDictValues(self.gainsUnadjustedResidualsDict)
             plt.hist(gainsUnadjustedResiduals[e2vs], bins="fd", histtype="step", label="E2Vs")
             plt.hist(gainsUnadjustedResiduals[itls], bins="fd", histtype="step", label="ITLs")
             plt.yscale('log')
@@ -1034,7 +1053,7 @@ class DetailedPlotter():
             plt.close()
 
         self.plotIdx += 1
-        if np.any(self.getAllDictValues(self.a00sDict)):
+        if np.any(self._getAllDictValues(self.a00sDict)):
             plt.figure(figsize=(12, 12))
             plot_fp_statistic(plt.gca(), self.a00sDict, camera=self.camera, cm=plt.cm.hot,
                               x_range=None, y_range=None,
@@ -1045,7 +1064,7 @@ class DetailedPlotter():
             plt.close()
 
             plt.figure()
-            a00s = self.getAllDictValues(self.a00sDict)
+            a00s = self._getAllDictValues(self.a00sDict)
             plt.hist(a00s[e2vs], bins="fd", histtype="step", label="E2Vs")
             plt.hist(a00s[itls], bins="fd", histtype="step", label="ITLs")
             plt.yscale('log')
@@ -1057,7 +1076,7 @@ class DetailedPlotter():
             plt.close()
 
         self.plotIdx += 1
-        if np.any(self.getAllDictValues(self.n01sDict)):
+        if np.any(self._getAllDictValues(self.n01sDict)):
             plt.figure(figsize=(12, 12))
             plot_fp_statistic(plt.gca(), self.n01sDict, camera=self.camera, cm=plt.cm.hot,
                               x_range=None, y_range=None,
@@ -1068,7 +1087,7 @@ class DetailedPlotter():
             plt.close()
 
             plt.figure()
-            n01s = self.getAllDictValues(self.n01sDict)
+            n01s = self._getAllDictValues(self.n01sDict)
             plt.hist(n01s[e2vs], bins="fd", histtype="step", label=r"E2Vs")
             plt.hist(n01s[itls], bins="fd", histtype="step", label=r"ITLs")
             plt.yscale('log')
@@ -1079,7 +1098,7 @@ class DetailedPlotter():
             plt.close()
 
         self.plotIdx += 1
-        if np.any(self.getAllDictValues(self.n10sDict)):
+        if np.any(self._getAllDictValues(self.n10sDict)):
             plt.figure(figsize=(12, 12))
             plot_fp_statistic(plt.gca(), self.n10sDict, camera=self.camera, cm=plt.cm.hot,
                               x_range=None, y_range=None,
@@ -1090,7 +1109,7 @@ class DetailedPlotter():
             plt.close()
 
             plt.figure()
-            n10s = self.getAllDictValues(self.n10sDict)
+            n10s = self._getAllDictValues(self.n10sDict)
             plt.hist(n10s[e2vs], bins="fd", histtype="step", label=r"E2Vs")
             plt.hist(n10s[itls], bins="fd", histtype="step", label=r"ITLs")
             plt.yscale('log')
@@ -1101,7 +1120,7 @@ class DetailedPlotter():
             plt.close()
 
         self.plotIdx += 1
-        if np.any(self.getAllDictValues(self.ptcTurnoffsDict)):
+        if np.any(self._getAllDictValues(self.ptcTurnoffsDict)):
             plt.figure(figsize=(12, 12))
             plot_fp_statistic(plt.gca(), self.ptcTurnoffsDict, camera=self.camera, cm=plt.cm.hot,
                               x_range=None, y_range=None,
@@ -1112,7 +1131,7 @@ class DetailedPlotter():
             plt.close()
 
             plt.figure()
-            ptcTurnoffs = self.getAllDictValues(self.ptcTurnoffsDict)
+            ptcTurnoffs = self._getAllDictValues(self.ptcTurnoffsDict)
             plt.hist(ptcTurnoffs[e2vs], bins="fd", histtype="step", label="E2Vs")
             plt.hist(ptcTurnoffs[itls], bins="fd", histtype="step", label="ITLs")
             plt.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
@@ -1124,7 +1143,7 @@ class DetailedPlotter():
             plt.close()
 
         self.plotIdx += 1
-        if np.any(self.getAllDictValues(self.linearityTurnoffsDict)):
+        if np.any(self._getAllDictValues(self.linearityTurnoffsDict)):
             plt.figure(figsize=(12, 12))
             plot_fp_statistic(plt.gca(), self.linearityTurnoffsDict, camera=self.camera, cm=plt.cm.hot,
                               x_range=None, y_range=None,
@@ -1135,7 +1154,7 @@ class DetailedPlotter():
             plt.close()
 
             plt.figure()
-            linearityTurnoffs = self.getAllDictValues(self.linearityTurnoffsDict)
+            linearityTurnoffs = self._getAllDictValues(self.linearityTurnoffsDict)
             plt.hist(linearityTurnoffs[e2vs], bins="fd", histtype="step", label="E2Vs")
             plt.hist(linearityTurnoffs[itls], bins="fd", histtype="step", label="ITLs")
             plt.yscale('log')
@@ -1147,7 +1166,7 @@ class DetailedPlotter():
             plt.close()
 
         self.plotIdx += 1
-        if np.any(self.getAllDictValues(self.empiricalN00sResidualsDict)):
+        if np.any(self._getAllDictValues(self.empiricalN00sResidualsDict)):
             plt.figure(figsize=(12, 12))
             plot_fp_statistic(plt.gca(), self.globalCtisDict, camera=self.camera, cm=plt.cm.hot,
                               x_range=None, y_range=None,
@@ -1157,7 +1176,7 @@ class DetailedPlotter():
             plt.close()
 
             plt.figure()
-            globalCtis = self.getAllDictValues(self.globalCtisDict)
+            globalCtis = self._getAllDictValues(self.globalCtisDict)
             plt.hist(globalCtis[e2vs], bins=100, histtype='step', range=(1e-7, 1e-5), label="E2V")
             plt.hist(globalCtis[itls], bins=100, histtype='step', range=(1e-7, 1e-5), label="ITL")
             plt.axvline(5e-6, linestyle="-", color="r", alpha=0.25, label="Max. Spec.")
@@ -1174,7 +1193,7 @@ class DetailedPlotter():
             plt.close()
 
         self.plotIdx += 1
-        if np.any(self.getAllDictValues(self.serialCtiTurnoffsDict)):
+        if np.any(self._getAllDictValues(self.serialCtiTurnoffsDict)):
             plt.figure(figsize=(12, 12))
             plot_fp_statistic(plt.gca(), self.serialCtiTurnoffsDict, camera=self.camera, cm=plt.cm.hot,
                               x_range=None, y_range=None,
@@ -1185,7 +1204,7 @@ class DetailedPlotter():
             plt.close()
 
             plt.figure()
-            serialCtiTurnoffs = self.getAllDictValues(self.serialCtiTurnoffsDict)
+            serialCtiTurnoffs = self._getAllDictValues(self.serialCtiTurnoffsDict)
             plt.hist(serialCtiTurnoffs[e2vs], bins="fd", histtype='step', label="E2V")
             plt.hist(serialCtiTurnoffs[itls], bins="fd", histtype='step', label="ITL")
             plt.legend(loc=2)
@@ -1208,7 +1227,8 @@ class DetailedPlotter():
             self.plotBiasStatistics()
             self.plotDarkStatistics()
             self.plotBiasVsDarkStatistics()
-            self.plotSummaryStatistics()
+            if self.plotSummaryStatistics:
+                self.plotSummaryStatistics()
 
 
 def main():
@@ -1216,13 +1236,17 @@ def main():
     parser = argparse.ArgumentParser(description="Construct a detailed report.")
     parser.add_argument("-r", "--repository", dest="repository", default="",
                         help="Butler repository to pull results from.")
-    parser.add_argument("-O", "--output_path", dest="output_path", default="",
+    parser.add_argument("-o", "--output_path", dest="output_path", default="",
                         help="Output path to write report to.")
     parser.add_argument("-c", "--collections", dest="collections", action="append", default=[],
                         help="Collections to search for results.")
-    parser.add_argument("--detector_ids", action="append", default=range(205),
+    parser.add_argument("--instrument", dest="instrument", default="",
+                        help="The instrument to use (e.g. LSSTCam)")
+    parser.add_argument("--detector-ids", nargs="+", default=range(205), type=int,
                         help="Specific detectors to plot, default is all available.")
-    parser.add_argument("--do_overwrite", dest="do_overwrite", action="store_true", default=False,
+    parser.add_argument("--plot-summary-stats", dest="plot_summary_stats", action="store_true",
+                        default=True, help="Plot the summary statistics?")
+    parser.add_argument("--do-overwrite", dest="do_overwrite", action="store_true", default=False,
                         help="Allow existing files to be overwritten?")
     args = parser.parse_args()
 
@@ -1230,7 +1254,9 @@ def main():
         repo=args.repository,
         output=args.output_path,
         collections=args.collections,
+        instrument=args.instrument,
         detectorIds=args.detector_ids,
+        plotSummaryStats=args.plot_summary_stats,
         doOverwrite=args.do_overwrite,
     )
     reporter.run()
