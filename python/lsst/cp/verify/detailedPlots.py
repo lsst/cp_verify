@@ -42,7 +42,7 @@ from lsst.daf.butler import EmptyQueryResultError, DatasetNotFoundError
 from .utils import plot_fp_statistic
 
 
-class DetailedPlotter():
+class DetailedPlotter:
     """A class to generate calibration verification reports.
 
     Parameters
@@ -68,7 +68,7 @@ class DetailedPlotter():
         super().__init__()
         # Set source and destination information.
         self.repo = repo
-        self.output = output
+        self.output = os.path.join(output, "images")
         self.collections = collections
         self.instrument = instrument
         self.doOverwrite = doOverwrite
@@ -82,7 +82,11 @@ class DetailedPlotter():
         self.registry = self.butler.registry
 
         # Get the camera associated with these calibrations
-        self.camera = self.butler.get("camera", instrument=self.instrument, collections="LSSTCam/calib")
+        self.camera = self.butler.get(
+            "camera",
+            instrument=self.instrument,
+            collections=f"{self.instrument}/calib",
+        )
 
         # Get the detector ids
         self.detectorIds = range(len(self.camera)) if len(detectorIds) == 0 else sorted(detectorIds)
@@ -192,6 +196,7 @@ class DetailedPlotter():
 
                 # Save dataset information
                 self.typesDict[detName][ampName] = self.camera[ref.dataId['detector']].getPhysicalType()
+
                 # Need to fix this. Why is it a zero dimensional array?
                 linTurnoff = lin.linearityTurnoff[ampName].ravel()[0]
                 self.linearityTurnoffsDict[detName][ampName] = linTurnoff
@@ -199,7 +204,7 @@ class DetailedPlotter():
                 # Plot
                 ax = axs[i]
                 ax.set_title(ampName)
-                ax.scatter(ptc.photoCharges[ampName], ptc.rawMeans[ampName], s=1)
+                ax.scatter(ptc.rawMeans[ampName], ptc.rawMeans[ampName], s=1)
                 ax.axhline(lin.linearityTurnoff[ampName], linestyle="--", color="k", alpha=0.5)
 
                 ax.text(
@@ -226,18 +231,47 @@ class DetailedPlotter():
                 ampName = amp.getName()
                 ax = axs[i]
                 ax.set_title(ampName)
-                ax.scatter(ptc.photoCharges[ampName], lin.fitResiduals[ampName]/ptc.rawMeans[ampName], s=1)
+                # ax.scatter(linUnnormalized1.inputOrdinate[ampName], linUnnormalized1.fitResiduals[ampName]/linUnnormalized1.inputOrdinate[ampName], label='linearizerUnnormalized1', alpha=0.5, s=3)
+                # ax.scatter(linUnnormalized2.inputOrdinate[ampName], linUnnormalized2.fitResiduals[ampName]/linUnnormalized2.inputOrdinate[ampName], label='linearizerUnnormalized2', alpha=0.5, s=5)
+                ax.scatter(lin.inputOrdinate[ampName], lin.fitResiduals[ampName]/lin.inputOrdinate[ampName], label='linearizer', alpha=0.5, s=5)
+                ax.legend()
                 ax.axhline(0, linestyle="--", color="k", alpha=0.5)
                 ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
-                ax.set_ylim(-0.00075, 0.00075)
-                if ref.dataId['detector'] in [60, 61, 62]:
-                    ax.set_ylim(-0.003, 0.003)
-                ax.set_xlabel("Integrated PD\nCurrent")
-                ax.set_ylabel("fitResiduals / rawMeans")
+                ax.set_ylim(-3e-4,3e-4)
+                ax.set_xlabel("inputOrdinate [adu]")
+                ax.set_ylabel("fitResiduals / inputOrdinate")
             plt.tight_layout()
             outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
             plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}b-"
                         f"non-linearity_fit_residuals_{self.camera[ref.dataId['detector']].getId():03}.png",
+                        bbox_inches='tight')
+            plt.close()
+
+
+            fig, axes = plt.subplots(4,4, figsize=(12,12), sharex=True, sharey=True)
+            fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
+            axs = axes.ravel()
+            for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
+                ampName = amp.getName()
+
+                axs[i].set_title(ampName)
+                if ampName == lin.absoluteReferenceAmplifier:
+                    continue
+
+                inputOrdinate = lin.inputOrdinate[ampName]
+                fitResiduals = lin.fitResiduals[ampName]
+                mjds = ptc.inputExpPairMjdStartList[ampName]
+
+                axs[i].scatter([_ for _ in mjds for _idx_ in range(2)], fitResiduals/inputOrdinate, s=1)
+
+                axs[i].ticklabel_format(style='sci', axis='both', scilimits=(0, 0), useMathText=True)
+                axs[i].set_xlabel("MJD")
+                axs[i].set_ylabel("fitResiduals / inputOrdinate")
+                axs[i].set_ylim(-2e-4, 2e-4)
+            plt.tight_layout()
+            outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
+            plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}c-"
+                        f"non-linearity_fit_residuals_v_mjd_{self.camera[ref.dataId['detector']].getId():03}.png",
                         bbox_inches='tight')
             plt.close()
 
@@ -731,20 +765,20 @@ class DetailedPlotter():
 
         for ref in tqdm(self.refs, total=len(self.refs), desc="CTI"):
             cti = self.butler.get("cti", dataId=ref.dataId, collections=self.collections)
-            lin = self.butler.get("linearizer", dataId=ref.dataId, collections=self.collections)
-            ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
+            # lin = self.butler.get("linearizer", dataId=ref.dataId, collections=self.collections)
+            # ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
 
             fig, axes = plt.subplots(4, 4, figsize=(12, 12))
             fig.suptitle(self.camera[ref.dataId['detector']].getName())
             axs = axes.ravel()
-            detName = self.camera[ref.dataId['detector'].getName()]
+            detName = self.camera[ref.dataId['detector']].getName()
             for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
                 ampName = amp.getName()
 
                 # Save dataset information
                 self.typesDict[detName][ampName] = self.camera[ref.dataId['detector']].getPhysicalType()
-                self.linearityTurnoffsDict[detName][ampName] = lin.linearityTurnoff[ampName]
-                self.ptcTurnoffsDict[detName][ampName] = ptc.ptcTurnoff[ampName] * ptc.gain[ampName]
+                # self.linearityTurnoffsDict[detName][ampName] = lin.linearityTurnoff[ampName]
+                # self.ptcTurnoffsDict[detName][ampName] = ptc.ptcTurnoff[ampName] * ptc.gain[ampName]
                 self.globalCtisDict[detName][ampName] = cti.globalCti[ampName]
                 self.serialCtiTurnoffsDict[detName][ampName] = cti.serialCtiTurnoff[ampName]
 
@@ -806,13 +840,13 @@ class DetailedPlotter():
             for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
                 bbox = amp.getBBox()
                 vals = img.image[bbox].array.ravel()
-                vals = vals[(vals > -10.0) * (vals < 10.0)]
+                vals = vals[(vals > -5) * (vals < 5)]
                 _ = plt.hist(vals, bins="fd", histtype='step', color=self.color[i], label=amp.getName())
 
             plt.yscale('log')
             plt.xlabel("electrons")
             plt.legend(loc=2, ncol=2)
-            plt.xlim(-10, 10)
+            plt.xlim(-5, 5)
             plt.axvline(0.0, linestyle="--", color="k", alpha=0.5)
             plt.title(f"BIAS {self.camera[ref.dataId['detector']].getName()}, {ref.dataId['detector']}")
             outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
@@ -843,13 +877,13 @@ class DetailedPlotter():
             for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
                 bbox = amp.getBBox()
                 vals = img.image[bbox].array.ravel()
-                vals = vals[(vals > -2.5) * (vals < 2.5)]
+                vals = vals[(vals > -0.25) * (vals < 0.25)]
                 _ = plt.hist(vals, bins="fd", histtype='step', color=self.color[i], label=amp.getName())
 
             plt.yscale('log')
             plt.xlabel("electrons")
             plt.legend(loc=2, ncol=2)
-            plt.xlim(-2.5, 2.5)
+            plt.xlim(-0.25, 0.25)
             plt.axvline(0.0, linestyle="--", color="k", alpha=0.5)
             plt.title(f"DARK {self.camera[ref.dataId['detector']].getName()}, {ref.dataId['detector']}")
             outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
@@ -903,14 +937,14 @@ class DetailedPlotter():
             plt.close()
 
     def plotSummaryStatistics(self):
-        if len(self.refs) > 0:
-            self.log.info("Plotting summary statistics")
-        else:
-            self.log.warning("No data for summary statistics, skipping.")
-            return
-
+        # if len(self.refs) > 0:
+        #     self.log.info("Plotting summary statistics")
+        # else:
+        #     self.log.warning("No data for summary statistics, skipping.")
+        #     return
+        self.log.warning("Plotting summary statisitcs.")
         # Reset plot index to zero
-        self.plotIds = 0
+        self.plotIdx = 0
 
         # Get the physical type masks
         types = self._getAllDictValues(self.typesDict)
@@ -1185,7 +1219,11 @@ class DetailedPlotter():
                      label=f"({bad}/{len(globalCtis)} out of spec.)")
             plt.xlim(1e-7, 1e-5)
             plt.legend(loc=1)
-            plt.yscale('log')
+            try:
+                plt.yscale('log')
+            except:
+                pass
+
             plt.legend(loc=1)
             plt.xlabel(r"Global sCTI [transfers$^{-1}$]")
             plt.savefig(f"{self.output}/{self.plotIdx:02}b-global_cti_hist_mosaic.png",
@@ -1208,7 +1246,10 @@ class DetailedPlotter():
             plt.hist(serialCtiTurnoffs[e2vs], bins="fd", histtype='step', label="E2V")
             plt.hist(serialCtiTurnoffs[itls], bins="fd", histtype='step', label="ITL")
             plt.legend(loc=2)
-            plt.yscale('log')
+            try:
+                plt.yscale('log')
+            except:
+                pass
             plt.xlabel("Serial CTI Turnoffs (electrons)")
             plt.savefig(f"{self.output}/{self.plotIdx:02}b-serial_cti_turnoffs_hist_mosaic.png",
                         bbox_inches='tight')
@@ -1227,8 +1268,7 @@ class DetailedPlotter():
             self.plotBiasStatistics()
             self.plotDarkStatistics()
             self.plotBiasVsDarkStatistics()
-            if self.plotSummaryStatistics:
-                self.plotSummaryStatistics()
+            # self.plotSummaryStatistics()
 
 
 def main():
@@ -1250,7 +1290,7 @@ def main():
                         help="Allow existing files to be overwritten?")
     args = parser.parse_args()
 
-    reporter = DetailedPlotter(
+    plotter = DetailedPlotter(
         repo=args.repository,
         output=args.output_path,
         collections=args.collections,
@@ -1259,4 +1299,4 @@ def main():
         plotSummaryStats=args.plot_summary_stats,
         doOverwrite=args.do_overwrite,
     )
-    reporter.run()
+    plotter.run()

@@ -22,7 +22,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import sys
 
-from lsst.cp.verify.detailedReport import main
+from lsst.cp.verify.detailedReportsLSSTCam import main
 
 if __name__ == '__main__':
     sys.exit(main())
