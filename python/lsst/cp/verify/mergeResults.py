@@ -448,27 +448,27 @@ class CpVerifyExpMergeTask(pipeBase.PipelineTask):
 
 
 class CpVerifyRunMergeConnections(pipeBase.PipelineTaskConnections,
-                                  dimensions={"instrument", },
+                                  dimensions={"instrument", "day_obs"},
                                   defaultTemplates={}):
     inputStats = cT.Input(
         name="exposureStats",
         doc="Input statistics to merge.",
         storageClass="StructuredDataDict",
-        dimensions=["instrument", "exposure"],
+        dimensions=["instrument", "exposure", "day_obs"],
         multiple=True,
     )
     inputResults = cT.Input(
         name="exposureResults",
         doc="Input results table to merge.",
         storageClass="ArrowAstropy",
-        dimensions=["instrument", "exposure"],
+        dimensions=["instrument", "exposure", "day_obs"],
         multiple=True,
     )
     inputMatrix = cT.Input(
         name="exposureMatrix",
         doc="Input matrix table to merge.",
         storageClass="ArrowAstropy",
-        dimensions=["instrument", "exposure"],
+        dimensions=["instrument", "exposure", "day_obs"],
         multiple=True,
     )
     camera = cT.PrerequisiteInput(
@@ -483,19 +483,19 @@ class CpVerifyRunMergeConnections(pipeBase.PipelineTaskConnections,
         name="runStats",
         doc="Output statistics.",
         storageClass="StructuredDataDict",
-        dimensions=["instrument", ],
+        dimensions=["instrument", "day_obs"],
     )
     outputResults = cT.Output(
         name="runResults",
         doc="Output merged results table.",
         storageClass="ArrowAstropy",
-        dimensions=["instrument",],
+        dimensions=["instrument", "day_obs"],
     )
     outputMatrix = cT.Output(
         name="runMatrix",
         doc="Output merged matrix table.",
         storageClass="ArrowAstropy",
-        dimensions=["instrument",],
+        dimensions=["instrument", "day_obs"],
     )
 
     def __init__(self, *, config=None):

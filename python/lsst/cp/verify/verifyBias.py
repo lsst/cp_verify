@@ -187,6 +187,7 @@ class CpVerifyBiasTask(CpVerifyStatsTask):
             "instrument": dimensions["instrument"],
             "exposure": dimensions["exposure"],
             "detector": dimensions["detector"],
+            "day_obs": dimensions["day_obs"],
             "mjd": mjd,
         }
 
