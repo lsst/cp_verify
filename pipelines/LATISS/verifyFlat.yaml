@@ -8,3 +8,4 @@ tasks:
     config:
       doBrighterFatter: false
       crosstalk.doQuadraticCrosstalkCorrection: false
+      doDeferredCharge: false

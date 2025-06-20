@@ -7,3 +7,4 @@ tasks:
     class: lsst.ip.isr.IsrTaskLSST
     config:
       crosstalk.doQuadraticCrosstalkCorrection: false
+      doDeferredCharge: false
