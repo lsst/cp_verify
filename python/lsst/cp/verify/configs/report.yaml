@@ -56,8 +56,12 @@ stages:
       description: "The combined defects calibration."
     verifyDefectsResults:
       description: "Catalog of combined defect verification results."
-    cpDefectCore_defectsPixels_FocalPlaneGeometryPlot:
-      description: "Number of defects."
+    cpDefectCore_defectsPixelsRequirement_FocalPlaneGeometryPlot:
+      description: "Amplifiers passing requirements or not."
+    cpDefectCore_defectsPixelsFracNoEdge_FocalPlaneGeometryPlot:
+      description: "Fraction of defects per amplifier without the edges."
+    cpDefectCore_defectsPixelsFrac_FocalPlaneGeometryPlot:
+      description: Fraction of defects per amplifier ."
   ptc:
     ptc:
       description: "The photon transfer curve calibration."
