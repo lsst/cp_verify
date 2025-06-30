@@ -22,7 +22,6 @@ import numpy as np
 import scipy.stats
 import lsst.pipe.base.connectionTypes as cT
 from lsst.ip.isr.isrFunctions import countMaskedPixels
-from lsst.cp.pipe import MergeDefectsTaskConfig
 
 from .verifyStats import (
     CpVerifyStatsConfig,
@@ -216,17 +215,6 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
         return outputStatistics
 
-    def numEdgePixels(self, amp, nPixBorderUpDown, nPixBorderLeftRight):
-        ampName = amp.getName()
-        if ampName[-1] == '0' or ampName[-1] == '7':
-            numEdgePixels = nPixBorderLeftRight*amp.getBBox().width \
-                + nPixBorderUpDown*amp.getBBox().height \
-                - nPixBorderLeftRight*nPixBorderUpDown  # removing the double counting at the corner
-        else:
-            numEdgePixels = nPixBorderLeftRight*amp.getBBox().width
-
-        return numEdgePixels
-
     def imageStatistics(self, exposure, uncorrectedExposure, statControl):
         """Measure additional defect statistics.
 
@@ -283,16 +271,6 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             # Get fraction of defects per amp
             ampSize = amp.getBBox().height*amp.getBBox().width
             outputStatistics[ampName]["FRAC"] = outputStatistics[ampName]["DEFECT_PIXELS"]/ampSize
-
-            # Get fraction of defects, excluding the masked edges, per amp
-            nPixBorderUpDown = MergeDefectsTaskConfig.nPixBorderUpDown.default
-            nPixBorderLeftRight = MergeDefectsTaskConfig.nPixBorderLeftRight.default
-            numEdgePixels = self.numEdgePixels(amp, nPixBorderUpDown, nPixBorderLeftRight)
-            outputStatistics[ampName]["FRAC_NOEDGE"] = (outputStatistics[ampName]["DEFECT_PIXELS"]
-                                                        - numEdgePixels)/ampSize
-
-            # Get amp by amp requirement tests to plot on a focal plan plot
-            outputStatistics[ampName]["REQUIREMENT"] = int(outputStatistics[ampName]["FRAC"] > 0.01)
 
         return outputStatistics
 
