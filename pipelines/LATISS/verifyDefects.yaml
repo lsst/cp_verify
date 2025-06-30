@@ -1,7 +1,4 @@
 description: cp_verify LATISS Defects verification.
 instrument: lsst.obs.lsst.Latiss
 imports:
-  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
-    include:
-      - analyzeDefectCore
   - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyDefectsLSST.yaml

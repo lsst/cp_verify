@@ -1,7 +1,4 @@
 description: cp_verify for Defects measured from combined calibrations.
 instrument: lsst.obs.lsst.LsstCam
 imports:
-  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
-    include:
-      - analyzeDefectCore
   - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyDefectsLSST.yaml

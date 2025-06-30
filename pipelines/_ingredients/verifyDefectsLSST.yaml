@@ -1,4 +1,8 @@
 description: cp_verify for Defects measured from combined calibrations (LSST ISR task).
+imports:
+  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+    include:
+      - analyzeDefectCore
 tasks:
   verifyDefectsIsr:
     class: lsst.ip.isr.IsrTaskLSST
