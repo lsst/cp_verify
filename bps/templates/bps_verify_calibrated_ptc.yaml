@@ -1,0 +1,12 @@
+pipelineYaml: "${CP_VERIFY_DIR}/pipelines/${INSTRUMENT}/verifyCalibratedPtc.yaml"
+
+project: "${TICKET}"
+campaign: "${TICKET}"
+submitPath: "${SCRATCH}/submit/{outputRun}"
+
+payload:
+  payloadName: "${INSTRUMENT}_${TICKET}_verify_ptc"
+  output: "${USER_CALIB_PREFIX}${INSTRUMENT}/calib/${TICKET}/${TAG}/verifyCalibratedPtc.${VERIFY_RERUN}"
+  butlerConfig: "${REPO}"
+  inCollection: "${RAW_COLLECTION},${CALIB_COLLECTIONS}"  # ${USER_CALIB_PREFIX}${INSTRUMENT}/calib/${TICKET}
+  dataQuery: "${SELECTION_PTC_V}"
