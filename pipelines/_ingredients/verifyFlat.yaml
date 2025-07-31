@@ -1,4 +1,9 @@
 description: cp_verify FLAT calibration verification
+imports:
+  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+    include:
+      - analyzeFlatCore
+      - analyzeFlatDetMergeCore
 tasks:
   verifyFlatIsr:
     class: lsst.ip.isr.IsrTask
@@ -10,6 +15,16 @@ tasks:
       doFringe: false
       doCalculateStatistics: true
       isrStats.doCopyCalibDistributionStatistics: true
+  verifyFlatDetMerge:
+    class: lsst.cp.verify.CpVerifyDetMergeByFilterTask
+    config:
+      connections.inputStats: "verifyFlatDetStats"
+      connections.inputResults: "verifyFlatDetResults"
+      connections.outputStats: "verifyFlatDetMergeStats"
+      connections.outputResults: "verifyFlatDetMergeResults"
+      hasInputResults: true
+      hasMatrixCatalog: false
+      stageName: "flat"
   verifyFlatDet:
     class: lsst.cp.verify.CpVerifyFlatTask
     config:
@@ -27,6 +42,16 @@ tasks:
       hasInputResults: true
       hasMatrixCatalog: false
       stageName: "flat"
+  analyzeFlatCore:
+    class: lsst.analysis.tools.tasks.VerifyCalibAnalysisTaskByFilter
+    config:
+      connections.data: "verifyFlatResults"
+      connections.outputName: "verifyFlatAnalysis"
+  analyzeFlatDetMergeCore:
+    class: lsst.analysis.tools.tasks.VerifyCalibAnalysisTaskByFilter
+    config:
+      connections.data: "verifyFlatDetMergeResults"
+      connections.outputName: "verifyFlatDetMergeAnalysis"
   verifyFlat:
     class: lsst.cp.verify.CpVerifyRunMergeByFilterTask
     config:
@@ -42,3 +67,5 @@ contracts:
   - verifyFlatExp.connections.inputResults == verifyFlatDet.connections.outputResults
   - verifyFlat.connections.inputStats == verifyFlatExp.connections.outputStats
   - verifyFlat.connections.inputResults == verifyFlatExp.connections.outputResults
+  - analyzeFlatCore.connections.data == verifyFlat.connections.outputResults
+  - analyzeFlatDetMergeCore.connections.data == verifyFlatDetMerge.connections.outputResults
