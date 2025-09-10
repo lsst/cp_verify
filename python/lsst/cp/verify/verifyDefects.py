@@ -34,32 +34,32 @@ __all__ = ["CpVerifyDefectsConfig", "CpVerifyDefectsTask"]
 
 
 class CpVerifyDefectsConnections(
-    CpVerifyStatsConnections, dimensions={"instrument", "visit", "detector"}
+    CpVerifyStatsConnections, dimensions={"instrument", "exposure", "detector"}
 ):
     inputExp = cT.Input(
         name="icExp",
         doc="Input exposure to calculate statistics for.",
-        storageClass="ExposureF",
-        dimensions=["instrument", "visit", "detector"],
+        storageClass="Exposure",
+        dimensions=["instrument", "exposure", "detector"],
     )
     uncorrectedExp = cT.Input(
         name="uncorrectedExp",
         doc="Uncorrected input exposure to calculate statistics for.",
-        storageClass="ExposureF",
-        dimensions=["instrument", "visit", "detector"],
+        storageClass="Exposure",
+        dimensions=["instrument", "exposure", "detector"],
     )
-    inputCatalog = cT.Input(
-        name="icSrc",
-        doc="Input catalog to calculate statistics from.",
-        storageClass="SourceCatalog",
-        dimensions=["instrument", "visit", "detector"],
-    )
-    uncorrectedCatalog = cT.Input(
-        name="uncorrectedSrc",
-        doc="Input catalog without correction applied.",
-        storageClass="SourceCatalog",
-        dimensions=["instrument", "visit", "detector"],
-    )
+    # inputCatalog = cT.Input(
+    #     name="icSrc",
+    #     doc="Input catalog to calculate statistics from.",
+    #     storageClass="SourceCatalog",
+    #     dimensions=["instrument", "visit", "detector"],
+    # )
+    # uncorrectedCatalog = cT.Input(
+    #     name="uncorrectedSrc",
+    #     doc="Input catalog without correction applied.",
+    #     storageClass="SourceCatalog",
+    #     dimensions=["instrument", "visit", "detector"],
+    # )
     camera = cT.PrerequisiteInput(
         name="camera",
         storageClass="Camera",
@@ -71,19 +71,19 @@ class CpVerifyDefectsConnections(
         name="detectorStats",
         doc="Output statistics from cp_verify.",
         storageClass="StructuredDataDict",
-        dimensions=["instrument", "visit", "detector"],
+        dimensions=["instrument", "exposure", "detector"],
     )
     outputResults = cT.Output(
         name="detectorResults",
         doc="Output results from cp_verify.",
         storageClass="ArrowAstropy",
-        dimensions=["instrument", "visit", "detector"],
+        dimensions=["instrument", "exposure", "detector"],
     )
     outputMatrix = cT.Output(
         name="detectorMatrix",
         doc="Output matrix results from cp_verify.",
         storageClass="ArrowAstropy",
-        dimensions=["instrument", "visit", "detector"],
+        dimensions=["instrument", "exposure", "detector"],
     )
 
 
@@ -136,39 +136,39 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
     ConfigClass = CpVerifyDefectsConfig
     _DefaultName = "cpVerifyDefects"
 
-    def catalogStatistics(self, exposure, catalog, uncorrectedCatalog, statControl):
-        """Measure the catalog statistics.
+    # def catalogStatistics(self, exposure, catalog, uncorrectedCatalog, statControl):
+    #     """Measure the catalog statistics.
 
-        Parameters
-        ----------
-        exposure : `lsst.afw.image.Exposure`
-            The exposure to measure.
-        catalog : `lsst.afw.table.Table`
-            The catalog to measure.
-        uncorrectedCatalog : `lsst.afw.table.Table`
-            The uncorrected catalog to measure.
-        statControl : `lsst.afw.math.StatisticsControl`
-            Statistics control object with parameters defined by
-            the config.
+    #     Parameters
+    #     ----------
+    #     exposure : `lsst.afw.image.Exposure`
+    #         The exposure to measure.
+    #     catalog : `lsst.afw.table.Table`
+    #         The catalog to measure.
+    #     uncorrectedCatalog : `lsst.afw.table.Table`
+    #         The uncorrected catalog to measure.
+    #     statControl : `lsst.afw.math.StatisticsControl`
+    #         Statistics control object with parameters defined by
+    #         the config.
 
-        Returns
-        -------
-        outputStatistics : `dict` [`str`, `dict` [`str`, scalar]]
-            A dictionary indexed by the amplifier name, containing
-            dictionaries of the statistics measured and their values.
+    #     Returns
+    #     -------
+    #     outputStatistics : `dict` [`str`, `dict` [`str`, scalar]]
+    #         A dictionary indexed by the amplifier name, containing
+    #         dictionaries of the statistics measured and their values.
 
-        Notes
-        -----
-        Number of detections test: running with defects would have fewer
-        detections
-        """
-        outputStatistics = {}
+    #     Notes
+    #     -----
+    #     Number of detections test: running with defects would have fewer
+    #     detections
+    #     """
+    #     outputStatistics = {}
 
-        # Number of detections test
-        outputStatistics["NUM_OBJECTS_BEFORE"] = len(uncorrectedCatalog)
-        outputStatistics["NUM_OBJECTS_AFTER"] = len(catalog)
+    #     # Number of detections test
+    #     outputStatistics["NUM_OBJECTS_BEFORE"] = len(uncorrectedCatalog)
+    #     outputStatistics["NUM_OBJECTS_AFTER"] = len(catalog)
 
-        return outputStatistics
+    #     return outputStatistics
 
     def detectorStatistics(self, statisticsDict, statControl, exposure=None, uncorrectedExposure=None):
         """Measure the detector statistics.
