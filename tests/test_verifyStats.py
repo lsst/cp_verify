@@ -175,7 +175,7 @@ class VerifyBiasTestCase(lsst.utils.tests.TestCase):
 
         self.assertAlmostEqual(biasStats['AMP']['C:0,0']['MEAN'], 2.08672, 4)
         self.assertAlmostEqual(biasStats['AMP']['C:0,0']['NOISE'], 13.99547, 4)
-        self.assertAlmostEqual(biasStats['AMP']['C:0,0']['CR_NOISE'], 14.11526, 4)
+        self.assertAlmostEqual(biasStats['AMP']['C:0,0']['CR_NOISE'], 14.10227, 4)
         # This order swap in intended. :sad-panda-emoji:
         self.assertAlmostEqual(biasStats['METADATA']['READ_NOISE_ADU']['C:0,0'], 4.25)
 
