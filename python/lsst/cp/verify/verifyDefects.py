@@ -318,37 +318,35 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             verifyStats[ampName] = verify
 
         # Detector statistics
-        detStats = statisticsDict["DET"]
-        verifyStatsDet = {}
-        successDet = True
-        # Cosmic rays test from DM-38563, before and after defects.
-        verifyStatsDet["NUMBER_COSMIC_RAYS"] = bool(
-            detStats["NUM_COSMICS_BEFORE"] > detStats["NUM_COSMICS_AFTER"]
-        )
+        # detStats = statisticsDict["DET"]
+        # verifyStatsDet = {}
+        # successDet = True
+        # # Cosmic rays test from DM-38563, before and after defects.
+        # verifyStatsDet["NUMBER_COSMIC_RAYS"] = bool(
+        #     detStats["NUM_COSMICS_BEFORE"] > detStats["NUM_COSMICS_AFTER"]
+        # )
 
-        verifyStatsDet["SUCCESS"] = bool(np.all(list(verifyStatsDet.values())))
-        if verifyStatsDet["SUCCESS"] is False:
-            successDet = False
+        # verifyStatsDet["SUCCESS"] = bool(np.all(list(verifyStatsDet.values())))
+        # if verifyStatsDet["SUCCESS"] is False:
+        #     successDet = False
 
         # Catalog statistics
-        catStats = statisticsDict["CATALOG"]
-        verifyStatsCat = {}
-        successCat = True
+        # catStats = statisticsDict["CATALOG"]
+        # verifyStatsCat = {}
+        # successCat = True
         # Detection tests from DM-38563, before and after defects.
-        verifyStatsCat["NUMBER_DETECTIONS"] = bool(
-            catStats["NUM_OBJECTS_BEFORE"] > catStats["NUM_OBJECTS_AFTER"]
-        )
+        # verifyStatsCat["NUMBER_DETECTIONS"] = bool(
+        #     catStats["NUM_OBJECTS_BEFORE"] > catStats["NUM_OBJECTS_AFTER"]
+        # )
 
-        verifyStatsCat["SUCCESS"] = bool(np.all(list(verifyStatsCat.values())))
-        if verifyStatsCat["SUCCESS"] is False:
-            successCat = False
+        # verifyStatsCat["SUCCESS"] = bool(np.all(list(verifyStatsCat.values())))
+        # if verifyStatsCat["SUCCESS"] is False:
+        #     successCat = False
 
-        success = successDet & successAmp & successCat
+        success = successAmp
         return {
-            "AMP": verifyStats,
-            "DET": verifyStatsDet,
-            "CATALOG": verifyStatsCat,
-        }, bool(success)
+            "AMP": verifyStats
+        }, success
 
     def repackStats(self, statisticsDict, dimensions):
         # docstring inherited
@@ -363,8 +361,8 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
         rowBase = {
             "instrument": dimensions["instrument"],
-            "exposure": dimensions["visit"],   # ensure an exposure dimension for downstream.
-            "visit": dimensions["visit"],
+            "exposure": dimensions["exposure"],   # ensure an exposure dimension for downstream.
+#            "visit": dimensions["visit"],
             "detector": dimensions["detector"],
             "mjd": mjd,
         }

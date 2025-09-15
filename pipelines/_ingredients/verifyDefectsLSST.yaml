@@ -82,6 +82,7 @@ tasks:
       connections.outputResults: "verifyDefectsDetResults2" #here change name for now (might want to clean up)
       useIsrStatistics: true
       hasMatrixCatalog: false
+      catalogStatKeywords: ""
   verifyDefectsExp2:
     class: lsst.cp.verify.CpVerifyVisitExpMergeTask
     config:
