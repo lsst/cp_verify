@@ -48,18 +48,6 @@ class CpVerifyDefectsConnections(
         storageClass="Exposure",
         dimensions=["instrument", "exposure", "detector"],
     )
-    # inputCatalog = cT.Input(
-    #     name="icSrc",
-    #     doc="Input catalog to calculate statistics from.",
-    #     storageClass="SourceCatalog",
-    #     dimensions=["instrument", "visit", "detector"],
-    # )
-    # uncorrectedCatalog = cT.Input(
-    #     name="uncorrectedSrc",
-    #     doc="Input catalog without correction applied.",
-    #     storageClass="SourceCatalog",
-    #     dimensions=["instrument", "visit", "detector"],
-    # )
     camera = cT.PrerequisiteInput(
         name="camera",
         storageClass="Camera",
@@ -136,39 +124,39 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
     ConfigClass = CpVerifyDefectsConfig
     _DefaultName = "cpVerifyDefects"
 
-    # def catalogStatistics(self, exposure, catalog, uncorrectedCatalog, statControl):
-    #     """Measure the catalog statistics.
+    def catalogStatistics(self, exposure, catalog, uncorrectedCatalog, statControl):
+        """Measure the catalog statistics.
 
-    #     Parameters
-    #     ----------
-    #     exposure : `lsst.afw.image.Exposure`
-    #         The exposure to measure.
-    #     catalog : `lsst.afw.table.Table`
-    #         The catalog to measure.
-    #     uncorrectedCatalog : `lsst.afw.table.Table`
-    #         The uncorrected catalog to measure.
-    #     statControl : `lsst.afw.math.StatisticsControl`
-    #         Statistics control object with parameters defined by
-    #         the config.
+        Parameters
+        ----------
+        exposure : `lsst.afw.image.Exposure`
+            The exposure to measure.
+        catalog : `lsst.afw.table.Table`
+            The catalog to measure.
+        uncorrectedCatalog : `lsst.afw.table.Table`
+            The uncorrected catalog to measure.
+        statControl : `lsst.afw.math.StatisticsControl`
+            Statistics control object with parameters defined by
+            the config.
 
-    #     Returns
-    #     -------
-    #     outputStatistics : `dict` [`str`, `dict` [`str`, scalar]]
-    #         A dictionary indexed by the amplifier name, containing
-    #         dictionaries of the statistics measured and their values.
+        Returns
+        -------
+        outputStatistics : `dict` [`str`, `dict` [`str`, scalar]]
+            A dictionary indexed by the amplifier name, containing
+            dictionaries of the statistics measured and their values.
 
-    #     Notes
-    #     -----
-    #     Number of detections test: running with defects would have fewer
-    #     detections
-    #     """
-    #     outputStatistics = {}
+        Notes
+        -----
+        Number of detections test: running with defects would have fewer
+        detections
+        """
+        outputStatistics = {}
 
-    #     # Number of detections test
-    #     outputStatistics["NUM_OBJECTS_BEFORE"] = len(uncorrectedCatalog)
-    #     outputStatistics["NUM_OBJECTS_AFTER"] = len(catalog)
+        # Number of detections test
+        outputStatistics["NUM_OBJECTS_BEFORE"] = len(uncorrectedCatalog)
+        outputStatistics["NUM_OBJECTS_AFTER"] = len(catalog)
 
-    #     return outputStatistics
+        return outputStatistics
 
     def detectorStatistics(self, statisticsDict, statControl, exposure=None, uncorrectedExposure=None):
         """Measure the detector statistics.
@@ -317,32 +305,6 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
             verifyStats[ampName] = verify
 
-        # Detector statistics
-        # detStats = statisticsDict["DET"]
-        # verifyStatsDet = {}
-        # successDet = True
-        # # Cosmic rays test from DM-38563, before and after defects.
-        # verifyStatsDet["NUMBER_COSMIC_RAYS"] = bool(
-        #     detStats["NUM_COSMICS_BEFORE"] > detStats["NUM_COSMICS_AFTER"]
-        # )
-
-        # verifyStatsDet["SUCCESS"] = bool(np.all(list(verifyStatsDet.values())))
-        # if verifyStatsDet["SUCCESS"] is False:
-        #     successDet = False
-
-        # Catalog statistics
-        # catStats = statisticsDict["CATALOG"]
-        # verifyStatsCat = {}
-        # successCat = True
-        # Detection tests from DM-38563, before and after defects.
-        # verifyStatsCat["NUMBER_DETECTIONS"] = bool(
-        #     catStats["NUM_OBJECTS_BEFORE"] > catStats["NUM_OBJECTS_AFTER"]
-        # )
-
-        # verifyStatsCat["SUCCESS"] = bool(np.all(list(verifyStatsCat.values())))
-        # if verifyStatsCat["SUCCESS"] is False:
-        #     successCat = False
-
         success = successAmp
         return {
             "AMP": verifyStats
@@ -362,7 +324,6 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
         rowBase = {
             "instrument": dimensions["instrument"],
             "exposure": dimensions["exposure"],   # ensure an exposure dimension for downstream.
-#            "visit": dimensions["visit"],
             "detector": dimensions["detector"],
             "mjd": mjd,
         }
