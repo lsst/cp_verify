@@ -6,7 +6,13 @@ tasks:
       connections.ccdExposure: "raw"
       connections.outputExposure: "verifyCrosstalkIsrExp"
       connections.crosstalk: "crosstalk"
-      doCrosstalk: true
+      python: |
+        from lsst.cp.pipe import configureIsrTaskLSSTForCalibrations
+        configureIsrTaskLSSTForCalibrations(config)
+
+        config.doCrosstalk = True
+        config.doApplyGains = True
+        config.crosstalk.doQuadraticCrosstalkCorrection=False
   verifyCrosstalkExtract:
     class: lsst.cp.pipe.CrosstalkExtractTask
     config:
@@ -17,6 +23,7 @@ tasks:
     config:
       connections.inputRatios: "verifyCrosstalkRatio"
       connections.outputCrosstalk: "verifyCrosstalk"
+      rejectNegativeSolutions: false
   verifyCrosstalkDet:
     class: lsst.cp.verify.CpVerifyCrosstalkTask
     config:
@@ -37,6 +44,12 @@ tasks:
       mergeDimension: "detector"
       hasInputResults: true
       hasMatrixCatalog: true
+subsets:
+  verifyCrosstalk:
+    subset:
+      - verifyCrosstalkIsr
+      - verifyCrosstalkExtract
+      - verifyCrosstalkSolve
 contracts:
   - verifyCrosstalkExtract.connections.inputExp == verifyCrosstalkIsr.connections.outputExposure
   - verifyCrosstalkSolve.connections.inputRatios == verifyCrosstalkExtract.connections.outputRatios
