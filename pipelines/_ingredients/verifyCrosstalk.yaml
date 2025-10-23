@@ -1,7 +1,7 @@
 description: cp_verify CROSSTALK calibration verification
 tasks:
   verifyCrosstalkIsr:
-    class: lsst.ip.isr.IsrTask
+    class: lsst.ip.isr.IsrTaskLSST
     config:
       connections.ccdExposure: "raw"
       connections.outputExposure: "verifyCrosstalkIsrExp"
@@ -45,7 +45,7 @@ tasks:
       hasInputResults: true
       hasMatrixCatalog: true
 subsets:
-  verifyCrosstalk:
+  verifyCrosstalkProc:
     subset:
       - verifyCrosstalkIsr
       - verifyCrosstalkExtract
