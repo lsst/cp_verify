@@ -1,4 +1,8 @@
 description: cp_verify for Defects measured from combined calibrations (LSST ISR task).
+imports:
+  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+    include:
+      - analyzeDefectCore
 tasks:
   verifyDefectsIsr:
     class: lsst.ip.isr.IsrTaskLSST
@@ -22,15 +26,6 @@ tasks:
         config.doBrighterFatter = True
         config.doFlat = True
         config.isrStats.doCopyCalibDistributionStatistics = True
-  verifyDefectsChar:
-    class: lsst.pipe.tasks.characterizeImage.CharacterizeImageTask
-    config:
-      connections.exposure: "verifyDefectsIsrExp"
-      connections.characterized: "verifyDefectsIcExp"
-      connections.sourceCat: "verifyDefectsIcSrc"
-      doApCorr: false
-      doDeblend: false
-      doNormalizedCalibration: false
   verifyUncorrectedDefectsIsr:
     class: lsst.ip.isr.IsrTaskLSST
     config:
@@ -55,29 +50,16 @@ tasks:
         config.doFlat = True
         config.doCalculateStatistics = False
         config.isrStats.doCopyCalibDistributionStatistics = True
-  verifyUncorrectedDefectsChar:
-    class: lsst.pipe.tasks.characterizeImage.CharacterizeImageTask
-    config:
-      connections.exposure: "verifyUncorrectedDefectsIsrExp"
-      connections.characterized: "verifyUncorrectedDefectsIcExp"
-      connections.sourceCat: "verifyUncorrectedDefectsIcSrc"
-      connections.backgroundModel: "verifyUncorrectedDefectsBackground"
-      connections.outputSchema: "verifyUncorrectedDefects_schema"
-      doApCorr: false
-      doDeblend: false
-      doMeasurePsf: false
-      doNormalizedCalibration: false
   verifyDefectsDet:
     class: lsst.cp.verify.CpVerifyDefectsTask
     config:
-      connections.inputExp: "verifyDefectsIcExp"
-      connections.uncorrectedExp: "verifyUncorrectedDefectsIcExp"
-      connections.inputCatalog: "verifyDefectsIcSrc"
-      connections.uncorrectedCatalog: "verifyUncorrectedDefectsIcSrc"
+      connections.inputExp: "verifyDefectsIsrExp"
+      connections.uncorrectedExp: "verifyUncorrectedDefectsIsrExp"
       connections.outputStats: "verifyDefectsDetStats"
       connections.outputResults: "verifyDefectsDetResults"
       useIsrStatistics: true
       hasMatrixCatalog: false
+      catalogStatKeywords: ""
   verifyDefectsExp:
     class: lsst.cp.verify.CpVerifyVisitExpMergeTask
     config:
@@ -85,7 +67,7 @@ tasks:
       connections.inputResults: "verifyDefectsDetResults"
       connections.outputStats: "verifyDefectsExpStats"
       connections.outputResults: "verifyDefectsExpResults"
-      mergeDimension: "visit"
+      mergeDimension: "exposure"
       hasInputResults: true
       hasMatrixCatalog: false
   verifyDefects:
@@ -99,13 +81,5 @@ tasks:
       hasInputResults: true
       hasMatrixCatalog: false
 contracts:
-  - verifyDefectsChar.connections.exposure == verifyDefectsIsr.connections.outputExposure
-  - verifyUncorrectedDefectsChar.connections.exposure == verifyUncorrectedDefectsIsr.connections.outputExposure
-  - verifyDefectsDet.connections.inputExp == verifyDefectsChar.connections.characterized
-  - verifyDefectsDet.connections.uncorrectedExp == verifyUncorrectedDefectsChar.connections.characterized
-  - verifyDefectsDet.connections.inputCatalog == verifyDefectsChar.connections.sourceCat
-  - verifyDefectsDet.connections.uncorrectedCatalog == verifyUncorrectedDefectsChar.connections.sourceCat
   - verifyDefectsExp.connections.inputStats == verifyDefectsDet.connections.outputStats
   - verifyDefectsExp.connections.inputResults == verifyDefectsDet.connections.outputResults
-  - verifyDefects.connections.inputStats == verifyDefectsExp.connections.outputStats
-  - verifyDefects.connections.inputResults == verifyDefectsExp.connections.outputResults

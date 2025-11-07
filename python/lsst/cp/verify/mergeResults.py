@@ -703,14 +703,14 @@ class CpVerifyVisitExpMergeConnections(pipeBase.PipelineTaskConnections,
         name="detectorStats",
         doc="Input statistics to merge.",
         storageClass="StructuredDataDict",
-        dimensions=["instrument", "visit", "detector"],
+        dimensions=["instrument", "exposure", "detector"],
         multiple=True,
     )
     inputResults = cT.Input(
         name="detectorResults",
         doc="Input results to merge.",
         storageClass="ArrowAstropy",
-        dimensions=["instrument", "visit", "detector"],
+        dimensions=["instrument", "exposure", "detector"],
         multiple=True,
     )
     inputMatrix = cT.Input(

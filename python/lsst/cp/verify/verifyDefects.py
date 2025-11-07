@@ -34,31 +34,19 @@ __all__ = ["CpVerifyDefectsConfig", "CpVerifyDefectsTask"]
 
 
 class CpVerifyDefectsConnections(
-    CpVerifyStatsConnections, dimensions={"instrument", "visit", "detector"}
+    CpVerifyStatsConnections, dimensions={"instrument", "exposure", "detector"}
 ):
     inputExp = cT.Input(
         name="icExp",
         doc="Input exposure to calculate statistics for.",
-        storageClass="ExposureF",
-        dimensions=["instrument", "visit", "detector"],
+        storageClass="Exposure",
+        dimensions=["instrument", "exposure", "detector"],
     )
     uncorrectedExp = cT.Input(
         name="uncorrectedExp",
         doc="Uncorrected input exposure to calculate statistics for.",
-        storageClass="ExposureF",
-        dimensions=["instrument", "visit", "detector"],
-    )
-    inputCatalog = cT.Input(
-        name="icSrc",
-        doc="Input catalog to calculate statistics from.",
-        storageClass="SourceCatalog",
-        dimensions=["instrument", "visit", "detector"],
-    )
-    uncorrectedCatalog = cT.Input(
-        name="uncorrectedSrc",
-        doc="Input catalog without correction applied.",
-        storageClass="SourceCatalog",
-        dimensions=["instrument", "visit", "detector"],
+        storageClass="Exposure",
+        dimensions=["instrument", "exposure", "detector"],
     )
     camera = cT.PrerequisiteInput(
         name="camera",
@@ -71,19 +59,19 @@ class CpVerifyDefectsConnections(
         name="detectorStats",
         doc="Output statistics from cp_verify.",
         storageClass="StructuredDataDict",
-        dimensions=["instrument", "visit", "detector"],
+        dimensions=["instrument", "exposure", "detector"],
     )
     outputResults = cT.Output(
         name="detectorResults",
         doc="Output results from cp_verify.",
         storageClass="ArrowAstropy",
-        dimensions=["instrument", "visit", "detector"],
+        dimensions=["instrument", "exposure", "detector"],
     )
     outputMatrix = cT.Output(
         name="detectorMatrix",
         doc="Output matrix results from cp_verify.",
         storageClass="ArrowAstropy",
-        dimensions=["instrument", "visit", "detector"],
+        dimensions=["instrument", "exposure", "detector"],
     )
 
 
@@ -268,6 +256,10 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             outliers = np.where(probability < 1.0 / probability.size, 1.0, 0.0)
             outputStatistics[ampName]["STAT_OUTLIERS"] = int(np.sum(outliers))
 
+            # Get fraction of defects per amp
+            ampSize = amp.getBBox().height*amp.getBBox().width
+            outputStatistics[ampName]["FRAC"] = outputStatistics[ampName]["DEFECT_PIXELS"]/ampSize
+
         return outputStatistics
 
     def verify(self, exposure, statisticsDict):
@@ -313,38 +305,10 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
             verifyStats[ampName] = verify
 
-        # Detector statistics
-        detStats = statisticsDict["DET"]
-        verifyStatsDet = {}
-        successDet = True
-        # Cosmic rays test from DM-38563, before and after defects.
-        verifyStatsDet["NUMBER_COSMIC_RAYS"] = bool(
-            detStats["NUM_COSMICS_BEFORE"] > detStats["NUM_COSMICS_AFTER"]
-        )
-
-        verifyStatsDet["SUCCESS"] = bool(np.all(list(verifyStatsDet.values())))
-        if verifyStatsDet["SUCCESS"] is False:
-            successDet = False
-
-        # Catalog statistics
-        catStats = statisticsDict["CATALOG"]
-        verifyStatsCat = {}
-        successCat = True
-        # Detection tests from DM-38563, before and after defects.
-        verifyStatsCat["NUMBER_DETECTIONS"] = bool(
-            catStats["NUM_OBJECTS_BEFORE"] > catStats["NUM_OBJECTS_AFTER"]
-        )
-
-        verifyStatsCat["SUCCESS"] = bool(np.all(list(verifyStatsCat.values())))
-        if verifyStatsCat["SUCCESS"] is False:
-            successCat = False
-
-        success = successDet & successAmp & successCat
+        success = successAmp
         return {
-            "AMP": verifyStats,
-            "DET": verifyStatsDet,
-            "CATALOG": verifyStatsCat,
-        }, bool(success)
+            "AMP": verifyStats
+        }, success
 
     def repackStats(self, statisticsDict, dimensions):
         # docstring inherited
@@ -359,8 +323,7 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
         rowBase = {
             "instrument": dimensions["instrument"],
-            "exposure": dimensions["visit"],   # ensure an exposure dimension for downstream.
-            "visit": dimensions["visit"],
+            "exposure": dimensions["exposure"],   # ensure an exposure dimension for downstream.
             "detector": dimensions["detector"],
             "mjd": mjd,
         }
