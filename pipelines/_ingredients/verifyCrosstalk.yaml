@@ -12,7 +12,6 @@ tasks:
 
         config.doCrosstalk = True
         config.doApplyGains = True
-        config.crosstalk.doQuadraticCrosstalkCorrection=False
   verifyCrosstalkExtract:
     class: lsst.cp.pipe.CrosstalkExtractTask
     config:
