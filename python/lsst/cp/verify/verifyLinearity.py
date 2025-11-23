@@ -123,7 +123,7 @@ class CpVerifyLinearityTask(CpVerifyCalibTask):
             outputStatistics[ampName]['FIT_RESIDUALS'] = inputCalib.fitResiduals[ampName].tolist()
             outputStatistics[ampName]['LINEAR_FIT'] = inputCalib.linearFit[ampName].tolist()
             outputStatistics[ampName]['LINEARITY_COEFFS'] = inputCalib.linearityCoeffs[ampName].tolist()
-            outputStatistics[ampName]['LINEARITY_TYPE'] = inputCalib.linearityType[ampName]
+            outputStatistics[ampName]['LINEARITY_TYPE'] = str(inputCalib.linearityType[ampName])
             if inputCalib.linearityType[ampName] == 'LookupTable':
                 outputStatistics[ampName]['TABLE_DATA'] = inputCalib.tableData[ampName].tolist()
         return outputStatistics
