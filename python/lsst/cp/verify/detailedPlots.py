@@ -183,97 +183,101 @@ class DetailedPlotter:
 
         self.refs = refs
 
-        for ref in tqdm(self.refs, total=len(self.refs), desc="LINEARIZER"):
-            lin = self.butler.get("linearizer", dataId=ref.dataId, collections=self.collections)
-            ptc = self.butler.get("linearizerPtc", dataId=ref.dataId, collections=self.collections)
+        # for ref in tqdm(self.refs, total=len(self.refs), desc="LINEARIZER"):
 
-            fig, axes = plt.subplots(4, 4, figsize=(12, 12))
-            fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
-            axs = axes.ravel()
-            detName = self.camera[ref.dataId['detector']].getName()
-            for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
-                ampName = amp.getName()
+        #     lin = self.butler.get("linearizer", dataId=ref.dataId, collections=self.collections)
+        #     linPtc = self.butler.get("linearizerPtc", dataId=ref.dataId, collections=self.collections)
+        #     fig, axes = plt.subplots(4, 4, figsize=(12, 12))
+        #     fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
+        #     axs = axes.ravel()
+        #     detName = self.camera[ref.dataId['detector']].getName()
+        #     for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
+        #         ampName = amp.getName()
 
-                # Save dataset information
-                self.typesDict[detName][ampName] = self.camera[ref.dataId['detector']].getPhysicalType()
+        #         # Save dataset information
+        #         self.typesDict[detName][ampName] = self.camera[ref.dataId['detector']].getPhysicalType()
 
-                # Need to fix this. Why is it a zero dimensional array?
-                linTurnoff = lin.linearityTurnoff[ampName].ravel()[0]
-                self.linearityTurnoffsDict[detName][ampName] = linTurnoff
+        #         # Need to fix this. Why is it a zero dimensional array?
+        #         linTurnoff = lin.linearityTurnoff[ampName].ravel()[0]
+        #         self.linearityTurnoffsDict[detName][ampName] = linTurnoff
 
-                # Plot
-                ax = axs[i]
-                ax.set_title(ampName)
-                ax.scatter(ptc.rawMeans[ampName], ptc.rawMeans[ampName], s=1)
-                ax.axhline(lin.linearityTurnoff[ampName], linestyle="--", color="k", alpha=0.5)
+        #         # Plot
+        #         ax = axs[i]
+        #         ax.set_title(ampName)
+        #         ax.scatter(lin.inputAbscissa[ampName], lin.inputOrdinate[ampName], s=1)
+        #         ax.axhline(lin.linearityTurnoff[ampName], linestyle="--", color="k", alpha=0.5)
 
-                ax.text(
-                    2e-7, 0.25e5,
-                    f"Linearity Turnoff:\n{round(linTurnoff, 1)} adu",
-                )
+        #         ax.text(
+        #             2e-7, 0.25e5,
+        #             f"Linearity Turnoff:\n{round(linTurnoff, 1)} adu",
+        #         )
 
-                ax.set_xlim(-.5e-7, 6.5e-7)
-                ax.set_ylim(0, 1.2e5)
-                ax.ticklabel_format(style='sci', axis='both', scilimits=(0, 0), useMathText=True)
-                ax.set_xlabel("Integrated PD\nCurrent")
-                ax.set_ylabel("Raw Means (adu)")
-            plt.tight_layout()
-            outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
-            plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}a-"
-                        f"pd_current_and_raw_means_{self.camera[ref.dataId['detector']].getId():03}.png",
-                        bbox_inches='tight')
-            plt.close()
+        #         if ampName == lin.absoluteReferenceAmplifier:
+        #              # ax.set_xlim(0, 1.2e5)
+        #              pass
+        #         else:
+        #             ax.set_xlim(0, 1.2e5)
+        #         ax.set_ylim(0, 1.2e5)
+        #         ax.ticklabel_format(style='sci', axis='both', scilimits=(0, 0), useMathText=True)
+        #         ax.set_xlabel("inputAbscissa")
+        #         ax.set_ylabel("inputOrdinate")
+        #     plt.tight_layout()
+        #     outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
+        #     plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}a-"
+        #                 f"pd_current_and_raw_means_{self.camera[ref.dataId['detector']].getId():03}.png",
+        #                 bbox_inches='tight')
+        #     plt.close()
 
-            fig, axes = plt.subplots(4, 4, figsize=(12, 12))
-            fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
-            axs = axes.ravel()
-            for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
-                ampName = amp.getName()
-                ax = axs[i]
-                ax.set_title(ampName)
-                # ax.scatter(linUnnormalized1.inputOrdinate[ampName], linUnnormalized1.fitResiduals[ampName]/linUnnormalized1.inputOrdinate[ampName], label='linearizerUnnormalized1', alpha=0.5, s=3)
-                # ax.scatter(linUnnormalized2.inputOrdinate[ampName], linUnnormalized2.fitResiduals[ampName]/linUnnormalized2.inputOrdinate[ampName], label='linearizerUnnormalized2', alpha=0.5, s=5)
-                ax.scatter(lin.inputOrdinate[ampName], lin.fitResiduals[ampName]/lin.inputOrdinate[ampName], label='linearizer', alpha=0.5, s=5)
-                ax.legend()
-                ax.axhline(0, linestyle="--", color="k", alpha=0.5)
-                ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
-                ax.set_ylim(-3e-4,3e-4)
-                ax.set_xlabel("inputOrdinate [adu]")
-                ax.set_ylabel("fitResiduals / inputOrdinate")
-            plt.tight_layout()
-            outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
-            plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}b-"
-                        f"non-linearity_fit_residuals_{self.camera[ref.dataId['detector']].getId():03}.png",
-                        bbox_inches='tight')
-            plt.close()
+        #     fig, axes = plt.subplots(4, 4, figsize=(12, 12))
+        #     fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
+        #     axs = axes.ravel()
+        #     for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
+        #         ampName = amp.getName()
+        #         ax = axs[i]
+        #         ax.set_title(ampName)
+        #         # ax.scatter(linUnnormalized1.inputOrdinate[ampName], linUnnormalized1.fitResiduals[ampName]/linUnnormalized1.inputOrdinate[ampName], label='linearizerUnnormalized1', alpha=0.5, s=3)
+        #         # ax.scatter(linUnnormalized2.inputOrdinate[ampName], linUnnormalized2.fitResiduals[ampName]/linUnnormalized2.inputOrdinate[ampName], label='linearizerUnnormalized2', alpha=0.5, s=5)
+        #         ax.scatter(lin.inputOrdinate[ampName], lin.fitResiduals[ampName]/lin.inputOrdinate[ampName], label='linearizer', alpha=0.5, s=5)
+        #         ax.legend()
+        #         ax.axhline(0, linestyle="--", color="k", alpha=0.5)
+        #         ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
+        #         ax.set_ylim(-3e-4,3e-4)
+        #         ax.set_xlabel("inputOrdinate [adu]")
+        #         ax.set_ylabel("fitResiduals / inputOrdinate")
+        #     plt.tight_layout()
+        #     outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
+        #     plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}b-"
+        #                 f"non-linearity_fit_residuals_{self.camera[ref.dataId['detector']].getId():03}.png",
+        #                 bbox_inches='tight')
+        #     plt.close()
 
 
-            fig, axes = plt.subplots(4,4, figsize=(12,12), sharex=True, sharey=True)
-            fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
-            axs = axes.ravel()
-            for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
-                ampName = amp.getName()
+        #     fig, axes = plt.subplots(4,4, figsize=(12,12), sharex=True, sharey=True)
+        #     fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
+        #     axs = axes.ravel()
+        #     for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
+        #         ampName = amp.getName()
 
-                axs[i].set_title(ampName)
-                if ampName == lin.absoluteReferenceAmplifier:
-                    continue
+        #         axs[i].set_title(ampName)
+        #         if ampName == lin.absoluteReferenceAmplifier:
+        #             continue
 
-                inputOrdinate = lin.inputOrdinate[ampName]
-                fitResiduals = lin.fitResiduals[ampName]
-                mjds = ptc.inputExpPairMjdStartList[ampName]
+        #         inputOrdinate = lin.inputOrdinate[ampName]
+        #         fitResiduals = lin.fitResiduals[ampName]
+        #         mjds = linPtc.inputExpPairMjdStartList[ampName]
 
-                axs[i].scatter([_ for _ in mjds for _idx_ in range(2)], fitResiduals/inputOrdinate, s=1)
+        #         axs[i].scatter([_ for _ in mjds for _idx_ in range(2)], fitResiduals/inputOrdinate, s=1)
 
-                axs[i].ticklabel_format(style='sci', axis='both', scilimits=(0, 0), useMathText=True)
-                axs[i].set_xlabel("MJD")
-                axs[i].set_ylabel("fitResiduals / inputOrdinate")
-                axs[i].set_ylim(-2e-4, 2e-4)
-            plt.tight_layout()
-            outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
-            plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}c-"
-                        f"non-linearity_fit_residuals_v_mjd_{self.camera[ref.dataId['detector']].getId():03}.png",
-                        bbox_inches='tight')
-            plt.close()
+        #         axs[i].ticklabel_format(style='sci', axis='both', scilimits=(0, 0), useMathText=True)
+        #         axs[i].set_xlabel("MJD")
+        #         axs[i].set_ylabel("fitResiduals / inputOrdinate")
+        #         axs[i].set_ylim(-2e-4, 2e-4)
+        #     plt.tight_layout()
+        #     outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
+        #     plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}c-"
+        #                 f"non-linearity_fit_residuals_v_mjd_{self.camera[ref.dataId['detector']].getId():03}.png",
+        #                 bbox_inches='tight')
+        #     plt.close()
 
     def plotPtcStatistics(self):
         self.plotIdx += 1
@@ -290,414 +294,417 @@ class DetailedPlotter:
 
         self.refs = refs
 
-        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
-            ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
-
-            fig, axes = plt.subplots(4, 4, figsize=(12, 12))
-            fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
-            axs = axes.ravel()
-            detName = self.camera[ref.dataId['detector']].getName()
-            for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
-                ampName = amp.getName()
-
-                # Save full array information
-                self.typesDict[detName][ampName] = self.camera[ref.dataId['detector']].getPhysicalType()
-                self.ptcTurnoffsDict[detName][ampName] = ptc.ptcTurnoff[ampName] * ptc.gain[ampName]
-                self.n00sDict[detName][ampName] = ptc.noise[ampName]
-                self.n01sDict[detName][ampName] = ptc.noiseMatrix[ampName][0][1]
-                self.n10sDict[detName][ampName] = ptc.noiseMatrix[ampName][1][0]
-                self.gainsDict[detName][ampName] = ptc.gain[ampName]
-                self.gainsUnadjustedDict[detName][ampName] = ptc.gainUnadjusted[ampName]
-                fracGainDiff = (ptc.gainUnadjusted[ampName] / ptc.gain[ampName]) - 1
-                self.gainsUnadjustedResidualsDict[detName][ampName] = fracGainDiff
-                self.a00sDict[detName][ampName] = ptc.aMatrix[ampName][0][0]
-                empiricalNoise = np.nanmedian(ptc.noiseList[ampName])
-                fracNoiseDiff = (empiricalNoise * ptc.gain[ampName]) / ptc.noise[ampName] - 1
-                self.empiricalN00sResidualsDict[detName][ampName] = fracNoiseDiff
-                self.empiricalN00sDict[detName][ampName] = fracNoiseDiff
-
-                ax = axs[i]
-                ax.set_title(ampName)
-                ax.scatter(ptc.rawMeans[ampName], ptc.rawVars[ampName], s=1)
-                ax.scatter(ptc.finalMeans[ampName], ptc.finalVars[ampName], s=1)
-
-                if ampName in ptc.badAmps:
-                    ax.set_facecolor('#fcd4d4')
-                    ax.set_title(ampName + " (BAD)")
-
-                ptcTurnoff = float(ptc.ptcTurnoff[ampName])
-                gain = float(ptc.gain[ampName])
-                a00 = float(ptc.aMatrix[ampName][0][0])
-                n00 = float(ptc.noise[ampName])
-                ax.axvline(ptcTurnoff, linestyle="--", color="k", alpha=0.25)
-                ax.text(
-                    5.5e3, 5.5e4,
-                    f"Turnoff: {round(ptcTurnoff, 1)} adu",
-                )
-                ax.text(
-                    5.5e3, 5.1e4,
-                    f"Gain: {round(gain, 2)}",
-                )
-                ax.text(
-                    5.5e3, 4.7e4,
-                    r"$a_{00}$: " + f"{round(a00*1e6, 2)}" + r"$\times 10^{-6}$",
-                )
-                ax.text(
-                    5.5e3, 4.3e4,
-                    r"$n_{00}$: " + f"{round(n00, 2)} el",
-                )
-
-                ax.ticklabel_format(style='sci', axis='both', scilimits=(0, 0), useMathText=True)
-                ax.set_xlabel("Signal (adu)")
-                ax.set_ylabel(r"$C_{00}$ (adu$^2$)")
-                # ax.set_xscale('log')#, linthresh=15000.0)
-                # ax.set_yscale('log')#, linthresh=15.0)
-                ax.set_ylim(0, 6.0e4)
-                ax.set_xlim(0, 1.5e5)
-
-            plt.tight_layout()
-            outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
-            plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}a-"
-                        f"ptc_{self.camera[ref.dataId['detector']].getId():03}.png",
-                        bbox_inches='tight')
-            plt.close()
-
-        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
-            ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
-
-            fig, axes = plt.subplots(4, 4, figsize=(12, 12))
-            fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
-            axs = axes.ravel()
-            for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
-                ampName = amp.getName()
-                ax = axs[i]
-                ax.set_title(ampName)
-
-                ptcTurnoff = ptc.ptcTurnoff[ampName]
-
-                if ampName in ptc.badAmps:
-                    ax.set_facecolor('#fcd4d4')
-                    ax.set_title(ampName + " (BAD)")
-
-                data = ptc.finalVars[ampName]
-                model = ptc.finalModelVars[ampName]
-
-                ax.scatter(ptc.finalMeans[ampName], data/model - 1, s=1)
-                ax.axhline(0, linestyle="--", color="k", alpha=0.25)
-                ax.axvline(ptcTurnoff, linestyle="--", color="orange", alpha=0.5)
-
-                ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
-                ax.set_xlabel("Signal (adu)")
-                ax.set_ylabel(r"$C_{00} / C_{00}^{model} - 1$")
-                ax.set_ylim(-.025, .025)
-                ax.set_xlim(0, 1.0e5)
-            plt.tight_layout()
-            outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
-            plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}b-"
-                        f"ptc_C00_residuals_{self.camera[ref.dataId['detector']].getId():03}.png",
-                        bbox_inches='tight')
-            plt.close()
-
-        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
-            ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
-
-            fig, axes = plt.subplots(4, 4, figsize=(12, 12))
-            fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
-            axs = axes.ravel()
-            for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
-                ampName = amp.getName()
-                ax = axs[i]
-                ax.set_title(ampName)
-
-                ptcTurnoff = ptc.ptcTurnoff[ampName]
-
-                if ampName in ptc.badAmps:
-                    ax.set_facecolor('#fcd4d4')
-                    ax.set_title(ampName + " (BAD)")
-
-                data = ptc.finalVars[ampName]
-                model = ptc.finalModelVars[ampName]
-
-                ax.scatter(ptc.finalMeans[ampName], (data-model)/np.sqrt(data), s=1)
-                ax.axvline(ptcTurnoff, linestyle="--", color="orange", alpha=0.5)
-                ax.axhline(0, linestyle="--", color="k", alpha=0.25)
-
-                ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
-                ax.set_xlabel("Signal (adu)")
-                ax.set_ylabel(r"$C_{00} - C_{00}^{model} / \sqrt{C_{00}}$")
-                ax.set_ylim(-3, 3)
-                ax.set_xlim(0, 1.0e5)
-            plt.tight_layout()
-            outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
-            plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}c-"
-                        f"ptc_C00_residuals_sigma_{self.camera[ref.dataId['detector']].getId():03}.png",
-                        bbox_inches='tight')
-            plt.close()
-
-        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
-            ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
-
-            fig, axes = plt.subplots(4, 4, figsize=(12, 12))
-            fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
-            axs = axes.ravel()
-            for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
-                ampName = amp.getName()
-                ax = axs[i]
-                ax.set_title(ampName)
-
-                if ampName in ptc.badAmps:
-                    ax.set_facecolor('#fcd4d4')
-                    ax.set_title(ampName + " (BAD)")
-
-                ptcTurnoff = ptc.ptcTurnoff[ampName]
-                data = ptc.covariances[ampName][:, 1, 0]
-                model = ptc.covariancesModel[ampName][:, 1, 0]
-
-                ax.scatter(ptc.finalMeans[ampName], data/model - 1, s=1)
-                ax.axhline(0, linestyle="--", color="k", alpha=0.25)
-                ax.axvline(ptcTurnoff, linestyle="--", color="orange", alpha=0.5)
-
-                ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
-                ax.set_xlabel("Signal (adu)")
-                ax.set_ylabel(r"$C_{10} / C_{10}^{model} - 1$")
-                # ax.set_xscale('log')#, linthresh=15000.0)
-                # ax.set_yscale('log')#, linthresh=15.0)
-                ax.set_ylim(-2, 2)
-                ax.set_xlim(0, 1.0e5)
-            plt.tight_layout()
-            outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
-            plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}d-"
-                        f"ptc_C10_residuals_{self.camera[ref.dataId['detector']].getId():03}.png",
-                        bbox_inches='tight')
-            plt.close()
-
-        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
-            ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
-
-            fig, axes = plt.subplots(4, 4, figsize=(12, 12))
-            fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
-            axs = axes.ravel()
-            for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
-                ampName = amp.getName()
-                ax = axs[i]
-                ax.set_title(ampName)
-
-                if ampName in ptc.badAmps:
-                    ax.set_facecolor('#fcd4d4')
-                    ax.set_title(ampName + " (BAD)")
-
-                ptcTurnoff = ptc.ptcTurnoff[ampName]
-                data = ptc.covariances[ampName][:, 0, 1]
-                model = ptc.covariancesModel[ampName][:, 0, 1]
-
-                ax.scatter(ptc.finalMeans[ampName], data/model - 1, s=1)
-                ax.axhline(0, linestyle="--", color="k", alpha=0.25)
-                ax.axvline(ptcTurnoff, linestyle="--", color="orange", alpha=0.5)
-
-                ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
-                ax.set_xlabel("Signal (adu)")
-                ax.set_ylabel(r"$C_{01} / C_{01}^{model} - 1$")
-                # ax.set_xscale('log')#, linthresh=15000.0)
-                # ax.set_yscale('log')#, linthresh=15.0)
-                ax.set_ylim(-1, 1)
-                ax.set_xlim(0, 1.0e5)
-            plt.tight_layout()
-            outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
-            plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}e-"
-                        f"ptc_C01_residuals_{self.camera[ref.dataId['detector']].getId():03}.png",
-                        bbox_inches='tight')
-            plt.close()
-
-        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
-            ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
-
-            fig, axes = plt.subplots(4, 4, figsize=(12, 12))
-            fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
-            axs = axes.ravel()
-            for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
-                ampName = amp.getName()
-                ax = axs[i]
-                ax.set_title(ampName)
-
-                if ampName in ptc.badAmps:
-                    ax.set_facecolor('#fcd4d4')
-                    ax.set_title(ampName + " (BAD)")
-
-                ptcTurnoff = ptc.ptcTurnoff[ampName]
-
-                data = ptc.rawVars[ampName]/ptc.rawMeans[ampName]
-                model = ptc.finalModelVars[ampName] / ptc.finalMeans[ampName]
-
-                ax.scatter(
-                    ptc.rawMeans[ampName],
-                    ptc.rawVars[ampName]/ptc.rawMeans[ampName],
-                    s=1,
-                    label="Data",
-                )
-                ax.plot(ptc.finalMeans[ampName], model, ms=1, color="orange", label="Model")
-                ax.axvline(ptcTurnoff, linestyle="--", color="forestgreen", alpha=0.5, label="PTC Turnoff")
-
-                ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
-                ax.set_xlabel("Signal (adu)")
-                ax.set_ylabel(r"$C_{00} / \mu$")
-                # ax.set_xscale('log')#, linthresh=15000.0)
-                # ax.set_yscale('log')#, linthresh=15.0)
-                ax.set_ylim(0.4, 0.8)
-                ax.set_xlim(0, 1.0e5)
-                ax.legend(loc=1, fontsize=8)
-            plt.tight_layout()
-            outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
-            plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}f-"
-                        f"ptc_correlations_C00_{self.camera[ref.dataId['detector']].getId():03}.png",
-                        bbox_inches='tight')
-            plt.close()
-
-        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
-            ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
-
-            fig, axes = plt.subplots(4, 4, figsize=(12, 12))
-            fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
-            axs = axes.ravel()
-            for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
-                ampName = amp.getName()
-                ax = axs[i]
-                ax.set_title(ampName)
-
-                if ampName in ptc.badAmps:
-                    ax.set_facecolor('#fcd4d4')
-                    ax.set_title(ampName + " (BAD)")
-
-                ptcTurnoff = ptc.ptcTurnoff[ampName]
-
-                data = ptc.covariances[ampName][:, 1, 0] / ptc.rawMeans[ampName]
-                model = ptc.covariancesModel[ampName][:, 1, 0] / ptc.finalMeans[ampName]
-
-                ax.scatter(ptc.rawMeans[ampName], data, s=1, label="Data")
-                ax.plot(ptc.finalMeans[ampName], model, ms=1, color="orange", label="Model")
-                ax.axhline(0, linestyle="--", color="k", alpha=0.5)
-                ax.axvline(ptcTurnoff, linestyle="--", color="forestgreen", alpha=0.5, label="PTC Turnoff")
-
-                ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
-                ax.set_xlabel("Signal (adu)")
-                ax.set_ylabel(r"$C_{10} / \mu$")
-                # ax.set_xscale('log')#, linthresh=15000.0)
-                # ax.set_yscale('log')#, linthresh=15.0)
-                ax.set_ylim(-0.01, 0.02)
-                ax.set_xlim(0, 1.0e5)
-                ax.legend(loc=2, fontsize=8)
-            plt.tight_layout()
-            outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
-            plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}g-"
-                        f"ptc_correlations_C10_{self.camera[ref.dataId['detector']].getId():03}.png",
-                        bbox_inches='tight')
-            plt.close()
-
-        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
-            ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
-
-            fig, axes = plt.subplots(4, 4, figsize=(12, 12))
-            fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
-            axs = axes.ravel()
-            for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
-                ampName = amp.getName()
-                ax = axs[i]
-                ax.set_title(ampName)
-
-                if ampName in ptc.badAmps:
-                    ax.set_facecolor('#fcd4d4')
-                    ax.set_title(ampName + " (BAD)")
-
-                ptcTurnoff = ptc.ptcTurnoff[ampName]
-
-                data = ptc.covariances[ampName][:, 0, 1] / ptc.rawMeans[ampName]
-                model = ptc.covariancesModel[ampName][:, 0, 1] / ptc.finalMeans[ampName]
-
-                ax.scatter(ptc.rawMeans[ampName], data, s=1, label="Data")
-                ax.plot(ptc.finalMeans[ampName], model, ms=1, color="orange", label="Model")
-                ax.axhline(0, linestyle="--", color="k", alpha=0.5)
-                ax.axvline(ptcTurnoff, linestyle="--", color="forestgreen", alpha=0.5, label="PTC Turnoff")
-
-                ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
-                ax.set_xlabel("Signal (adu)")
-                ax.set_ylabel(r"$C_{01} / \mu$")
-                # ax.set_xscale('log')#, linthresh=15000.0)
-                # ax.set_yscale('log')#, linthresh=15.0)
-                ax.set_ylim(-0.01, 0.05)
-                ax.set_xlim(0, 1.0e5)
-                ax.legend(loc=2, fontsize=8)
-            plt.tight_layout()
-            outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
-            plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}h-"
-                        f"ptc_correlations_C01_{self.camera[ref.dataId['detector']].getId():03}.png",
-                        bbox_inches='tight')
-            plt.close()
-
-        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
-            ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
-
-            fig, axes = plt.subplots(4, 4, figsize=(12, 12))
-            fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
-            axs = axes.ravel()
-            for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
-                ampName = amp.getName()
-                ax = axs[i]
-                ax.set_title(ampName)
-
-                if ampName in ptc.badAmps:
-                    ax.set_facecolor('#fcd4d4')
-                    ax.set_title(ampName + " (BAD)")
-
-                ptcTurnoff = ptc.ptcTurnoff[ampName]
-
-                data01 = ptc.covariances[ampName][:, 0, 1]
-                model01 = ptc.covariancesModel[ampName][:, 0, 1]
-                data10 = ptc.covariances[ampName][:, 0, 1]
-                model10 = ptc.covariancesModel[ampName][:, 0, 1]
-
-                ax.scatter(ptc.rawMeans[ampName], data01/data10, s=1, label="Data")
-                ax.plot(ptc.finalMeans[ampName], model01/model10, ms=1, color="orange", label="Model")
-                ax.axhline(0, linestyle="--", color="k", alpha=0.5)
-                ax.axvline(ptcTurnoff, linestyle="--", color="forestgreen", alpha=0.5, label="PTC Turnoff")
-
-                ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
-                ax.set_xlabel("Signal (adu)")
-                ax.set_ylabel(r"$C_{01} / C_{10}$")
-                # ax.set_xscale('log')#, linthresh=15000.0)
-                # ax.set_yscale('log')#, linthresh=15.0)
-                ax.set_ylim(-1, 5)
-                ax.set_xlim(0, 1.0e5)
-                ax.legend(loc=2, fontsize=8)
-            plt.tight_layout()
-            outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
-            plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}i-"
-                        f"ptc_C01_C10_ratio_{self.camera[ref.dataId['detector']].getId():03}.png",
-                        bbox_inches='tight')
-            plt.close()
-
-        for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
-            ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
-
-            fig, axes = plt.subplots(4, 4, figsize=(12, 12))
-            fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
-            axs = axes.ravel()
-            for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
-                ampName = amp.getName()
-                ax = axs[i]
-                ax.set_title(ampName)
-
-                ptcTurnoff = ptc.ptcTurnoff[ampName]
-
-                data = ptc.noiseMatrix[ampName]
-                im = ax.imshow(data, origin='lower', norm=SymLogNorm(vmin=0, vmax=15**2, linthresh=1))
-                plt.colorbar(im, ax=ax, shrink=0.7, label=r"$n_{ij}$ (electron$^{2}$)")
-                ax.set_xlabel("Serial")
-                ax.set_ylabel("Parallel")
-            plt.tight_layout()
-            outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
-            plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}j-"
-                        f"ptc_noise_matrix_{self.camera[ref.dataId['detector']].getId():03}.png",
-                        bbox_inches='tight')
-            plt.close()
+        # for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
+
+            # ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
+
+            # fig, axes = plt.subplots(4, 4, figsize=(12, 12))
+            # fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
+            # axs = axes.ravel()
+            # detName = self.camera[ref.dataId['detector']].getName()
+            # for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
+                # ampName = amp.getName()
+
+                # # Save full array information
+                # self.typesDict[detName][ampName] = self.camera[ref.dataId['detector']].getPhysicalType()
+                # self.ptcTurnoffsDict[detName][ampName] = ptc.ptcTurnoff[ampName] * ptc.gain[ampName]
+                # self.n00sDict[detName][ampName] = ptc.noise[ampName]
+                # self.n01sDict[detName][ampName] = ptc.noiseMatrix[ampName][0][1]
+                # self.n10sDict[detName][ampName] = ptc.noiseMatrix[ampName][1][0]
+                # self.gainsDict[detName][ampName] = ptc.gain[ampName]
+                # self.gainsUnadjustedDict[detName][ampName] = ptc.gainUnadjusted[ampName]
+                # fracGainDiff = (ptc.gainUnadjusted[ampName] / ptc.gain[ampName]) - 1
+                # self.gainsUnadjustedResidualsDict[detName][ampName] = fracGainDiff
+                # self.a00sDict[detName][ampName] = ptc.aMatrix[ampName][0][0]
+                # empiricalNoise = np.nanmedian(ptc.noiseList[ampName])
+                # fracNoiseDiff = (empiricalNoise * ptc.gain[ampName]) / ptc.noise[ampName] - 1
+                # self.empiricalN00sResidualsDict[detName][ampName] = fracNoiseDiff
+                # self.empiricalN00sDict[detName][ampName] = fracNoiseDiff
+
+                # ax = axs[i]
+                # ax.set_title(ampName)
+                # ax.scatter(ptc.rawMeans[ampName], ptc.rawVars[ampName], s=1)
+                # ax.scatter(ptc.finalMeans[ampName], ptc.finalVars[ampName], s=1)
+
+                # if ampName in ptc.badAmps:
+                #     ax.set_facecolor('#fcd4d4')
+                #     ax.set_title(ampName + " (BAD)")
+
+                # ptcTurnoff = float(ptc.ptcTurnoff[ampName])
+                # gain = float(ptc.gain[ampName])
+                # a00 = float(ptc.aMatrix[ampName][0][0])
+                # n00 = float(ptc.noise[ampName])
+                # ax.axvline(ptcTurnoff, linestyle="--", color="k", alpha=0.25)
+                # ax.text(
+                #     5.5e3, 5.5e4,
+                #     f"Turnoff: {round(ptcTurnoff, 1)} adu",
+                # )
+                # ax.text(
+                #     5.5e3, 5.1e4,
+                #     f"Gain: {round(gain, 2)}",
+                # )
+                # ax.text(
+                #     5.5e3, 4.7e4,
+                #     r"$a_{00}$: " + f"{round(a00*1e6, 2)}" + r"$\times 10^{-6}$",
+                # )
+                # ax.text(
+                #     5.5e3, 4.3e4,
+                #     r"$n_{00}$: " + f"{round(n00, 2)} el",
+                # )
+
+                # ax.ticklabel_format(style='sci', axis='both', scilimits=(0, 0), useMathText=True)
+                # ax.set_xlabel("Signal (adu)")
+                # ax.set_ylabel(r"$C_{00}$ (adu$^2$)")
+                # # ax.set_xscale('log')#, linthresh=15000.0)
+                # # ax.set_yscale('log')#, linthresh=15.0)
+                # ax.set_ylim(0, 6.0e4)
+                # ax.set_xlim(0, 1.5e5)
+
+            # plt.tight_layout()
+            # outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
+            # plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}a-"
+            #             f"ptc_{self.camera[ref.dataId['detector']].getId():03}.png",
+            #             bbox_inches='tight')
+            # plt.close()
+
+        # for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
+        #     ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
+
+        #     fig, axes = plt.subplots(4, 4, figsize=(12, 12))
+        #     fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
+        #     axs = axes.ravel()
+        #     for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
+        #         ampName = amp.getName()
+        #         ax = axs[i]
+        #         ax.set_title(ampName)
+
+        #         ptcTurnoff = ptc.ptcTurnoff[ampName]
+
+        #         if ampName in ptc.badAmps:
+        #             ax.set_facecolor('#fcd4d4')
+        #             ax.set_title(ampName + " (BAD)")
+
+        #         data = ptc.finalVars[ampName]
+        #         model = ptc.finalModelVars[ampName]
+
+        #         ax.scatter(ptc.finalMeans[ampName], data/model - 1, s=1)
+        #         ax.axhline(0, linestyle="--", color="k", alpha=0.25)
+        #         ax.axvline(ptcTurnoff, linestyle="--", color="orange", alpha=0.5)
+
+        #         ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
+        #         ax.set_xlabel("Signal (adu)")
+        #         ax.set_ylabel(r"$C_{00} / C_{00}^{model} - 1$")
+        #         ax.set_ylim(-.025, .025)
+        #         ax.set_xlim(0, 1.0e5)
+        #     plt.tight_layout()
+        #     outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
+        #     plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}b-"
+        #                 f"ptc_C00_residuals_{self.camera[ref.dataId['detector']].getId():03}.png",
+        #                 bbox_inches='tight')
+        #     plt.close()
+
+        # for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
+        #     ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
+
+        #     fig, axes = plt.subplots(4, 4, figsize=(12, 12))
+        #     fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
+        #     axs = axes.ravel()
+        #     for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
+        #         ampName = amp.getName()
+        #         ax = axs[i]
+        #         ax.set_title(ampName)
+
+        #         ptcTurnoff = ptc.ptcTurnoff[ampName]
+
+        #         if ampName in ptc.badAmps:
+        #             ax.set_facecolor('#fcd4d4')
+        #             ax.set_title(ampName + " (BAD)")
+
+        #         data = ptc.finalVars[ampName]
+        #         model = ptc.finalModelVars[ampName]
+
+        #         ax.scatter(ptc.finalMeans[ampName], (data-model)/np.sqrt(data), s=1)
+        #         ax.axvline(ptcTurnoff, linestyle="--", color="orange", alpha=0.5)
+        #         ax.axhline(0, linestyle="--", color="k", alpha=0.25)
+
+        #         ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
+        #         ax.set_xlabel("Signal (adu)")
+        #         ax.set_ylabel(r"$C_{00} - C_{00}^{model} / \sqrt{C_{00}}$")
+        #         ax.set_ylim(-3, 3)
+        #         ax.set_xlim(0, 1.0e5)
+        #     plt.tight_layout()
+        #     outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
+        #     plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}c-"
+        #                 f"ptc_C00_residuals_sigma_{self.camera[ref.dataId['detector']].getId():03}.png",
+        #                 bbox_inches='tight')
+        #     plt.close()
+
+        # for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
+        #     if ref.dataId['detector'] < 52:
+        #         continue
+        #     ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
+
+        #     fig, axes = plt.subplots(4, 4, figsize=(12, 12))
+        #     fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
+        #     axs = axes.ravel()
+        #     for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
+        #         ampName = amp.getName()
+        #         ax = axs[i]
+        #         ax.set_title(ampName)
+
+        #         if ampName in ptc.badAmps:
+        #             ax.set_facecolor('#fcd4d4')
+        #             ax.set_title(ampName + " (BAD)")
+
+        #         ptcTurnoff = ptc.ptcTurnoff[ampName]
+        #         data = ptc.covariances[ampName][:, 1, 0]
+        #         model = ptc.covariancesModel[ampName][:, 1, 0]
+
+        #         ax.scatter(ptc.finalMeans[ampName], data/model - 1, s=1)
+        #         ax.axhline(0, linestyle="--", color="k", alpha=0.25)
+        #         ax.axvline(ptcTurnoff, linestyle="--", color="orange", alpha=0.5)
+
+        #         ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
+        #         ax.set_xlabel("Signal (adu)")
+        #         ax.set_ylabel(r"$C_{10} / C_{10}^{model} - 1$")
+        #         # ax.set_xscale('log')#, linthresh=15000.0)
+        #         # ax.set_yscale('log')#, linthresh=15.0)
+        #         ax.set_ylim(-2, 2)
+        #         ax.set_xlim(0, 1.0e5)
+        #     plt.tight_layout()
+        #     outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
+        #     plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}d-"
+        #                 f"ptc_C10_residuals_{self.camera[ref.dataId['detector']].getId():03}.png",
+        #                 bbox_inches='tight')
+        #     plt.close()
+
+        # for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
+        #     ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
+
+        #     fig, axes = plt.subplots(4, 4, figsize=(12, 12))
+        #     fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
+        #     axs = axes.ravel()
+        #     for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
+        #         ampName = amp.getName()
+        #         ax = axs[i]
+        #         ax.set_title(ampName)
+
+        #         if ampName in ptc.badAmps:
+        #             ax.set_facecolor('#fcd4d4')
+        #             ax.set_title(ampName + " (BAD)")
+
+        #         ptcTurnoff = ptc.ptcTurnoff[ampName]
+        #         data = ptc.covariances[ampName][:, 0, 1]
+        #         model = ptc.covariancesModel[ampName][:, 0, 1]
+
+        #         ax.scatter(ptc.finalMeans[ampName], data/model - 1, s=1)
+        #         ax.axhline(0, linestyle="--", color="k", alpha=0.25)
+        #         ax.axvline(ptcTurnoff, linestyle="--", color="orange", alpha=0.5)
+
+        #         ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
+        #         ax.set_xlabel("Signal (adu)")
+        #         ax.set_ylabel(r"$C_{01} / C_{01}^{model} - 1$")
+        #         # ax.set_xscale('log')#, linthresh=15000.0)
+        #         # ax.set_yscale('log')#, linthresh=15.0)
+        #         ax.set_ylim(-1, 1)
+        #         ax.set_xlim(0, 1.0e5)
+        #     plt.tight_layout()
+        #     outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
+        #     plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}e-"
+        #                 f"ptc_C01_residuals_{self.camera[ref.dataId['detector']].getId():03}.png",
+        #                 bbox_inches='tight')
+        #     plt.close()
+
+        # for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
+        #     ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
+
+        #     fig, axes = plt.subplots(4, 4, figsize=(12, 12))
+        #     fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
+        #     axs = axes.ravel()
+        #     for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
+        #         ampName = amp.getName()
+        #         ax = axs[i]
+        #         ax.set_title(ampName)
+
+        #         if ampName in ptc.badAmps:
+        #             ax.set_facecolor('#fcd4d4')
+        #             ax.set_title(ampName + " (BAD)")
+
+        #         ptcTurnoff = ptc.ptcTurnoff[ampName]
+
+        #         data = ptc.rawVars[ampName]/ptc.rawMeans[ampName]
+        #         model = ptc.finalModelVars[ampName] / ptc.finalMeans[ampName]
+
+        #         ax.scatter(
+        #             ptc.rawMeans[ampName],
+        #             ptc.rawVars[ampName]/ptc.rawMeans[ampName],
+        #             s=1,
+        #             label="Data",
+        #         )
+        #         ax.plot(ptc.finalMeans[ampName], model, ms=1, color="orange", label="Model")
+        #         ax.axvline(ptcTurnoff, linestyle="--", color="forestgreen", alpha=0.5, label="PTC Turnoff")
+
+        #         ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
+        #         ax.set_xlabel("Signal (adu)")
+        #         ax.set_ylabel(r"$C_{00} / \mu$")
+        #         # ax.set_xscale('log')#, linthresh=15000.0)
+        #         # ax.set_yscale('log')#, linthresh=15.0)
+        #         ax.set_ylim(0.4, 0.8)
+        #         ax.set_xlim(0, 1.0e5)
+        #         ax.legend(loc=1, fontsize=8)
+        #     plt.tight_layout()
+        #     outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
+        #     plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}f-"
+        #                 f"ptc_correlations_C00_{self.camera[ref.dataId['detector']].getId():03}.png",
+        #                 bbox_inches='tight')
+        #     plt.close()
+
+        # for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
+        #     ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
+
+        #     fig, axes = plt.subplots(4, 4, figsize=(12, 12))
+        #     fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
+        #     axs = axes.ravel()
+        #     for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
+        #         ampName = amp.getName()
+        #         ax = axs[i]
+        #         ax.set_title(ampName)
+
+        #         if ampName in ptc.badAmps:
+        #             ax.set_facecolor('#fcd4d4')
+        #             ax.set_title(ampName + " (BAD)")
+
+        #         ptcTurnoff = ptc.ptcTurnoff[ampName]
+
+        #         data = ptc.covariances[ampName][:, 1, 0] / ptc.rawMeans[ampName]
+        #         model = ptc.covariancesModel[ampName][:, 1, 0] / ptc.finalMeans[ampName]
+
+        #         ax.scatter(ptc.rawMeans[ampName], data, s=1, label="Data")
+        #         ax.plot(ptc.finalMeans[ampName], model, ms=1, color="orange", label="Model")
+        #         ax.axhline(0, linestyle="--", color="k", alpha=0.5)
+        #         ax.axvline(ptcTurnoff, linestyle="--", color="forestgreen", alpha=0.5, label="PTC Turnoff")
+
+        #         ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
+        #         ax.set_xlabel("Signal (adu)")
+        #         ax.set_ylabel(r"$C_{10} / \mu$")
+        #         # ax.set_xscale('log')#, linthresh=15000.0)
+        #         # ax.set_yscale('log')#, linthresh=15.0)
+        #         ax.set_ylim(-0.01, 0.02)
+        #         ax.set_xlim(0, 1.0e5)
+        #         ax.legend(loc=2, fontsize=8)
+        #     plt.tight_layout()
+        #     outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
+        #     plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}g-"
+        #                 f"ptc_correlations_C10_{self.camera[ref.dataId['detector']].getId():03}.png",
+        #                 bbox_inches='tight')
+        #     plt.close()
+
+        # for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
+        #     ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
+
+        #     fig, axes = plt.subplots(4, 4, figsize=(12, 12))
+        #     fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
+        #     axs = axes.ravel()
+        #     for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
+        #         ampName = amp.getName()
+        #         ax = axs[i]
+        #         ax.set_title(ampName)
+
+        #         if ampName in ptc.badAmps:
+        #             ax.set_facecolor('#fcd4d4')
+        #             ax.set_title(ampName + " (BAD)")
+
+        #         ptcTurnoff = ptc.ptcTurnoff[ampName]
+
+        #         data = ptc.covariances[ampName][:, 0, 1] / ptc.rawMeans[ampName]
+        #         model = ptc.covariancesModel[ampName][:, 0, 1] / ptc.finalMeans[ampName]
+
+        #         ax.scatter(ptc.rawMeans[ampName], data, s=1, label="Data")
+        #         ax.plot(ptc.finalMeans[ampName], model, ms=1, color="orange", label="Model")
+        #         ax.axhline(0, linestyle="--", color="k", alpha=0.5)
+        #         ax.axvline(ptcTurnoff, linestyle="--", color="forestgreen", alpha=0.5, label="PTC Turnoff")
+
+        #         ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
+        #         ax.set_xlabel("Signal (adu)")
+        #         ax.set_ylabel(r"$C_{01} / \mu$")
+        #         # ax.set_xscale('log')#, linthresh=15000.0)
+        #         # ax.set_yscale('log')#, linthresh=15.0)
+        #         ax.set_ylim(-0.01, 0.05)
+        #         ax.set_xlim(0, 1.0e5)
+        #         ax.legend(loc=2, fontsize=8)
+        #     plt.tight_layout()
+        #     outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
+        #     plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}h-"
+        #                 f"ptc_correlations_C01_{self.camera[ref.dataId['detector']].getId():03}.png",
+        #                 bbox_inches='tight')
+        #     plt.close()
+
+        # for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
+        #     ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
+
+        #     fig, axes = plt.subplots(4, 4, figsize=(12, 12))
+        #     fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
+        #     axs = axes.ravel()
+        #     for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
+        #         ampName = amp.getName()
+        #         ax = axs[i]
+        #         ax.set_title(ampName)
+
+        #         if ampName in ptc.badAmps:
+        #             ax.set_facecolor('#fcd4d4')
+        #             ax.set_title(ampName + " (BAD)")
+
+        #         ptcTurnoff = ptc.ptcTurnoff[ampName]
+
+        #         data01 = ptc.covariances[ampName][:, 0, 1]
+        #         model01 = ptc.covariancesModel[ampName][:, 0, 1]
+        #         data10 = ptc.covariances[ampName][:, 0, 1]
+        #         model10 = ptc.covariancesModel[ampName][:, 0, 1]
+
+        #         ax.scatter(ptc.rawMeans[ampName], data01/data10, s=1, label="Data")
+        #         ax.plot(ptc.finalMeans[ampName], model01/model10, ms=1, color="orange", label="Model")
+        #         ax.axhline(0, linestyle="--", color="k", alpha=0.5)
+        #         ax.axvline(ptcTurnoff, linestyle="--", color="forestgreen", alpha=0.5, label="PTC Turnoff")
+
+        #         ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
+        #         ax.set_xlabel("Signal (adu)")
+        #         ax.set_ylabel(r"$C_{01} / C_{10}$")
+        #         # ax.set_xscale('log')#, linthresh=15000.0)
+        #         # ax.set_yscale('log')#, linthresh=15.0)
+        #         ax.set_ylim(-1, 5)
+        #         ax.set_xlim(0, 1.0e5)
+        #         ax.legend(loc=2, fontsize=8)
+        #     plt.tight_layout()
+        #     outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
+        #     plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}i-"
+        #                 f"ptc_C01_C10_ratio_{self.camera[ref.dataId['detector']].getId():03}.png",
+        #                 bbox_inches='tight')
+        #     plt.close()
+
+        # for ref in tqdm(self.refs, total=len(self.refs), desc="PTC"):
+        #     ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
+
+        #     fig, axes = plt.subplots(4, 4, figsize=(12, 12))
+        #     fig.suptitle(self.camera[ref.dataId['detector']].getName() + f" ({ref.dataId['detector']})")
+        #     axs = axes.ravel()
+        #     for i, amp in enumerate(self.camera[ref.dataId['detector']].getAmplifiers()):
+        #         ampName = amp.getName()
+        #         ax = axs[i]
+        #         ax.set_title(ampName)
+
+        #         ptcTurnoff = ptc.ptcTurnoff[ampName]
+
+        #         data = ptc.noiseMatrix[ampName]
+        #         im = ax.imshow(data, origin='lower', norm=SymLogNorm(vmin=0, vmax=15**2, linthresh=1))
+        #         plt.colorbar(im, ax=ax, shrink=0.7, label=r"$n_{ij}$ (electron$^{2}$)")
+        #         ax.set_xlabel("Serial")
+        #         ax.set_ylabel("Parallel")
+        #     plt.tight_layout()
+        #     outputFigPath = f"{self.output}/{self._getRaftBayPathFromRef(ref)}"
+        #     plt.savefig(f"{outputFigPath}/step_{self.plotIdx:02}j-"
+        #                 f"ptc_noise_matrix_{self.camera[ref.dataId['detector']].getId():03}.png",
+        #                 bbox_inches='tight')
+        #     plt.close()
 
     def plotBfkStatistics(self):
         self.plotIdx += 1
@@ -764,6 +771,8 @@ class DetailedPlotter:
         self.refs = refs
 
         for ref in tqdm(self.refs, total=len(self.refs), desc="CTI"):
+            if ref.dataId['detector'] < 166:
+                 continue
             cti = self.butler.get("cti", dataId=ref.dataId, collections=self.collections)
             # lin = self.butler.get("linearizer", dataId=ref.dataId, collections=self.collections)
             # ptc = self.butler.get("ptc", dataId=ref.dataId, collections=self.collections)
@@ -1268,7 +1277,8 @@ class DetailedPlotter:
             self.plotBiasStatistics()
             self.plotDarkStatistics()
             self.plotBiasVsDarkStatistics()
-            # self.plotSummaryStatistics()
+            if self.doPlotSummaryStats:
+                self.plotSummaryStatistics()
 
 
 def main():
