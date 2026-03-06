@@ -356,3 +356,53 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             rowList.append(stats)
 
         return rowList, matrixRowList
+
+# Below is in development
+class MeasureDefectsStabilityConnections(pipeBase.PipelineTaskConnections,
+                                      dimensions=("instrument", "detector")):
+    referenceDefects = cT.PrerequisiteInput(
+        name="defectsReference",
+        doc="Reference defects.",
+        storageClass="Defects",
+        dimensions=("instrument", "detector",),
+        multiple=False,
+    )
+    productionDefects = cT.PrerequisiteInput(
+        name="defectsProduction",
+        doc="Measured defects to be compared against reference.",
+        storageClass="Defects",
+        dimensions=("instrument", "detector",),
+        multiple=True,
+    )
+    camera = cT.PrerequisiteInput(
+        name='camera',
+        doc="Camera associated with these defects.",
+        storageClass="Camera",
+        dimensions=("instrument", ),
+        isCalibration=True,
+    )
+    defectsStability = cT.Output(
+        name="defectsStability",
+        doc="Variation of defects relative to the reference mask.",
+        storageClass="Defects",
+        dimensions=("instrument", "detector"),
+        multiple=False,
+        isCalibration=False, # TODO: verify that this parameter is set properly.
+    )
+
+    def __init__(self, *, config=None):
+        super().__init__(config=config)
+        
+
+class MeasureDefectsStabilityTaskConfig(pipeBase.PipelineTaskConfig,
+                                        pipelineConnections=MeasureDefectsStabilityConnections):
+    """Configuration for measuring stability of defects from individual defect masks.
+    """
+    skipMasks = pexConfig.ListField(
+        dtype=int,
+        doc="Mask values to skip when evaluating the stability of defect masks.",
+        default=(),
+    )
+
+    def validate(self):
+        super().validate()    
