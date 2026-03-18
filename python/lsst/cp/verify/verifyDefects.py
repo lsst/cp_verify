@@ -20,6 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 import scipy.stats
+import lsst.pex.config as pexConfig
 import lsst.pipe.base.connectionTypes as cT
 from lsst.ip.isr.isrFunctions import countMaskedPixels
 
@@ -52,7 +53,9 @@ class CpVerifyDefectsConnections(
         name="camera",
         storageClass="Camera",
         doc="Input camera.",
-        dimensions=["instrument", ],
+        dimensions=[
+            "instrument",
+        ],
         isCalibration=True,
     )
     outputStats = cT.Output(
@@ -82,7 +85,7 @@ class CpVerifyDefectsConfig(
 
     def setDefaults(self):
         super().setDefaults()
-        self.stageName = 'DEFECTS'
+        self.stageName = "DEFECTS"
 
         self.maskNameList = ["BAD"]  # noqa F821
 
@@ -158,7 +161,9 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
         return outputStatistics
 
-    def detectorStatistics(self, statisticsDict, statControl, exposure=None, uncorrectedExposure=None):
+    def detectorStatistics(
+        self, statisticsDict, statControl, exposure=None, uncorrectedExposure=None
+    ):
         """Measure the detector statistics.
 
         Parameters
@@ -257,8 +262,10 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             outputStatistics[ampName]["STAT_OUTLIERS"] = int(np.sum(outliers))
 
             # Get fraction of defects per amp
-            ampSize = amp.getBBox().height*amp.getBBox().width
-            outputStatistics[ampName]["FRAC"] = outputStatistics[ampName]["DEFECT_PIXELS"]/ampSize
+            ampSize = amp.getBBox().height * amp.getBBox().width
+            outputStatistics[ampName]["FRAC"] = (
+                outputStatistics[ampName]["DEFECT_PIXELS"] / ampSize
+            )
 
         return outputStatistics
 
@@ -306,9 +313,7 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             verifyStats[ampName] = verify
 
         success = successAmp
-        return {
-            "AMP": verifyStats
-        }, success
+        return {"AMP": verifyStats}, success
 
     def repackStats(self, statisticsDict, dimensions):
         # docstring inherited
@@ -323,7 +328,9 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
         rowBase = {
             "instrument": dimensions["instrument"],
-            "exposure": dimensions["exposure"],   # ensure an exposure dimension for downstream.
+            "exposure": dimensions[
+                "exposure"
+            ],  # ensure an exposure dimension for downstream.
             "detector": dimensions["detector"],
             "mjd": mjd,
         }
@@ -341,12 +348,18 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
         if self.config.useIsrStatistics and "ISR" in statisticsDict:
             for ampName, stats in statisticsDict["ISR"]["CALIBDIST"].items():
                 if ampName == "detector":
-                    nBadColumns = stats[ampName].get("LSST CALIB DEFECTS N_BAD_COLUMNS", np.nan)
+                    nBadColumns = stats[ampName].get(
+                        "LSST CALIB DEFECTS N_BAD_COLUMNS", np.nan
+                    )
                 elif ampName in stats.keys():
                     key = f"LSST CALIB DEFECTS {ampName} N_HOT"
-                    rows[ampName][f"{self.config.stageName}_N_HOT"] = stats[ampName].get(key, np.nan)
+                    rows[ampName][f"{self.config.stageName}_N_HOT"] = stats[
+                        ampName
+                    ].get(key, np.nan)
                     key = f"LSST CALIB DEFECTS {ampName} N_COLD"
-                    rows[ampName][f"{self.config.stageName}_N_COLD"] = stats[ampName].get(key, np.nan)
+                    rows[ampName][f"{self.config.stageName}_N_COLD"] = stats[
+                        ampName
+                    ].get(key, np.nan)
 
         # DET results
         rows["detector"] = rowBase
@@ -358,51 +371,109 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
         return rowList, matrixRowList
 
 # Below is in development
-class MeasureDefectsStabilityConnections(pipeBase.PipelineTaskConnections,
-                                      dimensions=("instrument", "detector")):
+class MeasureDefectsStabilityConnections(
+    pipeBase.PipelineTaskConnections, dimensions=("instrument", "detector")
+):
     referenceDefects = cT.PrerequisiteInput(
-        name="defectsReference",
+        name="referenceDefects",
         doc="Reference defects.",
         storageClass="Defects",
-        dimensions=("instrument", "detector",),
-        multiple=False,
+        dimensions=(
+            "instrument",
+            "detector",
+        ),
+        multiple=True,
     )
     productionDefects = cT.PrerequisiteInput(
         name="defectsProduction",
         doc="Measured defects to be compared against reference.",
         storageClass="Defects",
-        dimensions=("instrument", "detector",),
+        dimensions=(
+            "instrument",
+            "detector",
+        ),
         multiple=True,
     )
     camera = cT.PrerequisiteInput(
-        name='camera',
+        name="camera",
         doc="Camera associated with these defects.",
         storageClass="Camera",
-        dimensions=("instrument", ),
-        isCalibration=True,
+        dimensions=("instrument",),
     )
     defectsStability = cT.Output(
         name="defectsStability",
-        doc="Variation of defects relative to the reference mask.",
-        storageClass="Defects",
-        dimensions=("instrument", "detector"),
-        multiple=False,
-        isCalibration=False, # TODO: verify that this parameter is set properly.
+        doc="Dataframe containing the variation of defects relative to the reference mask.",
+        storageClass="DataFrame",
+        dimensions=("instrument"), # TODO: Verify that this dimension is correct
     )
 
     def __init__(self, *, config=None):
         super().__init__(config=config)
-        
 
-class MeasureDefectsStabilityTaskConfig(pipeBase.PipelineTaskConfig,
-                                        pipelineConnections=MeasureDefectsStabilityConnections):
-    """Configuration for measuring stability of defects from individual defect masks.
-    """
-    skipMasks = pexConfig.ListField(
-        dtype=int,
-        doc="Mask values to skip when evaluating the stability of defect masks.",
-        default=(),
+
+class MeasureDefectsStabilityTaskConfig(
+    pipeBase.PipelineTaskConfig, pipelineConnections=MeasureDefectsStabilityConnections
+):
+    """Configuration for measuring stability of defects from individual defect masks."""
+    
+    self.connections = pipelineConnections
+
+    self.refLabel = pexConfig.Field(
+        dtype=str,
+        doc="Label to apply to the reference defects.",
+        optional=False,
     )
 
+    self.prodLabel = pexConfig.Field(
+        dtype=str,
+        doc="Label to apply to the production defects.",
+        optional=False,
+    )
+    
+    self.skipMasks = pexConfig.ListField(
+        dtype=str,
+        doc="Mask planes to skip when evaluating the variability of defect masks.",
+        default=(),
+        optional=True,
+    )
+
+    self.includeAny = pexConfig.ChoiceField(
+        doc="Flag to include the any masks in the resulting variability computation.",
+        dtype=bool,
+        allowed={True:"Any mask variability is included in the computation.",
+                 False:"Any mask variability is excluded in the computation."},
+        default=True,
+        optional=True
+    )
+
+    def setDefaults(self):
+
+        # Set the acq string based on the two labels
+        self.acqString = ""
+        for label in [self.refLabel,self.prodLabel]:
+            self.acqString += f"{label}_"
+        
+        # Set the det_amp objects based on the camera object
+        self.detName_Obj = self.connections.camera.getNameMap()
+        self.det_amp = []
+        for detectorName,detectorObject in self.detName_Obj.items():
+            for amp in detectorObject.getAmplifiers():
+                self.det_amp.append(f"{detectorName}_{amp.getName()}")
+
+        # Here, setup the default dataframe based on the det_amp object and the camera object
+        columns = []
+        for plane in self.connections.referenceDefects[0].getMaskPlaneDict().keys():
+            for acq in acq_runs:
+                columns.append(f"{acq}_{plane}")
+            columns.append(f"{acqString}{plane}")
+
+        # If include any flag is set, add the any masks
+        if self.includeAny:
+            for acq in acq_runs:
+                columns.append(f"{acq}_Any")
+            columns.append(f"{acqString}Any")
+
+        self.resultDataFrame = pd.DataFrame(columns=columns,index=self.det_amp)
+
     def validate(self):
-        super().validate()    
+        super().validate()
