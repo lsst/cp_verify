@@ -23,6 +23,7 @@ import scipy.stats
 import lsst.pex.config as pexConfig
 import lsst.pipe.base.connectionTypes as cT
 from lsst.ip.isr.isrFunctions import countMaskedPixels
+import pandas as pd
 
 from .verifyStats import (
     CpVerifyStatsConfig,
@@ -370,6 +371,7 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
         return rowList, matrixRowList
 
+
 # Below is in development
 class MeasureDefectsStabilityConnections(
     pipeBase.PipelineTaskConnections, dimensions=("instrument", "detector")
@@ -404,7 +406,7 @@ class MeasureDefectsStabilityConnections(
         name="defectsStability",
         doc="Dataframe containing the variation of defects relative to the reference mask.",
         storageClass="DataFrame",
-        dimensions=("instrument"), # TODO: Verify that this dimension is correct
+        dimensions=("instrument"),  # TODO: Verify that this dimension is correct
     )
 
     def __init__(self, *, config=None):
@@ -415,48 +417,50 @@ class MeasureDefectsStabilityTaskConfig(
     pipeBase.PipelineTaskConfig, pipelineConnections=MeasureDefectsStabilityConnections
 ):
     """Configuration for measuring stability of defects from individual defect masks."""
-    
-    self.connections = pipelineConnections
 
-    self.refLabel = pexConfig.Field(
+    connections = pipelineConnections
+
+    refLabel = pexConfig.Field(
         dtype=str,
         doc="Label to apply to the reference defects.",
         optional=False,
     )
 
-    self.prodLabel = pexConfig.Field(
+    prodLabel = pexConfig.Field(
         dtype=str,
         doc="Label to apply to the production defects.",
         optional=False,
     )
-    
-    self.skipMasks = pexConfig.ListField(
+
+    skipMasks = pexConfig.ListField(
         dtype=str,
         doc="Mask planes to skip when evaluating the variability of defect masks.",
         default=(),
         optional=True,
     )
 
-    self.includeAny = pexConfig.ChoiceField(
+    includeAny = pexConfig.ChoiceField(
         doc="Flag to include the any masks in the resulting variability computation.",
         dtype=bool,
-        allowed={True:"Any mask variability is included in the computation.",
-                 False:"Any mask variability is excluded in the computation."},
+        allowed={
+            True: "Any mask variability is included in the computation.",
+            False: "Any mask variability is excluded in the computation.",
+        },
         default=True,
-        optional=True
+        optional=True,
     )
 
     def setDefaults(self):
 
         # Set the acq string based on the two labels
         self.acqString = ""
-        for label in [self.refLabel,self.prodLabel]:
+        for label in [self.refLabel, self.prodLabel]:
             self.acqString += f"{label}_"
-        
+
         # Set the det_amp objects based on the camera object
         self.detName_Obj = self.connections.camera.getNameMap()
         self.det_amp = []
-        for detectorName,detectorObject in self.detName_Obj.items():
+        for detectorName, detectorObject in self.detName_Obj.items():
             for amp in detectorObject.getAmplifiers():
                 self.det_amp.append(f"{detectorName}_{amp.getName()}")
 
@@ -473,7 +477,7 @@ class MeasureDefectsStabilityTaskConfig(
                 columns.append(f"{acq}_Any")
             columns.append(f"{acqString}Any")
 
-        self.resultDataFrame = pd.DataFrame(columns=columns,index=self.det_amp)
+        self.resultDataFrame = pd.DataFrame(columns=columns, index=self.det_amp)
 
     def validate(self):
         super().validate()
