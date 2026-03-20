@@ -1,0 +1,50 @@
+description: cp_verify for Defect stability across combined calibrations.
+imports:
+  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+    include:
+      - analyzeDefectCore
+tasks:
+  prodDefectGeneration:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      connections.ccdExposure: "raw" # TODO: verify this type, probably incorrect
+      connections.outputExposure: "productionDefectsExp" # TODO: verify this naming is acceptable
+      python: |
+        from lsst.cp.pipe import configureIsrTaskLSSTForCalibrations
+
+        configureIsrTaskLSSTForCalibrations(config)
+        config.doDefect = True
+
+  refDefectGeneration:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      connections.ccdExposure: "raw" # TODO: verify this type, probably incorrect
+      connections.outputExposure: "referenceDefectsExp" # TODO: verify this naming is acceptable
+      python: |
+        from lsst.cp.pipe import configureIsrTaskLSSTForCalibrations
+
+        configureIsrTaskLSSTForCalibrations(config)
+        config.doDefect = True
+        
+  measureDefectStability:
+    class: lsst.cp.verify.CpMeasureDefectsStabilityTask
+    config:
+      connections.referenceDefectsExp: "productionDefectsExp"
+      connections.productionDefectsExp: "referenceDefectsExp"
+      connections.camera: "LSSTCam"
+      connections.outputTable: "stabilityTable"
+
+      refLabel: "reference"
+      prodLabel: "production"
+      skipMasks: [""]
+      includeAny: true
+
+  plotDefectStability:
+    class: lsst.cp.verify.CpPlotDefectsStabilityTask
+    config:
+      connections.inputTable: "stabilityTable"
+      connections.outputPlots: "stabilityPlots"
+
+      skipPlanes: [""]
+contracts:
+  # TODO: populate this correctly, if necessary
