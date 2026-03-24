@@ -199,7 +199,7 @@ class CpMeasureDefectsStabilityTask(
             stacks[name] = stack
         return stacks
 
-    def prepDF(inputDF,col):
+    def prepDF(inputDF, col):
         """
         Prepare the dataframe to be used
         by the FocalPlaneGeometryPlot
@@ -208,15 +208,15 @@ class CpMeasureDefectsStabilityTask(
                  for each defect set
         col: The specific column to prepare for the dataFrame.
         """
-    
+
         amps = [x[8:] for x in inputDF.index]
         dets = [x[:7] for x in inputDF.index]
-    
-        columns = ["detector","amplifier","z"]
-        data = np.array([dets,amps,inputDF[col].tolist()]).T
-        retDF = pd.DataFrame(data=data,columns=columns,dtype=str)
+
+        columns = ["detector", "amplifier", "z"]
+        data = np.array([dets, amps, inputDF[col].tolist()]).T
+        retDF = pd.DataFrame(data=data, columns=columns, dtype=str)
         retDF['z'] = retDF['z'].astype("float32")
-        
+
         return retDF
 
     def run(self, referenceDefects, productionDefects, camera):
