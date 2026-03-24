@@ -36,7 +36,8 @@ __all__ = ["CpMeasureDefectsStabilityTaskConfig", "CpMeasureDefectsStabilityTask
 
 
 class CpMeasureDefectsStabilityConnections(
-    pipeBase.PipelineTaskConnections, dimensions=("instrument", "detector")  # TODO: Update the inheritance
+    pipeBase.PipelineTaskConnections,
+    dimensions=("instrument", "detector"),  # TODO: Update the inheritance
 ):
     referenceDefectsExp = cT.PrerequisiteInput(
         name="defects",
@@ -159,7 +160,7 @@ class CpMeasureDefectsStabilityTask(
     ConfigClass = CpMeasureDefectsStabilityTaskConfig
     _DefaultName = "cpMeasureDefectsStability"
 
-    def evaluate_mask_variability(masks, dicts):
+    def evaluate_mask_variability(self, masks, dicts):
         """
         Evaluate the variability of each mask plane across an entire
         detector/amplifier
@@ -180,7 +181,7 @@ class CpMeasureDefectsStabilityTask(
             Extract the specific binary plane for
             this defect from EVERY mask
             If a mask doesn't have this defect, it's treated
-            as an empty plane (zeros) """
+            as an empty plane (zeros)"""
             planes = []
             for i in range(len(masks)):
                 m = masks[i]
@@ -199,90 +200,111 @@ class CpMeasureDefectsStabilityTask(
             stacks[name] = stack
         return stacks
 
-    def prepDF(inputDF, col):
-        """
-        Prepare the dataframe to be used
-        by the FocalPlaneGeometryPlot
-
-        inputDF: The keyed dataframe containing the mask plane information
-                 for each defect set
-        col: The specific column to prepare for the dataFrame.
-        """
-
-        amps = [x[8:] for x in inputDF.index]
-        dets = [x[:7] for x in inputDF.index]
-
-        columns = ["detector", "amplifier", "z"]
-        data = np.array([dets, amps, inputDF[col].tolist()]).T
-        retDF = pd.DataFrame(data=data, columns=columns, dtype=str)
-        retDF['z'] = retDF['z'].astype("float32")
-
-        return retDF
-
     def run(self, referenceDefects, productionDefects, camera):
 
         # Perform the task here, measuring the variance in the defects
-        defectsStability = self.processDetectorsAndAmps(referenceDefects, productionDefects,self.config.resultDataFrame)
+        defectsStability = self.processDetectorsAndAmps(
+            referenceDefects, productionDefects, self.config.resultDataFrame
+        )
 
         return pipeBase.Struct(
             defectsStability=defectsStability,
         )
 
-    def processDetectorsAndAmps(self,referenceDefects, productionDefects, defectData):
-        for detectorName,detectorObject in self.config.detName_Obj.items():
+    def processDetectorsAndAmps(self, referenceDefects, productionDefects, defectData):
+        for detectorName, detectorObject in self.config.detName_Obj.items():
             # Select identical detectors
-            exp1 = referenceDefects[[x.getDetector().getId() == detectorObject.getId() for x in referenceDefects]]
-            exp2 = productionDefects[[x.getDetector().getId() == detectorObject.getId() for x in productionDefects]]
+            exp1 = referenceDefects[
+                [
+                    x.getDetector().getId() == detectorObject.getId()
+                    for x in referenceDefects
+                ]
+            ]
+            exp2 = productionDefects[
+                [
+                    x.getDetector().getId() == detectorObject.getId()
+                    for x in productionDefects
+                ]
+            ]
             try:
-                
+
                 # Make two mask objects that possess the defect masks
                 mask1 = exp1.maskedImage.mask
                 mask2 = exp2.maskedImage.mask
-        
-                # # Quick check on the nature of the two defect masks
-                # # If they are identical, there's probably an elegant way to speed this up
-                # if all((mask1.array - mask2.array).flatten() == 0):
-                #     print("Mask planes are identical.")
-                # else:
-                #     print("Mask planes are not identical.")
-                # NOTE: Commenting the above out for now, there is definitely a faster way to address identical mask planes...
-                
+
+                """
+                # Quick check on the nature of the two defect masks
+                # If they are identical, there's probably an
+                # elegant way to speed this up
+                if all((mask1.array - mask2.array).flatten() == 0):
+                    print("Mask planes are identical.")
+                else:
+                    print("Mask planes are not identical.")
+                # NOTE: Commenting the above out for now, there is definitely
+                # a faster way to address identical mask planes...
+                """
+
                 # Assert that the masks have the same plane definitions
-                assert mask1.getMaskPlaneDict() == mask2.getMaskPlaneDict(), f"Mask plane dictionaries are incompatible"
-                
+                assert (
+                    mask1.getMaskPlaneDict() == mask2.getMaskPlaneDict()
+                ), "Mask plane dictionaries are incompatible"
+
                 # For each amp
                 for amp in detectorObject.getAmplifiers():
 
                     if self.config.includeAny:
                         # Instantiate the anymask object
                         anyMasks = []
-                        for acq in acq_runs:
-                            anyMasks.append(np.zeros(np.shape(mask1[amp.getBBox()].array)))
-                        
-                    # Get the amplifier name and compute the variability inside that amplifier region
+                        for acq in [self.config.refLabel, self.config.prodLabel]:
+                            anyMasks.append(
+                                np.zeros(np.shape(mask1[amp.getBBox()].array))
+                            )
+
+                    # Get the amplifier name and compute the
+                    # variability inside that amplifier region
                     ampName = amp.getName()
-                    variability = evaluate_mask_variability([mask1[amp.getBBox()].array,mask2[amp.getBBox()].array], [mask1.getMaskPlaneDict(), mask2.getMaskPlaneDict()])
-                    
+                    variability = self.evaluate_mask_variability(
+                        [mask1[amp.getBBox()].array, mask2[amp.getBBox()].array],
+                        [mask1.getMaskPlaneDict(), mask2.getMaskPlaneDict()],
+                    )
+
                     # For each mask plane
-                    for plane,planeVals in variability.items():
+                    for plane, planeVals in variability.items():
                         if plane not in self.config.skipMasks:
                             # Compute NPix for each run and add it to the df
-                            for i,acq in enumerate(acq_runs):
-                                defectData.loc[f"{detectorName}_{ampName}",f"{acq}_{plane}"] = np.count_nonzero(planeVals[i]) # N pix that are this mask plane type, in this acq run, indexed by amplifier
-                                anyMasks[i] +=planeVals[i]
-                            
+                            for i, acq in enumerate([self.config.refLabel, self.config.prodLabel]):
+                                defectData.loc[
+                                    f"{detectorName}_{ampName}", f"{acq}_{plane}"
+                                ] = np.count_nonzero(
+                                    planeVals[i]
+                                )
+                                # N pix that are this mask plane type, in
+                                # this acq run, indexed by amplifier
+                                anyMasks[i] += planeVals[i]
+
                             # Compute the difference and add it to the df
-                            defectData.loc[f"{detectorName}_{ampName}",f"{acqString}{plane}"] = np.sum(planeVals[i-1] - planeVals[i],dtype=int) # Difference in N pix that are this mask plane type, indexed by amplifier
-                    
+                            defectData.loc[
+                                f"{detectorName}_{ampName}", f"{self.config.acqString}{plane}"
+                            ] = np.sum(
+                                planeVals[i - 1] - planeVals[i], dtype=int
+                            )
+                            # Difference in N pix that are this
+                            # mask plane type, indexed by amplifier
+
                     if self.config.includeAny:
-                        # Perform the same calculation, here for the anyMask case
-                        for i,acq in enumerate(acq_runs):
-                            defectData.loc[f"{detectorName}_{ampName}",f"{acq}_Any"] = np.count_nonzero(anyMasks[i])
-                        defectData.loc[f"{detectorName}_{ampName}",f"{acqString}Any"] = np.sum(anyMasks[i-1] - anyMasks[i],dtype=int)
-                        
+                        # Perform the same calculation,
+                        # here for the anyMask case
+                        for i, acq in enumerate([self.config.refLabel, self.config.prodLabel]):
+                            defectData.loc[
+                                f"{detectorName}_{ampName}", f"{acq}_Any"
+                            ] = np.count_nonzero(anyMasks[i])
+                        defectData.loc[
+                            f"{detectorName}_{ampName}", f"{self.config.acqString}Any"
+                        ] = np.sum(anyMasks[i - 1] - anyMasks[i], dtype=int)
+
                 # print(f"Completed processing {detectorName}")
-                
-            except Exception as e:
+
+            except Exception:  # as e:
                 # print(f"Sensor {detectorName} failed during processing: {e}")
                 continue
 
@@ -305,25 +327,29 @@ class CpMeasureDefectsStabilityTask(
     #         tempList.extend(inputs["inputManualDefects"])
 
     #     # Rename inputDefects
-    #     inputsCombined = {"inputDefects": tempList, "camera": inputs["camera"]}
+    #     inputsCombined = {"inputDefects": tempList,
+    #                       "camera": inputs["camera"]}
 
     #     outputs = super().run(**inputsCombined)
     #     butlerQC.put(outputs, outputRefs)
 
 
-class CpPlotDefectsStabilityTaskConnections(pipeBase.PipelineTaskConnections, dimensions=()
-                                           ): 
-
+class CpPlotDefectsStabilityTaskConnections(
+    pipeBase.PipelineTaskConnections, dimensions=()
+):
     """
-    Connections for plotting stability 
+    Connections for plotting stability
     of defects from individual defect masks.
     """
 
     inputTable = cT.PrerequisiteInput(
-        name="defectsStability", 
+        name="defectsStability",
         doc="Table of defect stability measurements.",
-        storageClass="DataFrame", # TODO: This could be a table, or pandas dataframe. Left as dataframe here. Verify if this is best from storage space perspective.
-        dimensions=( # These dims are for a dataFrame. Need to be updated if using a table.
+        storageClass="DataFrame",
+        # TODO: This could be a table, or pandas dataframe.
+        # Left as dataframe here.
+        # Need to verify if this is best from storage space perspective.
+        dimensions=(  # These dims are for a dataFrame. Need to be updated if using a table.
             "instrument",
         ),
     )
@@ -341,17 +367,16 @@ class CpPlotDefectsStabilityTaskConnections(pipeBase.PipelineTaskConnections, di
         storageClass="Plot",
         dimensions=("instrument",),  # TODO: Verify that these dimensions are correct
     )
-    
+
     def __init__(self, *, config=None):
         super().__init__(config=config)
-    
-
-class CpPlotDefectsStabilityTaskConfig(CpVerifyStatsConfig
-                                      ):  # TODO: Update this inheritance
 
 
+class CpPlotDefectsStabilityTaskConfig(
+    CpVerifyStatsConfig
+):  # TODO: Update this inheritance
     """
-    Configuration for plotting stability 
+    Configuration for plotting stability
     of defects from individual defect masks.
     """
 
@@ -422,35 +447,32 @@ class CpPlotDefectsStabilityTaskConfig(CpVerifyStatsConfig
         super().validate()
 
 
-class CpPlotDefectsStabilityTask(
-    pipeBase.PipelineTask
-):
-
+class CpPlotDefectsStabilityTask(pipeBase.PipelineTask):
     """
-    Task for plotting stability of defects 
+    Task for plotting stability of defects
     from individual defect masks.
     """
 
     ConfigClass = CpPlotDefectsStabilityTaskConfig
     _DefaultName = "CpPlotDefectsStability"
 
-    def prepDF(self,inputData, col):
+    def prepDF(self, inputData, col):
         """
         Prepare the dataframe to be used by the FocalPlaneGeometryPlot
         """
 
         # df is indexed by RXX_SYY_CZZ
-        amps = [x[8:] for x in inputData.index]  
+        amps = [x[8:] for x in inputData.index]
         dets = [x[:7] for x in inputData.index]
-    
-        columns = ["detector","amplifier","z"]
-        data = np.array([dets,amps,inputData[col].tolist()]).T
-        retDF = pd.DataFrame(data=data,columns=columns,dtype=str)
-        retDF['z'] = retDF['z'].astype("float32")
-        
+
+        columns = ["detector", "amplifier", "z"]
+        data = np.array([dets, amps, inputData[col].tolist()]).T
+        retDF = pd.DataFrame(data=data, columns=columns, dtype=str)
+        retDF["z"] = retDF["z"].astype("float32")
+
         return retDF
 
-    def run(self,inputTable):
+    def run(self, inputTable):
 
         figs = self.makePlots(inputTable)
 
@@ -458,7 +480,7 @@ class CpPlotDefectsStabilityTask(
             defectStabilityPlots=figs,
         )
 
-    def makePlots(self,inputTable):
+    def makePlots(self, inputTable):
         figs = []
         fpgObj = FPGPlot()
         plotInfo = {
@@ -467,19 +489,25 @@ class CpPlotDefectsStabilityTask(
             "filter": self.config._filter,
             "tract": self.config.tract,
             "bands": self.config.bands,
-            "plotName":self.config.plotName,
-            "tableName":self.config.tableName,
+            "plotName": self.config.plotName,
+            "tableName": self.config.tableName,
         }
         for col in inputTable.columns.values:
             if col not in self.config.skipPlanes:
-                for key,cfig in zip(["plotName","tableName"],[self.config.plotName,self.config.tableName]):
-                    if cfig==None:
+                for key, cfig in zip(
+                    ["plotName", "tableName"],
+                    [self.config.plotName, self.config.tableName],
+                ):
+                    if cfig is None:
                         plotInfo[key] = f"{col}"
-                subTable = self.prepDF(inputTable,col)
-                figs.append(fpgObj.makePlot(subTable,
-                                     camera,
-                                     plotInfo,
-                                     plotMax=self.config.plotMax,
-                                     plotMin=self.config.plotMin
-                                    ))
+                subTable = self.prepDF(inputTable, col)
+                figs.append(
+                    fpgObj.makePlot(
+                        subTable,
+                        self.camera,
+                        plotInfo,
+                        plotMax=self.config.plotMax,
+                        plotMin=self.config.plotMin,
+                    )
+                )
         return figs

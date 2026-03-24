@@ -20,8 +20,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 import scipy.stats
-import lsst.pex.config as pexConfig
-import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
 from lsst.ip.isr.isrFunctions import countMaskedPixels
 
