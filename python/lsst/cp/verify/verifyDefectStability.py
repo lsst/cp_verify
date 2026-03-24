@@ -79,7 +79,7 @@ class CpMeasureDefectsStabilityTaskConfig(
     CpVerifyStatsConfig, pipelineConnections=CpVerifyDefectsConnections
 ):
     """
-    Configuration for measuring stability 
+    Configuration for measuring stability
     of defects from individual defect masks.
     """
 
@@ -115,9 +115,7 @@ class CpMeasureDefectsStabilityTaskConfig(
         optional=True,
     )
 
-
     def setDefaults(self):
-
         # Set the acq string based on the two labels
         self.acqString = ""
         for label in [self.refLabel, self.prodLabel]:
@@ -131,7 +129,7 @@ class CpMeasureDefectsStabilityTaskConfig(
                 self.det_amp.append(f"{detectorName}_{amp.getName()}")
 
         """
-        Here, setup the default dataframe based on the 
+        Here, setup the default dataframe based on the
         det_amp object and the camera object
         """
         columns = []
@@ -165,7 +163,7 @@ class CpMeasureDefectsStabilityTask(
         """
         Evaluate the variability of each mask plane across an entire
         detector/amplifier
-        
+
         masks: List of 2D numpy arrays, each corresponding to the 
                reference and production defect mask for a given
                detector/amplifier.
@@ -174,12 +172,15 @@ class CpMeasureDefectsStabilityTask(
         """
         # Find the union of all defect names across all masks
         all_defect_names = set().union(*(d.keys() for d in dicts))
-        
+
         stacks = {}
-        
+
         for name in all_defect_names:
-            # Extract the specific binary plane for this defect from EVERY mask
-            # If a mask doesn't have this defect, it's treated as an empty plane (zeros)
+            """
+            Extract the specific binary plane for 
+            this defect from EVERY mask
+            If a mask doesn't have this defect, it's treated 
+            as an empty plane (zeros) """
             planes = []
             for i in range(len(masks)):
                 m = masks[i]
@@ -322,17 +323,24 @@ class CpPlotDefectsStabilityTaskConnections(pipeBase.PipelineTaskConnections, di
     inputTable = cT.PrerequisiteInput(
         name="defectsStability", 
         doc="Table of defect stability measurements.",
-        storageClass="DataFrame", # TODO: This could be a table, or pandas dataframe. Left as dataframe here. Verify if this is best from storage space perspective
+        storageClass="DataFrame", # TODO: This could be a table, or pandas dataframe. Left as dataframe here. Verify if this is best from storage space perspective.
         dimensions=( # These dims are for a dataFrame. Need to be updated if using a table.
             "instrument",
         ),
     )
 
+    camera = cT.PrerequisiteInput(
+        name="camera",
+        doc="Camera associated with these defects.",
+        storageClass="Camera",
+        dimensions=("instrument",),
+    )
+
     outputTable = cT.Output(
-        name="defectStabilityPlots", # TODO: Update this to an acceptable datasetType
+        name="defectStabilityPlots",  # TODO: Update this to an acceptable datasetType
         doc="Plots showing the variation of defect planes.",
         storageClass="Plot",
-        dimensions=("instrument",), # TODO: Verify that these dimensions are correct
+        dimensions=("instrument",),  # TODO: Verify that these dimensions are correct
     )
     
     def __init__(self, *, config=None):
@@ -355,15 +363,124 @@ class CpPlotDefectsStabilityTaskConfig(CpVerifyStatsConfig
         optional=True,
     )
 
+    _filter = pexConfig.Field(
+        dtype=str,
+        doc="Filter that the defects were generated from, used in plotting.",
+        default="None",
+        optional=True,
+    )
+
+    tract = pexConfig.Field(
+        dtype=str,
+        doc="Tract that the defects were generated from, used in plotting.",
+        default="None",
+        optional=True,
+    )
+
+    skymap = pexConfig.Field(
+        dtype=str,
+        doc="Skymap that the defects were generated from, used in plotting.",
+        default="None",
+        optional=True,
+    )
+
+    bands = pexConfig.ListField(
+        dtype=str,
+        doc="Bands that the defects were generated from, used in plotting.",
+        default="None",
+        optional=True,
+    )
+
+    plotName = pexConfig.Field(
+        dtype=str,
+        doc="Plot name.",
+        default=None,
+        optional=True,
+    )
+
+    tableName = pexConfig.Field(
+        dtype=str,
+        doc="Table name.",
+        default=None,
+        optional=True,
+    )
+
+    plotMax = pexConfig.Field(
+        dtype=float,
+        doc="Maximum value to be shown in the plot.",
+        default=500,
+        optional=True,
+    )
+
+    plotMin = pexConfig.Field(
+        dtype=float,
+        doc="Minimum value to be shown in the plot.",
+        default=-500,
+        optional=True,
+    )
+
     def validate(self):
         super().validate()
-    
 
-class CpPlotDefectsStabilityTask(): # TODO: Make this class
+
+class CpPlotDefectsStabilityTask(
+    pipeBase.PipelineTask
+):
 
     """
     Task for plotting stability of defects 
     from individual defect masks.
     """
 
+    ConfigClass = CpPlotDefectsStabilityTaskConfig
+    _DefaultName = "CpPlotDefectsStability"
+
+    def prepDF(self,inputData, col):
+        """
+        Prepare the dataframe to be used by the FocalPlaneGeometryPlot
+        """
+
+        # df is indexed by RXX_SYY_CZZ
+        amps = [x[8:] for x in inputData.index]  
+        dets = [x[:7] for x in inputData.index]
     
+        columns = ["detector","amplifier","z"]
+        data = np.array([dets,amps,inputData[col].tolist()]).T
+        retDF = pd.DataFrame(data=data,columns=columns,dtype=str)
+        retDF['z'] = retDF['z'].astype("float32")
+        
+        return retDF
+
+    def run(self,inputTable):
+
+        figs = self.makePlots(inputTable)
+
+        return pipeBase.Struct(
+            defectStabilityPlots=figs,
+        )
+
+    def makePlots(self,inputTable):
+        figs = []
+        fpgObj = FPGPlot()
+        plotInfo = {
+            "run": self.config.run,
+            "skymap": self.config.run,
+            "filter": self.config._filter,
+            "tract": self.config.tract,
+            "bands": self.config.bands,
+            "plotName":self.config.plotName,
+            "tableName":self.config.tableName,
+        }
+        for col in inputTable.columns.values:
+            if col not in self.config.skipPlanes:
+                for key,cfig in zip(["plotName","tableName"],[self.config.plotName,self.config.tableName]):
+                    if cfig==None:
+                        plotInfo[key] = f"{col}"
+                subTable = self.prepDF(inputTable,col)
+                figs.append(fpgObj.makePlot(subTable,
+                                     camera,
+                                     plotInfo,
+                                     plotMax=self.config.plotMax,
+                                     plotMin=self.config.plotMin
+                                    ))
+        return figs

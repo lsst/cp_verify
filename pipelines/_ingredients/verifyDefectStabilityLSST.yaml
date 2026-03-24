@@ -21,7 +21,7 @@ tasks:
       connections.outputExposure: "referenceDefectsExp"  # TODO: verify this naming is acceptable
       python: |
         from lsst.cp.pipe import configureIsrTaskLSSTForCalibrations
-        
+
         configureIsrTaskLSSTForCalibrations(config)
         config.doDefect = True
   measureDefectStability:
@@ -41,6 +41,7 @@ tasks:
     class: lsst.cp.verify.CpPlotDefectsStabilityTask
     config:
       connections.inputTable: "stabilityTable"
+      connections.camera: "LSSTCam"
       connections.outputPlots: "stabilityPlots"
 
       skipPlanes: [""]
