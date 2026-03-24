@@ -23,19 +23,25 @@ import numpy as np
 import lsst.pex.config as pexConfig
 import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
-import lsst.afw.image as afwImage
 import pandas as pd
 from lsst.analysis.tools.actions.plot import FocalPlaneGeometryPlot as FPGPlot
+from .verifyDefects import (
+    CpVerifyDefectsConnections,
+)
+from .verifyStats import (
+    CpVerifyStatsConfig,
+)
 
 __all__ = ["CpMeasureDefectsStabilityTaskConfig", "CpMeasureDefectsStabilityTask"]
 
+
 class CpMeasureDefectsStabilityConnections(
-    pipeBase.PipelineTaskConnections, dimensions=("instrument", "detector") # TODO: Update the inheritance here
+    pipeBase.PipelineTaskConnections, dimensions=("instrument", "detector")  # TODO: Update the inheritance
 ):
     referenceDefectsExp = cT.PrerequisiteInput(
         name="defects",
         doc="Reference exposure to extract defects from.",
-        storageClass="Defects", # TODO: Update the storage class and dims.
+        storageClass="Defects",  # TODO: Update the storage class and dims.
         dimensions=(
             "instrument",
             "detector",
@@ -45,7 +51,7 @@ class CpMeasureDefectsStabilityConnections(
     productionDefectsExp = cT.PrerequisiteInput(
         name="defects",
         doc="Production exposure to extract defects from.",
-        storageClass="Defects", # TODO: Update the storage class and dims.
+        storageClass="Defects",  # TODO: Update the storage class and dims.
         dimensions=(
             "instrument",
             "detector",
@@ -59,7 +65,7 @@ class CpMeasureDefectsStabilityConnections(
         dimensions=("instrument",),
     )
     outputTable = cT.Output(
-        name="defectsStability", # TODO: Update this to an acceptable datasetType
+        name="defectsStability",  # TODO: Update this to an acceptable datasetType
         doc="Dataframe storing the variation of defects.",
         storageClass="DataFrame",
         dimensions=("instrument",),  # TODO: Verify that this dimension is correct
@@ -333,7 +339,8 @@ class CpPlotDefectsStabilityTaskConnections(pipeBase.PipelineTaskConnections, di
         super().__init__(config=config)
     
 
-class CpPlotDefectsStabilityTaskConfig(): # TODO: Make this class
+class CpPlotDefectsStabilityTaskConfig(CpVerifyStatsConfig
+                                      ):  # TODO: Update this inheritance
 
 
     """

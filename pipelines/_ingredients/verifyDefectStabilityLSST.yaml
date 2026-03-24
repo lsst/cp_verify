@@ -7,25 +7,23 @@ tasks:
   prodDefectGeneration:
     class: lsst.ip.isr.IsrTaskLSST
     config:
-      connections.ccdExposure: "raw" # TODO: verify this type, probably incorrect
-      connections.outputExposure: "productionDefectsExp" # TODO: verify this naming is acceptable
+      connections.ccdExposure: "raw"  # TODO: verify this type, probably incorrect
+      connections.outputExposure: "productionDefectsExp"  # TODO: verify this naming is acceptable
       python: |
         from lsst.cp.pipe import configureIsrTaskLSSTForCalibrations
 
         configureIsrTaskLSSTForCalibrations(config)
         config.doDefect = True
-
   refDefectGeneration:
     class: lsst.ip.isr.IsrTaskLSST
     config:
-      connections.ccdExposure: "raw" # TODO: verify this type, probably incorrect
-      connections.outputExposure: "referenceDefectsExp" # TODO: verify this naming is acceptable
+      connections.ccdExposure: "raw"  # TODO: verify this type, probably incorrect
+      connections.outputExposure: "referenceDefectsExp"  # TODO: verify this naming is acceptable
       python: |
         from lsst.cp.pipe import configureIsrTaskLSSTForCalibrations
-
+        
         configureIsrTaskLSSTForCalibrations(config)
         config.doDefect = True
-        
   measureDefectStability:
     class: lsst.cp.verify.CpMeasureDefectsStabilityTask
     config:
@@ -46,5 +44,3 @@ tasks:
       connections.outputPlots: "stabilityPlots"
 
       skipPlanes: [""]
-contracts:
-  # TODO: populate this correctly, if necessary
