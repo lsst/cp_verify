@@ -305,9 +305,58 @@ class CpMeasureDefectsStabilityTask(
     #     butlerQC.put(outputs, outputRefs)
 
 
-class CpPlotDefectsStabilityTaskConnections(): # TODO: Make this class
+class CpPlotDefectsStabilityTaskConnections(pipeBase.PipelineTaskConnections, dimensions=()
+                                           ): 
+
+    """
+    Connections for plotting stability 
+    of defects from individual defect masks.
+    """
+
+    inputTable = cT.PrerequisiteInput(
+        name="defectsStability", 
+        doc="Table of defect stability measurements.",
+        storageClass="DataFrame", # TODO: This could be a table, or pandas dataframe. Left as dataframe here. Verify if this is best from storage space perspective
+        dimensions=( # These dims are for a dataFrame. Need to be updated if using a table.
+            "instrument",
+        ),
+    )
+
+    outputTable = cT.Output(
+        name="defectStabilityPlots", # TODO: Update this to an acceptable datasetType
+        doc="Plots showing the variation of defect planes.",
+        storageClass="Plot",
+        dimensions=("instrument",), # TODO: Verify that these dimensions are correct
+    )
+    
+    def __init__(self, *, config=None):
+        super().__init__(config=config)
+    
 
 class CpPlotDefectsStabilityTaskConfig(): # TODO: Make this class
 
+
+    """
+    Configuration for plotting stability 
+    of defects from individual defect masks.
+    """
+
+    skipPlanes = pexConfig.ListField(
+        dtype=str,
+        doc="Mask planes to skip when plotting.",
+        default=(),
+        optional=True,
+    )
+
+    def validate(self):
+        super().validate()
+    
+
 class CpPlotDefectsStabilityTask(): # TODO: Make this class
+
+    """
+    Task for plotting stability of defects 
+    from individual defect masks.
+    """
+
     
