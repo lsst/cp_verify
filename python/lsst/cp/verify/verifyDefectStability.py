@@ -164,10 +164,10 @@ class CpMeasureDefectsStabilityTask(
         Evaluate the variability of each mask plane across an entire
         detector/amplifier
 
-        masks: List of 2D numpy arrays, each corresponding to the 
+        masks: List of 2D numpy arrays, each corresponding to the
                reference and production defect mask for a given
                detector/amplifier.
-        dicts: List of bit_position dictionaries corresponding to 
+        dicts: List of bit_position dictionaries corresponding to
                each mask.
         """
         # Find the union of all defect names across all masks
@@ -177,37 +177,36 @@ class CpMeasureDefectsStabilityTask(
 
         for name in all_defect_names:
             """
-            Extract the specific binary plane for 
+            Extract the specific binary plane for
             this defect from EVERY mask
-            If a mask doesn't have this defect, it's treated 
+            If a mask doesn't have this defect, it's treated
             as an empty plane (zeros) """
             planes = []
             for i in range(len(masks)):
                 m = masks[i]
                 d = dicts[i]
-                
                 if name in d:
                     bit_pos = d[name]
                     binary_plane = (m & (1 << bit_pos)) > 0
                 else:
                     binary_plane = np.zeros_like(m, dtype=bool)
-                
+
                 planes.append(binary_plane.astype(float))
-            
+
             # Convert list to a 3D stack (N, Height, Width)
             stack = np.stack(planes)
-    
+
             stacks[name] = stack
         return stacks
 
     def prepDF(inputDF,col):
         """
-        Prepare the dataframe to be used 
+        Prepare the dataframe to be used
         by the FocalPlaneGeometryPlot
 
         inputDF: The keyed dataframe containing the mask plane information
                  for each defect set
-        col: The specific column to prepare for the 
+        col: The specific column to prepare for the dataFrame.
         """
     
         amps = [x[8:] for x in inputDF.index]
