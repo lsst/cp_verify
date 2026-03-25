@@ -40,9 +40,9 @@ class CpMeasureDefectsStabilityConnections(
     dimensions=("instrument", "detector"),  # TODO: Update the inheritance
 ):
     referenceDefectsExp = cT.PrerequisiteInput(
-        name="defects",
+        name="referenceExp",
         doc="Reference exposure to extract defects from.",
-        storageClass="Defects",  # TODO: Update the storage class and dims.
+        storageClass="Exposure",
         dimensions=(
             "instrument",
             "detector",
@@ -50,9 +50,9 @@ class CpMeasureDefectsStabilityConnections(
         multiple=True,
     )
     productionDefectsExp = cT.PrerequisiteInput(
-        name="defects",
+        name="productionDefects",
         doc="Production exposure to extract defects from.",
-        storageClass="Defects",  # TODO: Update the storage class and dims.
+        storageClass="Exposure",
         dimensions=(
             "instrument",
             "detector",
@@ -66,10 +66,10 @@ class CpMeasureDefectsStabilityConnections(
         dimensions=("instrument",),
     )
     outputTable = cT.Output(
-        name="defectsStability",  # TODO: Update this to an acceptable datasetType
+        name="defectsStability",
         doc="Dataframe storing the variation of defects.",
         storageClass="DataFrame",
-        dimensions=("instrument",),  # TODO: Verify that this dimension is correct
+        dimensions=(),
     )
 
     def __init__(self, *, config=None):
@@ -83,8 +83,6 @@ class CpMeasureDefectsStabilityTaskConfig(
     Configuration for measuring stability
     of defects from individual defect masks.
     """
-
-    # connections = pipelineConnections
 
     refLabel = pexConfig.Field(
         dtype=str,
@@ -346,12 +344,7 @@ class CpPlotDefectsStabilityTaskConnections(
         name="defectsStability",
         doc="Table of defect stability measurements.",
         storageClass="DataFrame",
-        # TODO: This could be a table, or pandas dataframe.
-        # Left as dataframe here.
-        # Need to verify if this is best from storage space perspective.
-        dimensions=(  # These dims are for a dataFrame. Need to be updated if using a table.
-            "instrument",
-        ),
+        dimensions=(),
     )
 
     camera = cT.PrerequisiteInput(
@@ -362,10 +355,10 @@ class CpPlotDefectsStabilityTaskConnections(
     )
 
     outputTable = cT.Output(
-        name="defectStabilityPlots",  # TODO: Update this to an acceptable datasetType
+        name="defectStabilityPlots",
         doc="Plots showing the variation of defect planes.",
         storageClass="Plot",
-        dimensions=("instrument",),  # TODO: Verify that these dimensions are correct
+        dimensions=("instrument",),
     )
 
     def __init__(self, *, config=None):
@@ -374,7 +367,7 @@ class CpPlotDefectsStabilityTaskConnections(
 
 class CpPlotDefectsStabilityTaskConfig(
     CpVerifyStatsConfig
-):  # TODO: Update this inheritance
+):  # TODO: Update this inheritance?
     """
     Configuration for plotting stability
     of defects from individual defect masks.
