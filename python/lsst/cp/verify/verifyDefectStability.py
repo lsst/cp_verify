@@ -24,6 +24,7 @@ import lsst.pex.config as pexConfig
 import lsst.pipe.base as pipeBase
 import lsst.pipe.base.connectionTypes as cT
 import lsst.afw.image as afwImage
+from lsst.daf.butler import Timespan
 import pandas as pd
 from lsst.analysis.tools.actions.plot import FocalPlaneGeometryPlot as FPGPlot
 from .verifyDefects import (
