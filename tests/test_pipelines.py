@@ -169,6 +169,7 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
                 "verifyGainFromFlatPairs.yaml",
                 "verifyScience.yaml",
                 "verifyIlluminationCorrection.yaml",
+                "verifyCrosstalk.yaml",
             ],
         ):
             self._check_pipeline(os.path.join(self.pipeline_path, "LSSTCam-imSim", pipeline))
@@ -209,6 +210,7 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
                 "verifyGainFromFlatPairs.yaml",
                 "verifyScience.yaml",
                 "verifyIlluminationCorrection.yaml",
+                "verifyCrosstalk.yaml",
 
             ],
         ):
@@ -221,6 +223,7 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
                 "verifyGainFromFlatPairs.yaml",
                 "verifyScience.yaml",
                 "verifyIlluminationCorrection.yaml",
+                "verifyCrosstalk.yaml",
 
             ],
         ):
