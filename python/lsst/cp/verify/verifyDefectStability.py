@@ -220,17 +220,6 @@ class CpMeasureDefectsStabilityTask(pipeBase.PipelineTask):
             stacks[name] = stack
         return stacks
 
-    def run(self, referenceDefects, productionDefects, camera):
-
-        # Perform the task here, measuring the variance in the defects
-        defectsStability = self.processDetectorsAndAmps(
-            referenceDefects, productionDefects, self.config.resultDataFrame
-        )
-
-        return pipeBase.Struct(
-            defectsStability=defectsStability,
-        )
-
     def processDetectorsAndAmps(self, referenceDefects, productionDefects, defectData):
         for detectorName, detectorObject in self.config.detName_Obj.items():
             # Select identical detectors
@@ -329,28 +318,19 @@ class CpMeasureDefectsStabilityTask(pipeBase.PipelineTask):
 
         return defectData
 
-    # def runQuantum(
-    #     self, butlerQC, inputRefs, outputRefs
-    # ):  # TODO: rewrite this function, copied from MergeDefectsCombinedTask
-    #     inputs = butlerQC.get(inputRefs)
-    #     # Turn inputFlatDefects and inputDarkDefects into a list which
-    #     # is what MergeDefectsTask expects.  If there are multiple,
-    #     # use the one with the most inputs.
-    #     tempList = [
-    #         self.chooseBest(inputs["inputFlatDefects"]),
-    #         self.chooseBest(inputs["inputDarkDefects"]),
-    #         self.chooseBest(inputs["inputBiasDefects"]),
-    #     ]
+    def runQuantum(self, butlerQC, inputRefs, prodRefs, outputRefs):
+        prodInput = butlerQC.get(prodRefs)
+        refInput = butlerQC.get(refRefs)
 
-    #     if "inputManualDefects" in inputs.keys():
-    #         tempList.extend(inputs["inputManualDefects"])
+        outputs = self.run(prodInput, refInput)
+        butlerQC.put(outputs, outputRefs)
 
-    #     # Rename inputDefects
-    #     inputsCombined = {"inputDefects": tempList,
-    #                       "camera": inputs["camera"]}
-
-    #     outputs = super().run(**inputsCombined)
-    #     butlerQC.put(outputs, outputRefs)
+    def run(self, referenceDefects, productionDefects, defectData):
+        return pipeBase.Struct(
+            self.processDetectorsAndAmps(
+                referenceDefects, productionDefects, defectData
+            )
+        )
 
 
 class CpPlotDefectsStabilityTaskConnections(
@@ -386,9 +366,7 @@ class CpPlotDefectsStabilityTaskConnections(
         super().__init__(config=config)
 
 
-class CpPlotDefectsStabilityTaskConfig(
-    CpVerifyStatsConfig
-):  # TODO: Update this inheritance?
+class CpPlotDefectsStabilityTaskConfig(CpVerifyStatsConfig):
     """
     Configuration for plotting stability
     of defects from individual defect masks.
