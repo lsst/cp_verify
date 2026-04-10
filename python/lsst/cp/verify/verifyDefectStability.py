@@ -318,7 +318,7 @@ class CpMeasureDefectsStabilityTask(pipeBase.PipelineTask):
 
         return defectData
 
-    def runQuantum(self, butlerQC, inputRefs, prodRefs, outputRefs):
+    def runQuantum(self, butlerQC, refRefs, prodRefs, outputRefs):
         prodInput = butlerQC.get(prodRefs)
         refInput = butlerQC.get(refRefs)
 
