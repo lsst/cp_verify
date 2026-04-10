@@ -22,4 +22,3 @@ tasks:
       connections.camera: "LSSTCam"
       connections.outputPlots: "stabilityPlots"
       skipPlanes: [""]
-
