@@ -27,7 +27,11 @@ import os
 import unittest
 # We need this import here to allow the proj.db to be cleaned up
 # properly.
-import pyproj  # noqa: F401
+# TODO: Remove import after completing DM-54643. Use DM-54656
+try:
+    import pyproj  # noqa: F401
+except ImportError:
+    pass
 
 from lsst.pipe.base import Pipeline, PipelineGraph
 import lsst.utils
