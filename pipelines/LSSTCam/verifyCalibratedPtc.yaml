@@ -1,0 +1,4 @@
+description: cp_verify Calibrated Photon Transfer Curve closed-loop test
+instrument: lsst.obs.lsst.LsstCam
+imports:
+  - location: "${CP_VERIFY_DIR}/pipelines/_ingredients/verifyCalibratedPtcLSST.yaml"

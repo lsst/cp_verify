@@ -1,0 +1,73 @@
+description: cp_verify Calibrated Photon Transfer Curve closed-loop test
+imports:
+  - location: "${CP_PIPE_DIR}/pipelines/${INSTRUMENT}/cpPtc.yaml"
+  - location: "$CP_PIPE_DIR/pipelines/${INSTRUMENT}/cpCti.yaml"
+    exclude:
+      - cpCtiIsr
+tasks:
+  cpPtcIsr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      connections.ccdExposure: "raw"
+      connections.outputExposure: "cpCalibratedPtcIsrExp"
+      connections.outputStatistics: "cpCalibratedCtiStatistics"
+      python: |
+        config.doCalculateStatistics = True
+        config.isrStats.doCtiStatistics = True
+        config.doBootstrap = False
+        config.doApplyGains = True
+        config.doBrighterFatter = True
+        config.doDeferredCharge = True
+  cpPtcExtractPair:
+    class: lsst.cp.pipe.ptc.PhotonTransferCurveExtractPairTask
+    config:
+      connections.inputExp: "cpCalibratedPtcIsrExp"
+      connections.outputCovariance: "cpCalibratedPtcPartial"
+  cpPtcSolve:
+    class: lsst.cp.pipe.ptc.PhotonTransferCurveSolveTask
+    config:
+      connections.inputCovariances: "cpCalibratedPtcPartial"
+      connections.outputPtcDataset: "calibratedPtc"
+  cpCtiSolve:
+    class: lsst.cp.pipe.CpCtiSolveTask
+    config:
+      connections.inputMeasurements: "cpCalibratedCtiStatistics"
+      connections.outputCalib: "cpCalibratedCtiCalib"
+contracts:
+  - cpPtcIsr.doBootstrap == False
+
+#   verifyCalibratedPtcDet:
+#     class: lsst.cp.verifyCalibratedPtcTask
+#     config:
+#       connection.inputCalib: "calibratedPtc"
+#       connections.outputStats: "verifyCalibratedPtcDetStats"
+#       connections.outputResults: "verifyCalibratedPtcDetResults"
+
+#   verifyPtcDet:
+#     class: lsst.cp.verify.CpVerifyPtcTask
+#     config:
+#       connections.inputCalib: "ptc"
+#       connections.outputStats: "verifyPtcDetStats"
+#       connections.outputResults: "verifyPtcDetResults"
+#   verifyPtc:
+#     class: lsst.cp.verify.CpVerifyCalibMergeTask
+#     config:
+#       connections.inputStats: "verifyPtcDetStats"
+#       connections.inputResults: "verifyPtcDetResults"
+#       connections.outputStats: "verifyPtcStats"
+#       connections.outputResults: "verifyPtcResults"
+#       mergeDimension: "detector"
+#       hasInputResults: true
+#   analyzePtcCore:
+#     class: lsst.analysis.tools.tasks.VerifyCalibAnalysisTask
+#     config:
+#       connections.data: "verifyPtcResults"
+#       connections.outputName: "cpPtcCore"
+#   analyzePtcDetCore:
+#     class: lsst.analysis.tools.tasks.VerifyCalibDetectorTask
+#     config:
+#       connections.data: "verifyPtcDetResults"
+#       connections.outputName: "cpPtcDetCore"
+# connections:
+#   - verifyPtc.connections.inputStats == verifyPtcDet.connections.outputStats
+#   - verifyPtc.connections.inputResults == verifyPtcDet.connections.outputResults
