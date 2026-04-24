@@ -52,7 +52,9 @@ class CpVerifyDefectsConnections(
         name="camera",
         storageClass="Camera",
         doc="Input camera.",
-        dimensions=["instrument", ],
+        dimensions=[
+            "instrument",
+        ],
         isCalibration=True,
     )
     outputStats = cT.Output(
@@ -82,7 +84,7 @@ class CpVerifyDefectsConfig(
 
     def setDefaults(self):
         super().setDefaults()
-        self.stageName = 'DEFECTS'
+        self.stageName = "DEFECTS"
 
         self.maskNameList = ["BAD"]  # noqa F821
 
@@ -158,7 +160,9 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
         return outputStatistics
 
-    def detectorStatistics(self, statisticsDict, statControl, exposure=None, uncorrectedExposure=None):
+    def detectorStatistics(
+        self, statisticsDict, statControl, exposure=None, uncorrectedExposure=None
+    ):
         """Measure the detector statistics.
 
         Parameters
@@ -257,8 +261,10 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             outputStatistics[ampName]["STAT_OUTLIERS"] = int(np.sum(outliers))
 
             # Get fraction of defects per amp
-            ampSize = amp.getBBox().height*amp.getBBox().width
-            outputStatistics[ampName]["FRAC"] = outputStatistics[ampName]["DEFECT_PIXELS"]/ampSize
+            ampSize = amp.getBBox().height * amp.getBBox().width
+            outputStatistics[ampName]["FRAC"] = (
+                outputStatistics[ampName]["DEFECT_PIXELS"] / ampSize
+            )
 
         return outputStatistics
 
@@ -306,9 +312,7 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
             verifyStats[ampName] = verify
 
         success = successAmp
-        return {
-            "AMP": verifyStats
-        }, success
+        return {"AMP": verifyStats}, success
 
     def repackStats(self, statisticsDict, dimensions):
         # docstring inherited
@@ -323,7 +327,9 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
 
         rowBase = {
             "instrument": dimensions["instrument"],
-            "exposure": dimensions["exposure"],   # ensure an exposure dimension for downstream.
+            "exposure": dimensions[
+                "exposure"
+            ],  # ensure an exposure dimension for downstream.
             "detector": dimensions["detector"],
             "mjd": mjd,
         }
@@ -341,12 +347,18 @@ class CpVerifyDefectsTask(CpVerifyStatsTask):
         if self.config.useIsrStatistics and "ISR" in statisticsDict:
             for ampName, stats in statisticsDict["ISR"]["CALIBDIST"].items():
                 if ampName == "detector":
-                    nBadColumns = stats[ampName].get("LSST CALIB DEFECTS N_BAD_COLUMNS", np.nan)
+                    nBadColumns = stats[ampName].get(
+                        "LSST CALIB DEFECTS N_BAD_COLUMNS", np.nan
+                    )
                 elif ampName in stats.keys():
                     key = f"LSST CALIB DEFECTS {ampName} N_HOT"
-                    rows[ampName][f"{self.config.stageName}_N_HOT"] = stats[ampName].get(key, np.nan)
+                    rows[ampName][f"{self.config.stageName}_N_HOT"] = stats[
+                        ampName
+                    ].get(key, np.nan)
                     key = f"LSST CALIB DEFECTS {ampName} N_COLD"
-                    rows[ampName][f"{self.config.stageName}_N_COLD"] = stats[ampName].get(key, np.nan)
+                    rows[ampName][f"{self.config.stageName}_N_COLD"] = stats[
+                        ampName
+                    ].get(key, np.nan)
 
         # DET results
         rows["detector"] = rowBase
