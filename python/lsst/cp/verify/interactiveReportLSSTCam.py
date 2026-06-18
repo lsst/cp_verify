@@ -42,23 +42,15 @@ class DetailedReporterLSSTCam():
 
     Parameters
     ----------
-    repo : `str`
-        The location of the butler repository to retrieve results
-        from.
-    instrument : `str`
-        The instrument associated with this data.
-    output_path : `str`
+    sharedPath : `str`
         The location the report will be written to.
-    collections : `list` [`str`]
-        A list of collections to search.
-    **kwargs :
-        Other keyword parameters.  Currently parsed values:
-
-        - ``do_copy``: Should files be copied from butler (`bool`).
-        - ``do_overwrite``: Should pre-existing files be overwritten (`bool`).
+    instrument : `str`
+        The instrument associated with the data.
+    doOverwrite : `bool`
+        Should the sharedPath be overwritten?
     """
 
-    def __init__(self, sharedPath, doOverwrite, **kwargs):
+    def __init__(self, sharedPath, instrument, doOverwrite):
         super().__init__()
         # Set source and destination information.
         self.sharedPath = sharedPath
@@ -73,13 +65,15 @@ class DetailedReporterLSSTCam():
                                "organizational structure, please refer to DMTN-222 for more information.")
 
         # Logging
-        self.log = logging.getLogger(__name__) if "log" not in kwargs else kwargs["log"]
+        self.log = logging.getLogger(__name__)
 
         # Instantiate a butler for our repository.
         self.butler = Butler("/repo/main")
         self.registry = self.butler.registry
 
         # Get the camera associated with these calibrations
+        if instrument != "LSSTCam":
+            raise RuntimeError("The only supported camera is currently LSSTCam.")
         self.camera = LsstCam.getCamera()
 
     def writeReport(self, renderedHtml, fileName):
@@ -113,6 +107,10 @@ class DetailedReporterLSSTCam():
                     mosaicImages.append(f)
                 else:
                     continue
+
+        if len(mosaicImages) != len(histImages):
+            raise RuntimeError("The number of summary mosaic images does not match "
+                               "the number of histogram images.")
 
         mosaicImages = sorted(mosaicImages)
         histImages = sorted(histImages)
@@ -188,6 +186,18 @@ class DetailedReporterLSSTCam():
         self.writeReport(renderedHtml, "summary.html")
 
     def makeDetailed(self, fullName, tree):
+        """A class to generate the detailed verification reports.
+
+        Parameters
+        ----------
+        fullName : `str`
+            The name of the file to output.
+
+        tree :  `dict` [`list`, `tuple`]
+            Dictionary keyed by "{step}-{name}", that contains
+            a list of tuples (detectorId, relative/path/to/image).
+
+        """
         # Get the template for the detailed report
         detailedReportTemplateFile = os.path.join(
             os.environ['CP_VERIFY_DIR'],
@@ -228,6 +238,7 @@ class DetailedReporterLSSTCam():
         self.writeReport(renderedHtml, f"{fullName}.html")
 
     def run(self):
+        "Get all the images and generate the HTML construction routine."
         # What images are there?
         summaryImages, detailedImages = self.getAllImages()
 
@@ -243,9 +254,42 @@ class DetailedReporterLSSTCam():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Construct a detailed report.")
+    r"""
+    Construct a webpage (html) report of a full focal plane given
+    a set of images for each detector.
+    The reporter only requires that the images are organized in a
+    particular format (the images directory can be anywhere, but
+    preferably in ones public_html directory on S3D)F:
+
+    images/
+        |_____R00/
+        |          |______S00/
+        |          |______S01/
+        |               ...
+        |_____R01/ ...
+        |_____ ...
+
+    Also, the images in the directory need to follow this naming
+    convention:
+
+    ``step_\d{2}[a-zA-Z]?)-([a-zA-Z0-9_-]+)_(\d{2,3})\.png``
+    ==
+    step_(## + letter)-(descriptive name)_(detector ###).png
+
+    Or, you can adjust line 132 on your local version of
+    python/lsst/cp/verify/detailedReportsLSSTCam.py to fit your
+    own format.
+
+    The report code will generate a .html file for each unique
+    step_(## + letter)-(descriptive name) name.
+    """
+    parser = argparse.ArgumentParser(
+        description="Construct a detailed report. Usage: -p (absolute path "
+                    "to output directory) --instrument (e.g. LSSTCam) "
+                    "--do-overwrite (overwrite the path where the files are "
+                    "written.)")
     parser.add_argument("-p", "--shared-path", dest="sharedPath", default="",
-                        help="Path with input 'images' diectory, which will also "
+                        help="Absolute path with input 'images' diectory, which will also "
                              "contain the report pages.")
     parser.add_argument("--instrument", dest="instrument", default="",
                         help="The instrument to use (e.g. LSSTCam)")
