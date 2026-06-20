@@ -1,0 +1,24 @@
+description: cp_verify for Defect stability across combined calibrations.
+imports:
+  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+    include:
+      - analyzeDefectCore
+tasks:
+  measureDefectStability:
+    class: lsst.cp.verify.CpMeasureDefectsStabilityTask
+    config:
+      connections.referenceDefects: "referenceDefects"
+      connections.productionDefects: "productionDefects"
+      connections.camera: "LSSTCam"
+      connections.outputTable: "stabilityTable"
+      refLabel: "reference"
+      prodLabel: "production"
+      skipMasks: [""]
+      includeAny: true
+  plotDefectStability:
+    class: lsst.cp.verify.CpPlotDefectsStabilityTask
+    config:
+      connections.inputTable: "stabilityTable"
+      connections.camera: "LSSTCam"
+      connections.outputPlots: "stabilityPlots"
+      skipPlanes: [""]
