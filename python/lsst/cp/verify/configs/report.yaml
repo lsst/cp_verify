@@ -51,6 +51,18 @@ stages:
       description: "Processing configuration for the combined flat construction."
     verifyFlatApply_config:
       description: "Processing configuration for combined flat verification."
+    cpFlatCore_flatMeanPerAmp_FocalPlaneGeometryPlot:
+      description: "Focal plane mosaic of the combined flat means per amp."
+    cpFlatCore_flatNoisePerAmp_FocalPlaneGeometryPlot:
+      description: "Focal plane mosaic of the combined flat noise per amp."
+    cpFlatDetMergeCore_flatTestsByDate_GridPlot:
+      description: "Verfiy flat noise boolean by MJD per amp."
+    cpFlatDetMergeCore_flatMeansByDate_GridPlot:
+      description: "Flat mean by MJD per amp."
+    cpFlatDetMergeCore_flatNoiseByDate_GridPlot:
+      description: "Flat noise by MJD per amp."
+    cpFlatDetMergeCore_flatNoiseByMean_GridPlot:
+      description: "Verify flat noise by mean per amp."
   defects:
     defects:
       description: "The combined defects calibration."
