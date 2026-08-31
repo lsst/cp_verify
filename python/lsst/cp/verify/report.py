@@ -40,7 +40,6 @@ from lsst.daf.butler.datastores.file_datastore.retrieve_artifacts import (
     determine_destination_for_retrieved_artifact,
 )
 from lsst.resources import ResourcePath
-from lsst.utils import getPackageDir
 from lsst.utils.plotting import make_figure
 
 
@@ -101,9 +100,8 @@ class CpvReporter():
 
     def _read_dataset_map(self):
         """Read dataset information from source yaml."""
-        filename = os.path.join(getPackageDir("cp_verify"),
-                                "python", "lsst", "cp", "verify", "configs", "report.yaml")
-        with open(filename) as in_file:
+        filename = ResourcePath("resource://lsst.cp.verify/configs/report.yaml")
+        with filename.open("r") as in_file:
             return yaml.safe_load(in_file)
 
     def run(self):
