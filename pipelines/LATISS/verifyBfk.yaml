@@ -3,7 +3,7 @@ description: cp_verify LATISS BFK calibration verification
 # and will be fixed on that ticket.
 instrument: lsst.obs.lsst.Latiss
 imports:
-  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyBfkLSST.yaml
+  - location: resource://lsst.cp.verify/resources/pipelines/_ingredients/verifyBfkLSST.yaml
 tasks:
   verifyBfkIsr:
     class: lsst.ip.isr.IsrTaskLSST

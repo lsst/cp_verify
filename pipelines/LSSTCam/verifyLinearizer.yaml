@@ -1,7 +1,7 @@
 description: cp_verify LINEARITY calibration verification
 instrument: lsst.obs.lsst.LsstCam
 imports:
-  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyLinearizerLSST.yaml
+  - location: resource://lsst.cp.verify/resources/pipelines/_ingredients/verifyLinearizerLSST.yaml
 tasks:
   verifyLinearizerPtcExtractPair:
     class: lsst.cp.pipe.PhotonTransferCurveExtractPairTask
