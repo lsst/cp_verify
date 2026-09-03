@@ -1,7 +1,7 @@
 description: cp_verify LSSTComCam illumination correction calibration verification.
 instrument: lsst.obs.lsst.LsstComCam
 imports:
-  - location: $CP_VERIFY_DIR/pipelines/_ingredients/verifyIlluminationCorrectionLSST.yaml
+  - location: resource://lsst.cp.verify/resources/pipelines/_ingredients/verifyIlluminationCorrectionLSST.yaml
 tasks:
   verifyIlluminationCorrectionFgcmOutputIlluminationCorrection:
     class: lsst.fgcmcal.fgcmOutputIlluminationCorrection.FgcmOutputIlluminationCorrectionTask

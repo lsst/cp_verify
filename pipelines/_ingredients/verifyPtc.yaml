@@ -1,6 +1,6 @@
 description: cp_verify Photon Transfer Curve calibration verification
 imports:
-  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+  - location: resource://lsst.analysis.tools/resources/pipelines/cpCore.yaml
     include:
       - analyzePtcCore
       - analyzePtcDetCore
