@@ -1,6 +1,6 @@
 description: cp_verify BIAS calibration verification
 imports:
-  - location: $ANALYSIS_TOOLS_DIR/pipelines/cpCore.yaml
+  - location: resource://lsst.analysis.tools/resources/pipelines/cpCore.yaml
     include:
       - analyzeBiasCore
 tasks:

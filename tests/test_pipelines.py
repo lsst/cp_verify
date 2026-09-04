@@ -22,11 +22,10 @@
 #
 """Test cases for cp_verify pipelines."""
 
-import glob
-import os
 import unittest
 
 from lsst.pipe.base import Pipeline, PipelineGraph
+from lsst.resources import ResourcePath
 import lsst.utils
 
 try:
@@ -47,12 +46,11 @@ try:
 except ImportError:
     has_obs_decam = False
 
+PIPELINE_URI = ResourcePath("eups://cp_verify/pipelines/", forceDirectory=True)
+
 
 class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
     """Test case for building the pipelines."""
-
-    def setUp(self):
-        self.pipeline_path = os.path.join(lsst.utils.getPackageDir("cp_verify"), "pipelines")
 
     def _get_pipelines(self, exclude=[]):
         pipelines = {
@@ -78,14 +76,14 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
 
         return pipelines
 
-    def _check_pipeline(self, pipeline_file):
+    def _check_pipeline(self, pipeline_file: ResourcePath):
         # Confirm that the file is there.
-        self.assertTrue(os.path.isfile(pipeline_file), msg=f"Could not find {pipeline_file}")
+        self.assertTrue(pipeline_file.exists(), msg=f"Could not find {pipeline_file}")
 
         # The following loads the pipeline and confirms that it can parse all
         # the configs.
         try:
-            pipeline = Pipeline.fromFile(pipeline_file)
+            pipeline = Pipeline.from_uri(pipeline_file)
             graph = pipeline.to_graph()
         except Exception as e:
             raise RuntimeError(f"Could not process {pipeline_file}") from e
@@ -94,11 +92,13 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
 
     def test_ingredients(self):
         """Check that all pipelines in pipelines/_ingredients are tested."""
-        glob_str = os.path.join(self.pipeline_path, "_ingredients", "*.yaml")
+        ingredient_files = ResourcePath.findFileResources(
+            [PIPELINE_URI.join("_ingredients")], file_filter=r".*\.yaml$"
+        )
         # The *LSST.yaml pipelines are imported by LATISS/LSSTComCam/LSSTCam
         # and are not tested on their own.
         ingredients = set(
-            [os.path.basename(pipeline) for pipeline in glob.glob(glob_str) if "LSST.yaml" not in pipeline]
+            [pipeline.basename() for pipeline in ingredient_files if "LSST.yaml" not in pipeline.path]
         )
         # The _ingredients/verifyGainFromFlatPairs.yaml becomes
         # verifyGain.yaml in older pipelines for compatibility.
@@ -114,10 +114,7 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
 
     def test_cameras(self):
         """Check that all the cameras in pipelines are tested."""
-        glob_str = os.path.join(self.pipeline_path, "*")
-        paths = set(
-            [os.path.basename(path) for path in glob.glob(glob_str)]
-        )
+        _, paths, _ = next(PIPELINE_URI.walk())
         expected = {
             "DECam",
             "HSC",
@@ -127,12 +124,12 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
             "LSSTCam-imSim",
             "LSSTComCam",
             "LSSTComCamSim",
-            "README.md",
         }
-        self.assertEqual(paths, expected)
+        self.assertEqual(set(paths), expected)
 
     @unittest.skipIf(not has_obs_lsst, reason="Cannot test LATISS pipelines without obs_lsst")
     def test_latiss_pipelines(self):
+        latiss_uri = PIPELINE_URI.join("LATISS", forceDirectory=True)
         for pipeline in self._get_pipelines(exclude=[
                 # The old pipeline name should be excluded.
                 "verifyGain.yaml",
@@ -144,10 +141,11 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
                 "verifyIlluminationCorrection.yaml",
 
         ]):
-            self._check_pipeline(os.path.join(self.pipeline_path, "LATISS", pipeline))
+            self._check_pipeline(latiss_uri.join(pipeline))
 
     @unittest.skipIf(not has_obs_lsst, reason="Cannot test LSSTCam pipelines without obs_lsst")
     def test_lsstcam_pipelines(self):
+        lsstcam_uri = PIPELINE_URI.join("LSSTCam", forceDirectory=True)
         for pipeline in self._get_pipelines(
                 exclude=[
                     # These are renamed/not used in the new pipelines.
@@ -157,10 +155,11 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
                     "verifyCrosstalk.yaml",
                     "verifyIlluminationCorrection.yaml",
                 ]):
-            self._check_pipeline(os.path.join(self.pipeline_path, "LSSTCam", pipeline))
+            self._check_pipeline(lsstcam_uri.join(pipeline))
 
     @unittest.skipIf(not has_obs_lsst, reason="Cannot test LSSTCam-imSim pipelines without obs_lsst")
     def test_lsstcam_imsim_pipelines(self):
+        sim_uri = PIPELINE_URI.join("LSSTCam-imSim", forceDirectory=True)
         for pipeline in self._get_pipelines(
             exclude=[
                 "verifyGainFromFlatPairs.yaml",
@@ -169,10 +168,11 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
                 "verifyCrosstalk.yaml",
             ],
         ):
-            self._check_pipeline(os.path.join(self.pipeline_path, "LSSTCam-imSim", pipeline))
+            self._check_pipeline(sim_uri.join(pipeline))
 
     @unittest.skipIf(not has_obs_lsst, reason="Cannot test LSSTComCam pipelines without obs_lsst")
     def test_lsstcomcam_pipelines(self):
+        comcam_uri = PIPELINE_URI.join("LSSTComCam", forceDirectory=True)
         for pipeline in self._get_pipelines(
             exclude=[
                 # These are renamed/not used in the new pipelines.
@@ -182,10 +182,11 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
                 "verifyCrosstalk.yaml",
             ],
         ):
-            self._check_pipeline(os.path.join(self.pipeline_path, "LSSTComCam", pipeline))
+            self._check_pipeline(comcam_uri.join(pipeline))
 
     @unittest.skipIf(not has_obs_lsst, reason="Cannot test LSSTComCamSim pipelines without obs_lsst")
     def test_lsstcomcamsim_pipelines(self):
+        comcam_sim_uri = PIPELINE_URI.join("LSSTComCamSim", forceDirectory=True)
         for pipeline in self._get_pipelines(
             exclude=[
                 # These are renamed/not used in the new pipelines.
@@ -198,10 +199,11 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
 
             ],
         ):
-            self._check_pipeline(os.path.join(self.pipeline_path, "LSSTComCamSim", pipeline))
+            self._check_pipeline(comcam_sim_uri.join(pipeline))
 
     @unittest.skipIf(not has_obs_decam, reason="Cannot test DECam pipelines without obs_decam")
     def test_decam_pipelines(self):
+        decam_uri = PIPELINE_URI.join("DECam", forceDirectory=True)
         for pipeline in self._get_pipelines(
             exclude=[
                 "verifyGainFromFlatPairs.yaml",
@@ -211,10 +213,11 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
 
             ],
         ):
-            self._check_pipeline(os.path.join(self.pipeline_path, "DECam", pipeline))
+            self._check_pipeline(decam_uri.join(pipeline))
 
     @unittest.skipIf(not has_obs_subaru, reason="Cannot test HSC pipelines without obs_subaru")
     def test_hsc_pipelines(self):
+        hsc_uri = PIPELINE_URI.join("HSC", forceDirectory=True)
         for pipeline in self._get_pipelines(
             exclude=[
                 "verifyGainFromFlatPairs.yaml",
@@ -224,7 +227,7 @@ class VerifyPipelinesTestCase(lsst.utils.tests.TestCase):
 
             ],
         ):
-            self._check_pipeline(os.path.join(self.pipeline_path, "HSC", pipeline))
+            self._check_pipeline(hsc_uri.join(pipeline))
 
 
 class TestMemory(lsst.utils.tests.MemoryTestCase):
